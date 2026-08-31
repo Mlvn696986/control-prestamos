@@ -148,6 +148,8 @@ const icons = {
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></svg>',
   coin:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8"/><path d="M9.5 10.5c.5-1 1.3-1.5 2.5-1.5 1.5 0 2.5.8 2.5 2s-1 2-2.5 2-2.5.8-2.5 2 1 2 2.5 2c1.2 0 2-.5 2.5-1.5"/></svg>',
+  trash:
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>',
   history:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>',
 };
@@ -216,6 +218,7 @@ function bindEvents() {
     const editLoanButton = event.target.closest("[data-edit-loan]");
     const paymentButton = event.target.closest("[data-pay-loan]");
     const historyButton = event.target.closest("[data-history-client]");
+    const deleteButton = event.target.closest("[data-delete-client]");
     const planButton = event.target.closest("[data-request-plan]");
     const adminPlanButton = event.target.closest("[data-admin-plan]");
     const pendingNavButton = event.target.closest("[data-pending-nav]");
@@ -240,6 +243,10 @@ function bindEvents() {
 
     if (historyButton) {
       openHistoryDialog(historyButton.dataset.historyClient);
+    }
+
+    if (deleteButton) {
+      deleteClient(deleteButton.dataset.deleteClient);
     }
 
     if (planButton) {
@@ -541,6 +548,20 @@ async function createCloudPaymentAndUpdateLoan(payment, loan) {
   if (loanError) throw loanError;
   const { error: paymentError } = await saas.client.from("payments").insert(paymentToRow(payment, userId));
   if (paymentError) throw paymentError;
+}
+
+async function deleteCloudClient(clientId) {
+  if (!isCloudMode()) return;
+  const userId = saas.session.user.id;
+
+  const paymentsDelete = await saas.client.from("payments").delete().eq("user_id", userId).eq("client_id", clientId);
+  if (paymentsDelete.error) throw paymentsDelete.error;
+
+  const loansDelete = await saas.client.from("loans").delete().eq("user_id", userId).eq("client_id", clientId);
+  if (loansDelete.error) throw loansDelete.error;
+
+  const clientDelete = await saas.client.from("clients").delete().eq("user_id", userId).eq("id", clientId);
+  if (clientDelete.error) throw clientDelete.error;
 }
 
 async function createPlanRequest(requestedPlan, message) {
@@ -1567,6 +1588,7 @@ function renderClients() {
           <span class="row-actions" data-label="Acciones">
             <button class="ghost-button small-button" type="button" data-edit-client="${client.id}">${icons.edit} Editar</button>
             ${paymentButton}
+            <button class="delete-button small-button" type="button" data-delete-client="${client.id}">${icons.trash} Eliminar</button>
             <button class="icon-button square-action" title="Ver cobros" type="button" data-history-client="${client.id}">
               ${icons.history}
               <span>${paymentCount}</span>
@@ -1579,6 +1601,37 @@ function renderClients() {
     .join("");
 
   renderEmpty(elements.clientList, "No hay clientes con ese criterio.");
+}
+
+async function deleteClient(clientId) {
+  const client = state.clients.find((item) => item.id === clientId);
+  if (!client) return;
+
+  const clientLoans = getLoansForClient(clientId);
+  const paymentCount = state.payments.filter((payment) => payment.clientId === clientId).length;
+  const confirmed = window.confirm(
+    `Seguro que deseas eliminar a ${client.name}?\n\nSe eliminaran tambien sus prestamos, ampliaciones y ${paymentCount} cobro(s) registrados.\n\nEsta accion no se puede deshacer desde esta pantalla. Deseas continuar?`
+  );
+  if (!confirmed) return;
+
+  try {
+    await ensureAutomaticBackup(true);
+    await deleteCloudClient(clientId);
+
+    const loanIds = new Set(clientLoans.map((loan) => loan.id));
+    state.clients = state.clients.filter((item) => item.id !== clientId);
+    state.loans = state.loans.filter((loan) => loan.clientId !== clientId);
+    state.payments = state.payments.filter((payment) => payment.clientId !== clientId && !loanIds.has(payment.loanId));
+
+    saveState();
+    render();
+    window.alert("Cliente eliminado correctamente.");
+  } catch (error) {
+    if (isCloudMode()) {
+      await reloadAfterCloudError();
+    }
+    window.alert(error.message || "No se pudo eliminar el cliente.");
+  }
 }
 
 function renderClientTabs() {
