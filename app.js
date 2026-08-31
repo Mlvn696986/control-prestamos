@@ -137,12 +137,10 @@ const elements = {
   metricRecovered: $("#metricRecovered"),
   summaryHeroMeta: $("#summaryHeroMeta"),
   summaryHealth: $("#summaryHealth"),
-  summaryRange: $("#summaryRange"),
-  summaryStatus: $("#summaryStatus"),
-  summaryMode: $("#summaryMode"),
-  summaryClientQuery: $("#summaryClientQuery"),
   summaryCustomStart: $("#summaryCustomStart"),
   summaryCustomEnd: $("#summaryCustomEnd"),
+  summaryCompare: $("#summaryCompare"),
+  summaryOperation: $("#summaryOperation"),
   summaryExport: $("#summaryExport"),
   summaryCriticalGrid: $("#summaryCriticalGrid"),
   summaryTodayList: $("#summaryTodayList"),
@@ -1488,9 +1486,9 @@ function renderDashboard() {
   initDashboardMessageRotators();
 }
 
-function buildDashboardData() {
-  const filters = getDashboardFilters();
-  const range = getDashboardDateRange(filters.range);
+function buildDashboardData(options = {}) {
+  const filters = options.filters || getDashboardFilters();
+  const range = options.range || getDashboardDateRange(filters);
   const scopeLoans = state.loans.filter((loan) => loanMatchesDashboardScope(loan, filters));
   const loans = scopeLoans.filter((loan) => loanTouchesRange(loan, range));
   const payments = state.payments.filter((payment) => paymentMatchesDashboardFilters(payment, scopeLoans, filters, range));
@@ -1503,13 +1501,13 @@ function buildDashboardData() {
   const monthLoans = scopeLoans
     .filter((loan) => loan.status === "active" && !isOverdue(loan) && daysBetween(todayISO(), loan.nextDueDate) > 7 && daysBetween(todayISO(), loan.nextDueDate) <= 30)
     .sort(sortLoansByDueDate);
-  const extensionLoans = loans.filter((loan) => !isPrimaryLoan(loan));
+  const loansStartedInPeriod = scopeLoans.filter((loan) => dateInRange(loan.startDate, range));
+  const extensionLoans = loansStartedInPeriod.filter((loan) => !isPrimaryLoan(loan));
   const activeExtensions = activeLoans.filter((loan) => !isPrimaryLoan(loan));
-  const currentMonthRange = getDashboardDateRange("month");
-  const previousMonthRange = getDashboardDateRange("previousMonth");
-  const nextMonthRange = getDashboardDateRange("nextMonth");
-  const currentMonthPayments = payments.filter((payment) => dateInRange(payment.date, currentMonthRange));
-  const previousMonthPayments = payments.filter((payment) => dateInRange(payment.date, previousMonthRange));
+  const previousMonthRange = getShiftedMonthRange(range, -1, "Mes anterior");
+  const nextMonthRange = getShiftedMonthRange(range, 1, "Proximo mes");
+  const currentMonthPayments = payments;
+  const previousMonthPayments = state.payments.filter((payment) => paymentMatchesDashboardFilters(payment, scopeLoans, filters, previousMonthRange));
   const nextMonthLoans = scopeLoans.filter((loan) => loan.status === "active" && dateInRange(loan.nextDueDate, nextMonthRange));
   const capitalPending = sum(activeLoans, "remainingCapital");
   const capitalRecovered = sum(payments, "capitalPaid");
@@ -1517,9 +1515,11 @@ function buildDashboardData() {
   const projectedProfit = activeLoans.reduce((total, loan) => total + expectedInterest(loan), 0);
   const capitalPlaced = sum(activeLoans, "remainingCapital");
   const capitalTotal = capitalPending + capitalRecovered;
-  const periodLoanAmount = sum(loans, "amount");
+  const periodLoanAmount = sum(loansStartedInPeriod, "amount");
   const firstPaymentDate = payments.slice().sort((a, b) => new Date(a.date) - new Date(b.date))[0]?.date || null;
-  const reinvested = firstPaymentDate ? Math.min(capitalRecovered, loans.filter((loan) => loan.startDate >= firstPaymentDate).reduce((total, loan) => total + loan.amount, 0)) : 0;
+  const reinvested = firstPaymentDate
+    ? Math.min(capitalRecovered, loansStartedInPeriod.filter((loan) => loan.startDate >= firstPaymentDate).reduce((total, loan) => total + loan.amount, 0))
+    : 0;
   const availableCapital = Math.max(capitalRecovered - reinvested, 0);
   const newMoney = Math.max(periodLoanAmount - capitalRecovered, 0);
   const overdueAmount = overdueLoans.reduce((total, loan) => total + loan.remainingCapital + expectedInterest(loan), 0);
@@ -1542,7 +1542,7 @@ function buildDashboardData() {
     { label: "Cerrados", value: loans.filter((loan) => loan.status === "closed").length, color: "#ffb000" },
   ];
 
-  return {
+  const dashboard = {
     filters,
     range,
     loans,
@@ -1579,8 +1579,8 @@ function buildDashboardData() {
       nextMonthCapital,
       nextMonthTotal: nextMonthCapital + nextMonthInterest,
       chargedThisMonth: currentMonthPayments.reduce((total, payment) => total + payment.capitalPaid + payment.interestPaid, 0),
-      lentThisMonth: loans.filter((loan) => dateInRange(loan.startDate, currentMonthRange)).reduce((total, loan) => total + loan.amount, 0),
-      newLoansPeriod: loans.filter(isPrimaryLoan).length,
+      lentThisMonth: periodLoanAmount,
+      newLoansPeriod: loansStartedInPeriod.filter(isPrimaryLoan).length,
       extensionsPeriod: extensionLoans.length,
       extensionAmount: sum(extensionLoans, "amount"),
       lateClients: new Set(overdueLoans.map((loan) => loan.clientId)).size,
@@ -1616,48 +1616,109 @@ function buildDashboardData() {
     },
     lists: buildDashboardLists(loans, payments, scopeLoans),
   };
+  dashboard.comparison = options.skipComparison ? null : buildDashboardComparison(dashboard);
+  return dashboard;
 }
 
 function getDashboardFilters() {
   return {
-    range: elements.summaryRange?.value || "month",
-    status: elements.summaryStatus?.value || "all",
-    mode: elements.summaryMode?.value || "all",
-    query: normalizeText(elements.summaryClientQuery?.value || ""),
     customStart: elements.summaryCustomStart?.value || "",
     customEnd: elements.summaryCustomEnd?.value || "",
+    compare: elements.summaryCompare?.value || "none",
+    operation: elements.summaryOperation?.value || "all",
   };
 }
 
-function getDashboardDateRange(rangeName) {
+function getDashboardDateRange(filters = {}) {
   const today = parseLocalDate(todayISO());
-  const weekDay = today.getDay() || 7;
   const startOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const endOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const ranges = {
-    today: { start: todayISO(), end: todayISO(), label: "Hoy" },
-    week: { start: toISODate(addDateDays(today, 1 - weekDay)), end: toISODate(addDateDays(today, 7 - weekDay)), label: "Esta semana" },
-    month: { start: toISODate(startOfCurrentMonth), end: toISODate(endOfCurrentMonth), label: "Este mes" },
-    previousMonth: {
-      start: toISODate(new Date(today.getFullYear(), today.getMonth() - 1, 1)),
-      end: toISODate(new Date(today.getFullYear(), today.getMonth(), 0)),
-      label: "Mes anterior",
-    },
-    nextMonth: {
-      start: toISODate(new Date(today.getFullYear(), today.getMonth() + 1, 1)),
-      end: toISODate(new Date(today.getFullYear(), today.getMonth() + 2, 0)),
-      label: "Proximo mes",
-    },
-    last3: { start: toISODate(new Date(today.getFullYear(), today.getMonth() - 2, 1)), end: todayISO(), label: "Ultimos 3 meses" },
-    last6: { start: toISODate(new Date(today.getFullYear(), today.getMonth() - 5, 1)), end: todayISO(), label: "Ultimos 6 meses" },
-    year: { start: toISODate(new Date(today.getFullYear(), 0, 1)), end: toISODate(new Date(today.getFullYear(), 11, 31)), label: "Este ano" },
-  };
-  if (rangeName === "custom") {
-    const start = elements.summaryCustomStart?.value || "1900-01-01";
-    const end = elements.summaryCustomEnd?.value || "2999-12-31";
-    return { start, end, label: "Personalizado" };
+  const start = filters.customStart || toISODate(startOfCurrentMonth);
+  const end = filters.customEnd || toISODate(endOfCurrentMonth);
+  return normalizeDateRange(start, end, "Periodo seleccionado");
+}
+
+function normalizeDateRange(start, end, label = "Periodo seleccionado") {
+  const startValue = start || todayISO();
+  const endValue = end || startValue;
+  if (startOfDay(startValue) <= startOfDay(endValue)) {
+    return { start: startValue, end: endValue, label };
   }
-  return ranges[rangeName] || ranges.month;
+  return { start: endValue, end: startValue, label };
+}
+
+function getCalendarMonthRange(monthOffset = 0) {
+  const today = parseLocalDate(todayISO());
+  return {
+    start: toISODate(new Date(today.getFullYear(), today.getMonth() + monthOffset, 1)),
+    end: toISODate(new Date(today.getFullYear(), today.getMonth() + monthOffset + 1, 0)),
+    label: monthOffset === 0 ? "Este mes" : monthOffset === -1 ? "Mes anterior" : "Proximo mes",
+  };
+}
+
+function getShiftedMonthRange(range, monthOffset, label) {
+  const start = parseLocalDate(range.start);
+  const end = parseLocalDate(range.end);
+  return normalizeDateRange(
+    addMonthsKeepingDay(range.start, start.getDate(), monthOffset),
+    addMonthsKeepingDay(range.end, end.getDate(), monthOffset),
+    label
+  );
+}
+
+function getComparisonRange(range, compareType) {
+  const start = parseLocalDate(range.start);
+  const end = parseLocalDate(range.end);
+  if (compareType === "previousPeriod") {
+    const dayCount = daysBetween(range.start, range.end) + 1;
+    return normalizeDateRange(addDays(range.start, -dayCount), addDays(range.start, -1), "Periodo anterior");
+  }
+  if (compareType === "previousMonth") {
+    return getShiftedMonthRange(range, -1, "Mes anterior");
+  }
+  if (compareType === "previousYear") {
+    return normalizeDateRange(
+      toISODate(new Date(start.getFullYear() - 1, start.getMonth(), Math.min(start.getDate(), new Date(start.getFullYear() - 1, start.getMonth() + 1, 0).getDate()))),
+      toISODate(new Date(end.getFullYear() - 1, end.getMonth(), Math.min(end.getDate(), new Date(end.getFullYear() - 1, end.getMonth() + 1, 0).getDate()))),
+      "Ano anterior"
+    );
+  }
+  return null;
+}
+
+function buildDashboardComparison(dashboard) {
+  if (dashboard.filters.compare === "none") return null;
+  const range = getComparisonRange(dashboard.range, dashboard.filters.compare);
+  if (!range) return null;
+  const comparisonDashboard = buildDashboardData({
+    filters: { ...dashboard.filters, compare: "none" },
+    range,
+    skipComparison: true,
+  });
+  return {
+    label: dashboardCompareLabel(dashboard.filters.compare),
+    range,
+    metrics: comparisonDashboard.metrics,
+  };
+}
+
+function dashboardCompareLabel(compareType) {
+  const labels = {
+    none: "Sin comparacion",
+    previousPeriod: "Periodo anterior",
+    previousMonth: "Mes anterior",
+    previousYear: "Ano anterior",
+  };
+  return labels[compareType] || labels.none;
+}
+
+function dashboardOperationLabel(operation) {
+  const labels = {
+    all: "Todos",
+    primary: "Prestamos principales",
+    extensions: "Ampliaciones",
+  };
+  return labels[operation] || labels.all;
 }
 
 function addDateDays(date, dayCount) {
@@ -1667,14 +1728,8 @@ function addDateDays(date, dayCount) {
 }
 
 function loanMatchesDashboardScope(loan, filters) {
-  const client = getClient(loan.clientId);
-  if (filters.query && !normalizeText(`${client?.name || ""} ${client?.phone || ""}`).includes(filters.query)) return false;
-  if (filters.mode !== "all" && normalizeInterestMode(loan.interestMode) !== filters.mode) return false;
-  if (filters.status === "active" && loan.status !== "active") return false;
-  if (filters.status === "overdue" && (loan.status !== "active" || !isOverdue(loan))) return false;
-  if (filters.status === "closed" && loan.status !== "closed") return false;
-  if (filters.status === "today" && (loan.status !== "active" || loan.nextDueDate !== todayISO())) return false;
-  if (filters.status === "extensions" && !getLoansForClient(loan.clientId).slice(1).length) return false;
+  if (filters.operation === "primary" && !isPrimaryLoan(loan)) return false;
+  if (filters.operation === "extensions" && isPrimaryLoan(loan)) return false;
   return true;
 }
 
@@ -1682,8 +1737,6 @@ function paymentMatchesDashboardFilters(payment, scopeLoans, filters, range) {
   if (!dateInRange(payment.date, range)) return false;
   const loan = scopeLoans.find((item) => item.id === payment.loanId);
   if (!loan) return false;
-  const client = getClient(payment.clientId);
-  if (filters.query && !normalizeText(`${client?.name || ""} ${client?.phone || ""}`).includes(filters.query)) return false;
   return true;
 }
 
@@ -1728,38 +1781,39 @@ function renderDashboardHeader(dashboard) {
 
 function renderDashboardKpis(dashboard) {
   const cards = getDashboardKpiItems(dashboard);
-  elements.summaryCriticalGrid.innerHTML = cards.map((item) => renderKpiCard(item)).join("");
+  elements.summaryCriticalGrid.innerHTML = cards.map((item) => renderKpiCard(item, dashboard)).join("");
 }
 
 function getDashboardKpiItems(dashboard) {
   const m = dashboard.metrics;
   return [
-    ["Capital total", money(m.capitalTotal), "", "Ejemplo: Si has destinado S/10,000 al negocio de prestamos, ese monto representa tu capital total, aunque una parte este disponible y otra este prestada."],
-    ["Capital disponible", money(m.availableCapital), "", "Ejemplo: Si tienes S/10,000 de capital total y S/7,000 estan prestados, tienes S/3,000 disponibles para nuevos prestamos."],
-    ["Capital prestado", money(m.capitalPlaced), "", "Ejemplo: Si tienes prestamos activos con S/1,000, S/2,000 y S/500 pendientes, tienes S/3,500 actualmente prestados."],
-    ["Capital pendiente", money(m.capitalPending), "", "Ejemplo: Si prestaste S/1,000 y el cliente ya devolvio S/400 de capital, todavia tienes S/600 pendientes por recuperar."],
-    ["Capital recuperado", money(m.capitalRecovered), "", "Ejemplo: Si prestaste S/1,000 y el cliente ya devolvio S/400 de capital, esos S/400 forman parte del capital recuperado."],
-    ["Ganancia real", money(m.realProfit), "", "Ejemplo: Si este mes ya recibiste S/650 solo en intereses, tu ganancia real es S/650; el capital devuelto no cuenta como ganancia."],
-    ["Ganancia proyectada", money(m.projectedProfit), "", "Ejemplo: Si tus prestamos activos deberian generar S/900 en intereses futuros, esa es tu ganancia proyectada hasta que se cobre."],
-    ["Total por cobrar", money(m.totalToCollect), "", "Ejemplo: Si tienes S/5,000 de capital pendiente y S/600 de intereses pendientes, el total por cobrar es S/5,600."],
-    ["Cobros de hoy", m.todayCount, "", "Ejemplo: Si hoy tienen fecha de cobro 3 prestamos diferentes, este indicador mostrara 3 cobros de hoy."],
-    ["Monto a cobrar hoy", money(m.todayAmount), "", "Ejemplo: Si hoy debes cobrar S/100 a un cliente, S/250 a otro y S/150 a otro, el monto a cobrar hoy sera S/500."],
-    ["Prestamos activos", m.activeLoans, "", "Ejemplo: Si tienes 6 prestamos principales y 2 ampliaciones con saldo pendiente, tienes 8 prestamos activos."],
-    ["Prestamos vencidos", m.overdueLoans, "", "Ejemplo: Si la fecha de cobro de 3 prestamos ya paso y todavia mantienen deuda, este indicador mostrara 3 prestamos vencidos."],
-    ["Monto vencido", money(m.overdueAmount), "", "Ejemplo: Si Pepe tiene S/500 vencidos y Ana S/300 vencidos, el monto vencido total es S/800."],
-    ["Prestamos cerrados", m.closedLoans, "", "Ejemplo: Si 5 prestamos ya fueron pagados completamente y quedaron en S/0.00, tienes 5 prestamos cerrados."],
-    ["Clientes activos", m.activeClientCount, "", "Ejemplo: Si tienes 7 clientes y 5 mantienen al menos un prestamo o ampliacion pendiente, tienes 5 clientes activos."],
-    ["Ampliaciones activas", `${m.activeExtensions} / ${money(m.activeExtensionsAmount)}`, "", "Ejemplo: Si Lole tiene 2 ampliaciones pendientes y Melvin tiene 1, existen 3 ampliaciones activas."],
-  ].map(([title, value, note, tip]) => ({ title, value, note, tip }));
+    ["Capital total", money(m.capitalTotal), "", "Ejemplo: Si has destinado S/10,000 al negocio de prestamos, ese monto representa tu capital total, aunque una parte este disponible y otra este prestada.", "capitalTotal"],
+    ["Capital disponible", money(m.availableCapital), "", "Ejemplo: Si tienes S/10,000 de capital total y S/7,000 estan prestados, tienes S/3,000 disponibles para nuevos prestamos.", "availableCapital"],
+    ["Capital prestado", money(m.capitalPlaced), "", "Ejemplo: Si tienes prestamos activos con S/1,000, S/2,000 y S/500 pendientes, tienes S/3,500 actualmente prestados.", "capitalPlaced"],
+    ["Capital pendiente", money(m.capitalPending), "", "Ejemplo: Si prestaste S/1,000 y el cliente ya devolvio S/400 de capital, todavia tienes S/600 pendientes por recuperar.", "capitalPending"],
+    ["Capital recuperado", money(m.capitalRecovered), "", "Ejemplo: Si prestaste S/1,000 y el cliente ya devolvio S/400 de capital, esos S/400 forman parte del capital recuperado.", "capitalRecovered"],
+    ["Ganancia real", money(m.realProfit), "", "Ejemplo: Si este mes ya recibiste S/650 solo en intereses, tu ganancia real es S/650; el capital devuelto no cuenta como ganancia.", "realProfit"],
+    ["Ganancia proyectada", money(m.projectedProfit), "", "Ejemplo: Si tus prestamos activos deberian generar S/900 en intereses futuros, esa es tu ganancia proyectada hasta que se cobre.", "projectedProfit"],
+    ["Total por cobrar", money(m.totalToCollect), "", "Ejemplo: Si tienes S/5,000 de capital pendiente y S/600 de intereses pendientes, el total por cobrar es S/5,600.", "totalToCollect"],
+    ["Cobros de hoy", m.todayCount, "", "Ejemplo: Si hoy tienen fecha de cobro 3 prestamos diferentes, este indicador mostrara 3 cobros de hoy.", "todayCount"],
+    ["Monto a cobrar hoy", money(m.todayAmount), "", "Ejemplo: Si hoy debes cobrar S/100 a un cliente, S/250 a otro y S/150 a otro, el monto a cobrar hoy sera S/500.", "todayAmount"],
+    ["Prestamos activos", m.activeLoans, "", "Ejemplo: Si tienes 6 prestamos principales y 2 ampliaciones con saldo pendiente, tienes 8 prestamos activos.", "activeLoans"],
+    ["Prestamos vencidos", m.overdueLoans, "", "Ejemplo: Si la fecha de cobro de 3 prestamos ya paso y todavia mantienen deuda, este indicador mostrara 3 prestamos vencidos.", "overdueLoans"],
+    ["Monto vencido", money(m.overdueAmount), "", "Ejemplo: Si Pepe tiene S/500 vencidos y Ana S/300 vencidos, el monto vencido total es S/800.", "overdueAmount"],
+    ["Prestamos cerrados", m.closedLoans, "", "Ejemplo: Si 5 prestamos ya fueron pagados completamente y quedaron en S/0.00, tienes 5 prestamos cerrados.", "closedLoans"],
+    ["Clientes activos", m.activeClientCount, "", "Ejemplo: Si tienes 7 clientes y 5 mantienen al menos un prestamo o ampliacion pendiente, tienes 5 clientes activos.", "activeClientCount"],
+    ["Ampliaciones activas", `${m.activeExtensions} / ${money(m.activeExtensionsAmount)}`, "", "Ejemplo: Si Lole tiene 2 ampliaciones pendientes y Melvin tiene 1, existen 3 ampliaciones activas.", "activeExtensions"],
+  ].map(([title, value, note, tip, metricKey]) => ({ title, value, note, tip, metricKey }));
 }
 
-function renderKpiCard({ title, value, note, tip }) {
+function renderKpiCard({ title, value, note, tip, metricKey, compareFactor }, dashboard) {
   const tooltipText = tip || note;
   const messages = getIndicatorMessages(title);
   return `
     <article class="summary-kpi-card">
       <span>${escapeHTML(title)} ${renderInfoDot(tooltipText)}</span>
       <strong>${escapeHTML(value)}</strong>
+      ${renderComparisonBadge({ title, metricKey, compareFactor }, dashboard)}
       ${renderIndicatorMessage(messages, title)}
     </article>
   `;
@@ -1767,6 +1821,113 @@ function renderKpiCard({ title, value, note, tip }) {
 
 function renderInfoDot(text) {
   return `<i class="info-dot" tabindex="0" data-tip="${escapeHTML(text)}">i</i>`;
+}
+
+const DASHBOARD_TREND_RULES = {
+  availableCapital: "up",
+  capitalRecovered: "up",
+  realProfit: "up",
+  projectedProfit: "up",
+  totalToCollect: "up",
+  todayAmount: "up",
+  closedLoans: "up",
+  activeClientCount: "up",
+  activeExtensions: "up",
+  reinvested: "up",
+  newMoney: "up",
+  currentMonthProfit: "up",
+  previousMonthProfit: "up",
+  nextMonthProfit: "up",
+  nextMonthCapital: "up",
+  nextMonthTotal: "up",
+  chargedThisMonth: "up",
+  lentThisMonth: "up",
+  newLoansPeriod: "up",
+  extensionsPeriod: "up",
+  extensionAmount: "up",
+  pendingInterest: "up",
+  averageLoan: "up",
+  averageInterestPaid: "up",
+  cashflow: "up",
+  availableAfterProjected: "up",
+  profitability: "up",
+  monthlyRoi: "up",
+  recoveryRate: "up",
+  overdueLoans: "down",
+  overdueAmount: "down",
+  lateClients: "down",
+  averageLateDays: "down",
+  capitalRisk: "down",
+  delinquencyRate: "down",
+};
+
+const DASHBOARD_PERCENT_METRICS = new Set(["profitability", "monthlyRoi", "delinquencyRate", "recoveryRate"]);
+const DASHBOARD_DAY_METRICS = new Set(["averageLateDays"]);
+const DASHBOARD_COUNT_METRICS = new Set([
+  "todayCount",
+  "activeLoans",
+  "overdueLoans",
+  "closedLoans",
+  "activeClientCount",
+  "activeExtensions",
+  "newLoansPeriod",
+  "extensionsPeriod",
+  "lateClients",
+]);
+
+function renderComparisonBadge(item, dashboard) {
+  const details = getComparisonDetails(item, dashboard);
+  if (!details) return "";
+  return `<small class="comparison-badge ${details.className}" tabindex="0" data-tip="${escapeHTML(details.tooltip)}">${details.arrow} ${escapeHTML(details.label)}</small>`;
+}
+
+function getComparisonDetails(item, dashboard) {
+  if (!item.metricKey || !dashboard?.comparison) return null;
+  const factor = Number(item.compareFactor || 1);
+  const current = Number(dashboard.metrics[item.metricKey]);
+  const previous = Number(dashboard.comparison.metrics[item.metricKey]);
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
+  const currentValue = current * factor;
+  const previousValue = previous * factor;
+  const difference = currentValue - previousValue;
+  const percent = previousValue === 0 ? null : (difference / Math.abs(previousValue)) * 100;
+  const arrow = difference > 0 ? "▲" : difference < 0 ? "▼" : "—";
+  const className = getComparisonTrendClass(item.metricKey, difference);
+  const label = percent === null ? (difference === 0 ? "Sin cambios" : "Sin base previa") : `${formatSignedNumber(percent)}%`;
+  const tooltip = [
+    `Actual (${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}): ${formatMetricValue(currentValue, item.metricKey)}`,
+    `Comparado (${formatDate(dashboard.comparison.range.start)} - ${formatDate(dashboard.comparison.range.end)}): ${formatMetricValue(previousValue, item.metricKey)}`,
+    `Diferencia: ${formatSignedMetricValue(difference, item.metricKey)}${percent === null ? "" : ` (${formatSignedNumber(percent)}%)`}`,
+  ].join(" | ");
+  return { arrow, className, label, tooltip, currentValue, previousValue, difference, percent };
+}
+
+function getComparisonTrendClass(metricKey, difference) {
+  if (!difference) return "is-neutral";
+  const direction = DASHBOARD_TREND_RULES[metricKey] || "neutral";
+  if (direction === "neutral") return "is-neutral";
+  const isGood = direction === "up" ? difference > 0 : difference < 0;
+  return isGood ? "is-good" : "is-bad";
+}
+
+function formatMetricValue(value, metricKey) {
+  if (DASHBOARD_PERCENT_METRICS.has(metricKey)) return `${roundMoney(value)}%`;
+  if (DASHBOARD_DAY_METRICS.has(metricKey)) return `${roundMoney(value)} dias`;
+  if (DASHBOARD_COUNT_METRICS.has(metricKey)) return String(Math.round(value));
+  return money(value);
+}
+
+function formatSignedMetricValue(value, metricKey) {
+  const prefix = value > 0 ? "+" : "";
+  if (DASHBOARD_PERCENT_METRICS.has(metricKey)) return `${prefix}${roundMoney(value)}%`;
+  if (DASHBOARD_DAY_METRICS.has(metricKey)) return `${prefix}${roundMoney(value)} dias`;
+  if (DASHBOARD_COUNT_METRICS.has(metricKey)) return `${prefix}${Math.round(value)}`;
+  return `${prefix}${money(value)}`;
+}
+
+function formatSignedNumber(value) {
+  const rounded = roundMoney(value);
+  return `${rounded > 0 ? "+" : ""}${rounded}`;
 }
 
 const INDICATOR_MESSAGES = {
@@ -2269,43 +2430,44 @@ function renderLoanMiniList(container, loans, emptyMessage) {
 
 function renderDashboardManagement(dashboard) {
   const cards = getDashboardManagementItems(dashboard);
-  elements.summaryManagementGrid.innerHTML = cards.map((item) => renderCompactMetric(item)).join("");
+  elements.summaryManagementGrid.innerHTML = cards.map((item) => renderCompactMetric(item, dashboard)).join("");
 }
 
 function getDashboardManagementItems(dashboard) {
   const m = dashboard.metrics;
   const modeText = dashboard.charts.modeSegments.map((item) => `${item.label}: ${item.value}`).join(" · ");
   return [
-    ["Capital reinvertido", money(m.reinvested), "Ejemplo: Si recuperaste S/1,000 de capital y luego usaste S/700 para prestar nuevamente, tienes S/700 de capital reinvertido."],
-    ["Dinero nuevo aportado", money(m.newMoney), "Ejemplo: Si tu negocio tenia S/10,000 y agregas S/2,000 de tu propio dinero, esos S/2,000 son dinero nuevo aportado."],
-    ["Ganancia del mes actual", money(m.currentMonthProfit), "Ejemplo: Si durante este mes ya cobraste S/850 en intereses, tu ganancia del mes actual es S/850."],
-    ["Ganancia del mes anterior", money(m.previousMonthProfit), "Ejemplo: Si el mes pasado cobraste S/700 en intereses, ese monto corresponde a la ganancia del mes anterior."],
-    ["Ganancia esperada proximo mes", money(m.nextMonthProfit), "Ejemplo: Si los prestamos del proximo mes deberian generar S/1,200 en intereses, esa es la ganancia esperada."],
-    ["Capital que regresara proximo mes", money(m.nextMonthCapital), "Ejemplo: Si el proximo mes tus clientes deben devolver S/3,000 de capital, ese sera el capital estimado que regresara."],
-    ["Total estimado proximo mes", money(m.nextMonthTotal), "Ejemplo: Si esperas recuperar S/3,000 de capital y S/800 de intereses, el total estimado sera S/3,800."],
-    ["Cobrado este mes", money(m.chargedThisMonth), "Ejemplo: Si este mes recibiste S/2,000 de capital y S/500 de intereses, el total cobrado este mes es S/2,500."],
-    ["Prestado este mes", money(m.lentThisMonth), "Ejemplo: Si este mes otorgaste prestamos de S/500, S/1,000 y S/700, has prestado S/2,200."],
-    ["Nuevos prestamos del periodo", m.newLoansPeriod, "Ejemplo: Si en el periodo seleccionado registraste 4 prestamos principales nuevos, este indicador mostrara 4."],
-    ["Ampliaciones del periodo", m.extensionsPeriod, "Ejemplo: Si durante este mes registraste 5 ampliaciones de prestamo, este indicador mostrara 5 ampliaciones."],
-    ["Monto total en ampliaciones", money(m.extensionAmount), "Ejemplo: Si otorgaste ampliaciones de S/200, S/300 y S/500, el monto total en ampliaciones es S/1,000."],
-    ["Clientes atrasados", m.lateClients, "Ejemplo: Si Pepe tiene un prestamo vencido y Ana una ampliacion vencida, tienes 2 clientes atrasados."],
-    ["Dias promedio de atraso", `${roundMoney(m.averageLateDays)} dias`, "Ejemplo: Si un prestamo debia pagarse el 10 de agosto y hoy es 15 de agosto, tiene 5 dias de atraso."],
-    ["Capital en riesgo", money(m.capitalRisk), "Ejemplo: Si tienes tres prestamos vencidos con S/500, S/800 y S/700 pendientes, tienes S/2,000 de capital en riesgo."],
-    ["Interes pendiente", money(m.pendingInterest), "Ejemplo: Si todavia faltan cobrar intereses de S/100, S/150 y S/50, tienes S/300 de interes pendiente."],
-    ["Promedio de prestamo", money(m.averageLoan), "Ejemplo: Si otorgaste prestamos de S/500, S/1,000 y S/1,500, el promedio de prestamo es S/1,000."],
-    ["Promedio de interes cobrado", money(m.averageInterestPaid), "Ejemplo: Si cobraste S/50, S/100 y S/150 de interes en tres pagos, el promedio de interes cobrado es S/100."],
+    ["Capital reinvertido", money(m.reinvested), "Ejemplo: Si recuperaste S/1,000 de capital y luego usaste S/700 para prestar nuevamente, tienes S/700 de capital reinvertido.", "reinvested"],
+    ["Dinero nuevo aportado", money(m.newMoney), "Ejemplo: Si tu negocio tenia S/10,000 y agregas S/2,000 de tu propio dinero, esos S/2,000 son dinero nuevo aportado.", "newMoney"],
+    ["Ganancia del mes actual", money(m.currentMonthProfit), "Ejemplo: Si durante este mes ya cobraste S/850 en intereses, tu ganancia del mes actual es S/850.", "currentMonthProfit"],
+    ["Ganancia del mes anterior", money(m.previousMonthProfit), "Ejemplo: Si el mes pasado cobraste S/700 en intereses, ese monto corresponde a la ganancia del mes anterior.", "previousMonthProfit"],
+    ["Ganancia esperada proximo mes", money(m.nextMonthProfit), "Ejemplo: Si los prestamos del proximo mes deberian generar S/1,200 en intereses, esa es la ganancia esperada.", "nextMonthProfit"],
+    ["Capital que regresara proximo mes", money(m.nextMonthCapital), "Ejemplo: Si el proximo mes tus clientes deben devolver S/3,000 de capital, ese sera el capital estimado que regresara.", "nextMonthCapital"],
+    ["Total estimado proximo mes", money(m.nextMonthTotal), "Ejemplo: Si esperas recuperar S/3,000 de capital y S/800 de intereses, el total estimado sera S/3,800.", "nextMonthTotal"],
+    ["Cobrado este mes", money(m.chargedThisMonth), "Ejemplo: Si este mes recibiste S/2,000 de capital y S/500 de intereses, el total cobrado este mes es S/2,500.", "chargedThisMonth"],
+    ["Prestado este mes", money(m.lentThisMonth), "Ejemplo: Si este mes otorgaste prestamos de S/500, S/1,000 y S/700, has prestado S/2,200.", "lentThisMonth"],
+    ["Nuevos prestamos del periodo", m.newLoansPeriod, "Ejemplo: Si en el periodo seleccionado registraste 4 prestamos principales nuevos, este indicador mostrara 4.", "newLoansPeriod"],
+    ["Ampliaciones del periodo", m.extensionsPeriod, "Ejemplo: Si durante este mes registraste 5 ampliaciones de prestamo, este indicador mostrara 5 ampliaciones.", "extensionsPeriod"],
+    ["Monto total en ampliaciones", money(m.extensionAmount), "Ejemplo: Si otorgaste ampliaciones de S/200, S/300 y S/500, el monto total en ampliaciones es S/1,000.", "extensionAmount"],
+    ["Clientes atrasados", m.lateClients, "Ejemplo: Si Pepe tiene un prestamo vencido y Ana una ampliacion vencida, tienes 2 clientes atrasados.", "lateClients"],
+    ["Dias promedio de atraso", `${roundMoney(m.averageLateDays)} dias`, "Ejemplo: Si un prestamo debia pagarse el 10 de agosto y hoy es 15 de agosto, tiene 5 dias de atraso.", "averageLateDays"],
+    ["Capital en riesgo", money(m.capitalRisk), "Ejemplo: Si tienes tres prestamos vencidos con S/500, S/800 y S/700 pendientes, tienes S/2,000 de capital en riesgo.", "capitalRisk"],
+    ["Interes pendiente", money(m.pendingInterest), "Ejemplo: Si todavia faltan cobrar intereses de S/100, S/150 y S/50, tienes S/300 de interes pendiente.", "pendingInterest"],
+    ["Promedio de prestamo", money(m.averageLoan), "Ejemplo: Si otorgaste prestamos de S/500, S/1,000 y S/1,500, el promedio de prestamo es S/1,000.", "averageLoan"],
+    ["Promedio de interes cobrado", money(m.averageInterestPaid), "Ejemplo: Si cobraste S/50, S/100 y S/150 de interes en tres pagos, el promedio de interes cobrado es S/100.", "averageInterestPaid"],
     ["Distribucion por modalidad", modeText || "Sin datos", "Ejemplo: Si tienes 5 prestamos mensuales, 3 quincenales, 2 semanales y 1 diario, aqui ves esa distribucion."],
-    ["Flujo de caja", money(m.cashflow), "Ejemplo: Si ingresaron S/5,000 por pagos y salieron S/3,000 en nuevos prestamos, tu flujo neto fue S/2,000 positivo."],
-    ["Disponible despues de cobros previstos", money(m.availableAfterProjected), "Ejemplo: Si hoy tienes S/1,000 disponibles y esperas recuperar S/2,500, podrias tener cerca de S/3,500 disponibles."],
-  ].map(([title, value, tip]) => ({ title, value, tip }));
+    ["Flujo de caja", money(m.cashflow), "Ejemplo: Si ingresaron S/5,000 por pagos y salieron S/3,000 en nuevos prestamos, tu flujo neto fue S/2,000 positivo.", "cashflow"],
+    ["Disponible despues de cobros previstos", money(m.availableAfterProjected), "Ejemplo: Si hoy tienes S/1,000 disponibles y esperas recuperar S/2,500, podrias tener cerca de S/3,500 disponibles.", "availableAfterProjected"],
+  ].map(([title, value, tip, metricKey]) => ({ title, value, tip, metricKey }));
 }
 
-function renderCompactMetric({ title, value, tip }) {
+function renderCompactMetric({ title, value, tip, metricKey, compareFactor }, dashboard) {
   const messages = getIndicatorMessages(title);
   return `
     <article class="summary-compact-card">
       <span>${escapeHTML(title)} ${renderInfoDot(tip)}</span>
       <strong>${escapeHTML(value)}</strong>
+      ${renderComparisonBadge({ title, metricKey, compareFactor }, dashboard)}
       ${renderIndicatorMessage(messages, title)}
     </article>
   `;
@@ -2512,7 +2674,7 @@ function renderMovementList(container, items, emptyMessage, type) {
 
 function renderDashboardAdvanced(dashboard) {
   const cards = getDashboardAdvancedItems(dashboard);
-  elements.summaryAdvancedGrid.innerHTML = cards.map((item) => renderCompactMetric(item)).join("");
+  elements.summaryAdvancedGrid.innerHTML = cards.map((item) => renderCompactMetric(item, dashboard)).join("");
 }
 
 function getDashboardAdvancedItems(dashboard) {
@@ -2521,19 +2683,19 @@ function getDashboardAdvancedItems(dashboard) {
   const highestDebt = dashboard.lists.debt[0]?.client.name || "Sin datos";
   const mostExtensions = dashboard.lists.extensions[0]?.client.name || "Sin datos";
   return [
-    ["Rentabilidad sobre capital", `${roundMoney(m.profitability)}%`, "Ejemplo: Si tienes S/10,000 de capital invertido y ganaste S/1,000 en intereses, tu rentabilidad aproximada es 10%."],
-    ["ROI mensual", `${roundMoney(m.monthlyRoi)}%`, "Ejemplo: Si durante el mes usaste S/10,000 de capital y generaste S/500 de ganancia, tu ROI mensual es 5%."],
+    ["Rentabilidad sobre capital", `${roundMoney(m.profitability)}%`, "Ejemplo: Si tienes S/10,000 de capital invertido y ganaste S/1,000 en intereses, tu rentabilidad aproximada es 10%.", "profitability"],
+    ["ROI mensual", `${roundMoney(m.monthlyRoi)}%`, "Ejemplo: Si durante el mes usaste S/10,000 de capital y generaste S/500 de ganancia, tu ROI mensual es 5%.", "monthlyRoi"],
     ["Cliente mas rentable", mostProfitable, "Ejemplo: Si Pepe genero S/800 en intereses y los demas clientes menos que eso, Pepe sera el cliente mas rentable."],
     ["Cliente con mayor deuda", highestDebt, "Ejemplo: Si Ana debe S/3,000 y ningun otro cliente supera ese saldo, Ana aparecera como cliente con mayor deuda."],
     ["Cliente con mas ampliaciones", mostExtensions, "Ejemplo: Si Lole tiene 4 ampliaciones y ningun otro cliente tiene mas, Lole sera el cliente con mas ampliaciones."],
     ["Clientes puntuales", dashboard.lists.punctual.length, "Ejemplo: Si un cliente hizo 10 pagos y todos fueron antes o en su fecha de cobro, se considera puntual."],
     ["Clientes con historial de atraso", dashboard.lists.late.length, "Ejemplo: Si un cliente tuvo varios prestamos vencidos en el pasado, aparecera con historial de atraso."],
-    ["Porcentaje de morosidad", `${roundMoney(m.delinquencyRate)}%`, "Ejemplo: Si tienes S/10,000 pendientes y S/2,000 estan vencidos, tu morosidad aproximada es 20%."],
-    ["Tasa de recuperacion", `${roundMoney(m.recoveryRate)}%`, "Ejemplo: Si prestaste S/10,000 y ya recuperaste S/7,000 de capital, tu tasa de recuperacion es 70%."],
+    ["Porcentaje de morosidad", `${roundMoney(m.delinquencyRate)}%`, "Ejemplo: Si tienes S/10,000 pendientes y S/2,000 estan vencidos, tu morosidad aproximada es 20%.", "delinquencyRate"],
+    ["Tasa de recuperacion", `${roundMoney(m.recoveryRate)}%`, "Ejemplo: Si prestaste S/10,000 y ya recuperaste S/7,000 de capital, tu tasa de recuperacion es 70%.", "recoveryRate"],
     ["Ganancia por modalidad", dashboard.charts.modeSegments.map((item) => `${item.label}: ${item.value}`).join(" · ") || "Sin datos", "Ejemplo: Si mensual genero S/500, quincenal S/300 y semanal S/200, puedes comparar que modalidad produce mas."],
-    ["Proyeccion a 3 meses", money(m.projectedProfit * 3), "Ejemplo: Si esperas recibir S/1,000 de intereses por mes, la proyeccion simple a 3 meses seria S/3,000."],
-    ["Proyeccion a 6 meses", money(m.projectedProfit * 6), "Ejemplo: Si tus prestamos actuales proyectan S/1,000 mensuales en intereses, a 6 meses serian S/6,000."],
-    ["Proyeccion a 12 meses", money(m.projectedProfit * 12), "Ejemplo: Si el sistema estima S/1,000 mensuales en intereses, la proyeccion anual seria cerca de S/12,000."],
+    ["Proyeccion a 3 meses", money(m.projectedProfit * 3), "Ejemplo: Si esperas recibir S/1,000 de intereses por mes, la proyeccion simple a 3 meses seria S/3,000.", "projectedProfit", 3],
+    ["Proyeccion a 6 meses", money(m.projectedProfit * 6), "Ejemplo: Si tus prestamos actuales proyectan S/1,000 mensuales en intereses, a 6 meses serian S/6,000.", "projectedProfit", 6],
+    ["Proyeccion a 12 meses", money(m.projectedProfit * 12), "Ejemplo: Si el sistema estima S/1,000 mensuales en intereses, la proyeccion anual seria cerca de S/12,000.", "projectedProfit", 12],
     ["Meta mensual de ganancia", "Configurable", "Ejemplo: Si tu meta del mes es S/3,000 y ya cobraste S/2,100 en intereses, te faltan S/900."],
     ["Progreso hacia la meta", m.currentMonthProfit ? "En movimiento" : "Sin avance", "Ejemplo: Si tu meta es S/3,000 y llevas S/1,500 cobrados, tu avance va por la mitad."],
     ["Ranking de clientes", `${dashboard.lists.debt.length + dashboard.lists.profit.length} destacados`, "Ejemplo: Si Ana paga puntual, tuvo varios prestamos y no presenta atrasos, puede aparecer destacada en el ranking."],
@@ -2541,7 +2703,7 @@ function getDashboardAdvancedItems(dashboard) {
     ["Crecimiento del capital", money(m.lentThisMonth - m.nextMonthCapital), "Ejemplo: Si comenzaste con S/10,000 y luego tu capital subio a S/12,500, aqui ves ese crecimiento."],
     ["Crecimiento de la ganancia", money(m.currentMonthProfit - m.previousMonthProfit), "Ejemplo: Si ganaste S/700 el mes pasado y S/900 este mes, tu ganancia crecio S/200."],
     ["Comparativo capital vs interes", `${money(m.capitalPending)} / ${money(m.projectedProfit)}`, "Ejemplo: Si tienes S/3,000 de capital pendiente y S/700 de intereses, aqui comparas deuda contra ganancia."],
-  ].map(([title, value, tip]) => ({ title, value, tip }));
+  ].map(([title, value, tip, metricKey, compareFactor]) => ({ title, value, tip, metricKey, compareFactor }));
 }
 
 function renderDashboardAlerts(dashboard) {
@@ -2571,9 +2733,9 @@ function buildDashboardAlertMessages(dashboard) {
 
 function exportDashboardSummary() {
   const dashboard = buildDashboardData();
-  const criticalRows = getDashboardKpiItems(dashboard).map((item) => dashboardIndicatorRow(item));
-  const managementRows = getDashboardManagementItems(dashboard).map((item) => dashboardIndicatorRow(item));
-  const advancedRows = getDashboardAdvancedItems(dashboard).map((item) => dashboardIndicatorRow(item));
+  const criticalRows = getDashboardKpiItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
+  const managementRows = getDashboardManagementItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
+  const advancedRows = getDashboardAdvancedItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
   const alerts = buildDashboardAlertMessages(dashboard);
   const workbook = buildExcelWorkbook([
     buildSummaryIndicatorsSheet(dashboard, criticalRows, managementRows, advancedRows),
@@ -2585,25 +2747,34 @@ function exportDashboardSummary() {
 }
 
 function buildSummaryIndicatorsSheet(dashboard, criticalRows, managementRows, advancedRows) {
+  const hasComparison = Boolean(dashboard.comparison);
+  const columns = hasComparison ? [220, 135, 135, 135, 115, 390] : [230, 145, 420];
+  const mergeAcross = columns.length - 1;
+  const header = hasComparison
+    ? ["Indicador", "Valor actual", "Valor comparado", "Diferencia", "Variacion", "Explicacion"]
+    : ["Indicador", "Valor", "Explicacion"];
+  const comparisonPeriod = hasComparison
+    ? `${formatDate(dashboard.comparison.range.start)} - ${formatDate(dashboard.comparison.range.end)}`
+    : "Sin comparacion";
   return {
     name: "Resumen financiero",
-    columns: [230, 145, 190, 420],
+    columns,
     rows: [
-      excelTitleRow("REPORTE DE RESUMEN FINANCIERO", 3),
+      excelTitleRow("REPORTE DE RESUMEN FINANCIERO", mergeAcross),
       excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", `${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}`),
-      excelMetaRow("Rango", dashboard.range.label, "Estado", dashboardStatusLabel(dashboard.filters.status)),
-      excelMetaRow("Modalidad", dashboardModeLabel(dashboard.filters.mode), "Cliente", dashboard.filters.query || "Todos"),
+      excelMetaRow("Tipo de operacion", dashboardOperationLabel(dashboard.filters.operation), "Comparar con", hasComparison ? dashboard.comparison.label : "Sin comparacion"),
+      excelMetaRow("Periodo comparado", comparisonPeriod, "", ""),
       excelSpacerRow(),
-      excelSectionRow("INDICADORES PRINCIPALES", 3),
-      excelHeaderRow(["Indicador", "Valor", "Explicacion"]),
+      excelSectionRow("INDICADORES PRINCIPALES", mergeAcross),
+      excelHeaderRow(header),
       ...criticalRows,
       excelSpacerRow(),
-      excelSectionRow("INDICADORES DE GESTION", 3),
-      excelHeaderRow(["Indicador", "Valor", "Explicacion"]),
+      excelSectionRow("INDICADORES DE GESTION", mergeAcross),
+      excelHeaderRow(header),
       ...managementRows,
       excelSpacerRow(),
-      excelSectionRow("INDICADORES AVANZADOS", 3),
-      excelHeaderRow(["Indicador", "Valor", "Explicacion"]),
+      excelSectionRow("INDICADORES AVANZADOS", mergeAcross),
+      excelHeaderRow(header),
       ...advancedRows,
     ],
   };
@@ -2698,8 +2869,19 @@ function buildSummaryListsSheet(dashboard) {
   };
 }
 
-function dashboardIndicatorRow(item) {
+function dashboardIndicatorRow(item, dashboard) {
   const explanation = item.note && item.tip && item.note !== item.tip ? `${item.tip} ${item.note}` : item.tip || item.note || "";
+  const comparison = getComparisonDetails(item, dashboard);
+  if (dashboard.comparison) {
+    return [
+      excelCellData(item.title, "Text"),
+      excelCellData(item.value, "Value"),
+      excelCellData(comparison ? formatMetricValue(comparison.previousValue, item.metricKey) : "No aplica", "Value"),
+      excelCellData(comparison ? formatSignedMetricValue(comparison.difference, item.metricKey) : "No aplica", "Value"),
+      excelCellData(comparison ? (comparison.percent === null ? "Sin base previa" : `${formatSignedNumber(comparison.percent)}%`) : "No aplica", "Value"),
+      excelCellData(explanation, "Text"),
+    ];
+  }
   return [excelCellData(item.title, "Text"), excelCellData(item.value, "Value"), excelCellData(explanation, "Text")];
 }
 
@@ -3987,6 +4169,12 @@ function setDefaultDates() {
   const interestMode = normalizeInterestMode($("#clientLoanInterestMode")?.value);
   if ($("#clientLoanStartDate")) $("#clientLoanStartDate").value = today;
   if ($("#clientLoanDueDate")) $("#clientLoanDueDate").value = getSuggestedDueDate(today, interestMode);
+  if (elements.summaryCustomStart && !elements.summaryCustomStart.value) {
+    elements.summaryCustomStart.value = getCalendarMonthRange(0).start;
+  }
+  if (elements.summaryCustomEnd && !elements.summaryCustomEnd.value) {
+    elements.summaryCustomEnd.value = getCalendarMonthRange(0).end;
+  }
 }
 
 function expectedInterest(loan) {

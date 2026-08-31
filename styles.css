@@ -893,7 +893,7 @@ textarea:focus {
 
 .summary-filters {
   display: grid;
-  grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
+  grid-template-columns: repeat(4, minmax(140px, 1fr)) auto;
   gap: 12px;
   align-items: end;
   padding: 28px 16px 16px;
@@ -964,6 +964,62 @@ textarea:focus {
 
 .indicator-message.is-fading {
   opacity: 0;
+}
+
+.comparison-badge {
+  position: relative;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  color: #405061;
+  background: #eef4f2;
+  border: 1px solid #cfddd8;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: help;
+}
+
+.comparison-badge.is-good {
+  color: #057047;
+  background: #e6f8f0;
+  border-color: #a8e1c4;
+}
+
+.comparison-badge.is-bad {
+  color: #b42318;
+  background: #fff0f0;
+  border-color: #f1b7b2;
+}
+
+.comparison-badge::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 16;
+  width: min(360px, 80vw);
+  padding: 10px 12px;
+  color: #fff;
+  background: #061826;
+  border-radius: 8px;
+  box-shadow: 0 16px 30px rgba(6, 24, 38, 0.22);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.comparison-badge:hover::after,
+.comparison-badge:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .info-dot {

@@ -181,51 +181,29 @@
 
             <section class="summary-filters panel" aria-label="Filtros generales del resumen">
               <label>
-                Rango de fechas
-                <select id="summaryRange" data-dashboard-filter>
-                  <option value="today">Hoy</option>
-                  <option value="week">Esta semana</option>
-                  <option value="month" selected>Este mes</option>
-                  <option value="previousMonth">Mes anterior</option>
-                  <option value="nextMonth">Proximo mes</option>
-                  <option value="last3">Ultimos 3 meses</option>
-                  <option value="last6">Ultimos 6 meses</option>
-                  <option value="year">Este ano</option>
-                  <option value="custom">Personalizado</option>
-                </select>
-              </label>
-              <label>
-                Estado
-                <select id="summaryStatus" data-dashboard-filter>
-                  <option value="all">Todos</option>
-                  <option value="active">Activos</option>
-                  <option value="overdue">Vencidos</option>
-                  <option value="closed">Cerrados</option>
-                  <option value="today">Por cobrar hoy</option>
-                  <option value="extensions">Con ampliaciones</option>
-                </select>
-              </label>
-              <label>
-                Modalidad de interes
-                <select id="summaryMode" data-dashboard-filter>
-                  <option value="all">Todas</option>
-                  <option value="monthly">Mensual</option>
-                  <option value="biweekly">Quincenal</option>
-                  <option value="weekly">Semanal</option>
-                  <option value="daily">Diario</option>
-                </select>
-              </label>
-              <label>
-                Cliente
-                <input id="summaryClientQuery" data-dashboard-filter type="search" placeholder="Buscar cliente" />
-              </label>
-              <label>
                 Desde
                 <input id="summaryCustomStart" data-dashboard-filter type="date" />
               </label>
               <label>
                 Hasta
                 <input id="summaryCustomEnd" data-dashboard-filter type="date" />
+              </label>
+              <label>
+                Comparar con
+                <select id="summaryCompare" data-dashboard-filter>
+                  <option value="none" selected>Sin comparacion</option>
+                  <option value="previousPeriod">Periodo anterior</option>
+                  <option value="previousMonth">Mes anterior</option>
+                  <option value="previousYear">Ano anterior</option>
+                </select>
+              </label>
+              <label>
+                Tipo de operacion
+                <select id="summaryOperation" data-dashboard-filter>
+                  <option value="all" selected>Todos</option>
+                  <option value="primary">Prestamos principales</option>
+                  <option value="extensions">Ampliaciones</option>
+                </select>
               </label>
               <div class="summary-filter-actions">
                 <button id="summaryExport" class="ghost-button" type="button">Exportar resumen</button>
