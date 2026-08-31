@@ -1750,13 +1750,11 @@ function renderDashboardKpis(dashboard) {
 }
 
 function renderKpiCard(title, value, note, tip) {
+  const tooltipText = note && tip && note !== tip ? `${tip} ${note}` : tip || note;
   return `
     <article class="summary-kpi-card">
-      <div>
-        <span>${escapeHTML(title)} ${renderInfoDot(tip)}</span>
-        <strong>${escapeHTML(value)}</strong>
-      </div>
-      <small>${escapeHTML(note)}</small>
+      <span>${escapeHTML(title)} ${renderInfoDot(tooltipText)}</span>
+      <strong>${escapeHTML(value)}</strong>
     </article>
   `;
 }
@@ -2086,7 +2084,7 @@ function exportDashboardSummary() {
   const criticalRows = Array.from(elements.summaryCriticalGrid.querySelectorAll(".summary-kpi-card")).map((card) => [
     card.querySelector("span")?.textContent?.replace(/\s+i$/, "").trim() || "",
     card.querySelector("strong")?.textContent || "",
-    card.querySelector("small")?.textContent || "",
+    card.querySelector(".info-dot")?.dataset.tip || "",
   ]);
   const managementRows = Array.from(elements.summaryManagementGrid.querySelectorAll(".summary-compact-card")).map((card) => [
     card.querySelector("span")?.textContent?.replace(/\s+i$/, "").trim() || "",

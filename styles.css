@@ -914,9 +914,9 @@ textarea:focus {
 .summary-kpi-card,
 .summary-compact-card {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
-  padding: 16px;
+  padding: 14px 16px;
   background: #fff;
   border: 1px solid var(--line);
   border-top: 4px solid var(--accent);
@@ -925,8 +925,8 @@ textarea:focus {
 }
 
 .summary-kpi-card {
-  min-height: 142px;
-  align-content: space-between;
+  min-height: 104px;
+  align-content: center;
 }
 
 .summary-kpi-card span,
@@ -940,18 +940,11 @@ textarea:focus {
 
 .summary-kpi-card strong {
   display: block;
-  margin-top: 12px;
+  margin-top: 4px;
   color: var(--ink);
   font-size: clamp(1.35rem, 2.3vw, 2.05rem);
   line-height: 1.05;
   overflow-wrap: anywhere;
-}
-
-.summary-kpi-card small {
-  color: var(--muted);
-  font-size: 0.82rem;
-  font-weight: 700;
-  line-height: 1.35;
 }
 
 .info-dot {
@@ -1081,7 +1074,7 @@ textarea:focus {
 }
 
 .summary-compact-card {
-  min-height: 92px;
+  min-height: 78px;
   box-shadow: none;
 }
 
