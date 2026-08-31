@@ -495,6 +495,24 @@ textarea:focus {
   color: var(--accent);
 }
 
+.info-button {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 1px solid rgba(0, 167, 111, 0.36);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--accent-strong);
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.info-button:hover {
+  border-color: var(--accent);
+  background: rgba(0, 167, 111, 0.06);
+}
+
 .delete-button {
   padding: 0 10px;
   color: #7a4f00;
@@ -1759,6 +1777,10 @@ textarea:focus {
   background: transparent;
 }
 
+#interestInfoDialog {
+  width: min(720px, calc(100vw - 28px));
+}
+
 .modal::backdrop {
   background: rgba(6, 24, 38, 0.72);
 }
@@ -1767,6 +1789,31 @@ textarea:focus {
   padding: 28px 20px 20px;
   border-top: 4px solid var(--accent);
   box-shadow: var(--shadow);
+}
+
+.interest-info-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.interest-info-content {
+  max-height: min(54vh, 430px);
+  overflow: auto;
+  padding: 16px 18px;
+  color: var(--ink);
+  background: rgba(0, 167, 111, 0.06);
+  border: 1px solid rgba(0, 167, 111, 0.16);
+  border-radius: 10px;
+}
+
+.interest-info-content p {
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.72;
+}
+
+.interest-info-content p + p {
+  margin-top: 14px;
 }
 
 .success-modal {

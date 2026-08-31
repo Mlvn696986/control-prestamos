@@ -466,7 +466,33 @@
           <textarea id="clientNote" rows="4" placeholder="Direccion, referencia o acuerdo especial"></textarea>
         </label>
         <button id="clientSubmitButton" class="primary-button" type="submit">Guardar cliente</button>
+        <button id="interestInfoButton" class="info-button" type="button">
+          Más información de la modalidad de intereses y del porcentaje de intereses
+        </button>
       </form>
+    </dialog>
+
+    <dialog id="interestInfoDialog" class="modal">
+      <section class="modal-panel interest-info-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Información</p>
+            <h3>Información sobre modalidad de interés</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div class="interest-info-content">
+          <p>
+            La modalidad de interés funciona tomando siempre como referencia una tasa mensual base, por ejemplo 10% mensual, pero el monto que se cobra depende de la modalidad seleccionada para cada período: si el préstamo es mensual, se cobra el 10% completo sobre el capital pendiente, sin importar si entre las fechas existen 28, 30 o 31 días; si es quincenal, se cobra la mitad de la tasa mensual, es decir 5% por cada quincena, por lo que un préstamo de S/1,000 genera S/50 de interés, aunque entre la fecha del préstamo y la fecha de cobro existan 14, 15 o 16 días; si es semanal, se calcula el equivalente de 7 días tomando como base un mes de 30 días, es decir 10% × 7/30, que equivale aproximadamente a 2.33% por semana, por lo que S/1,000 generan S/23.33; y si es diario, se divide la tasa mensual entre 30, obteniendo aproximadamente 0.3333% por día, y el interés se multiplica por la cantidad de días que corresponda.
+          </p>
+          <p>
+            En todos los casos, el interés debe calcularse sobre el capital pendiente actual. Además, la modalidad debe poder cambiarse para los siguientes períodos sin modificar lo que ya fue cobrado: por ejemplo, si un cliente inicia un préstamo de S/1,000 al 10% mensual pero con modalidad quincenal, en su primera quincena pagará S/50 de interés; después de registrar ese pago, si para el siguiente cobro se desea pasar a modalidad mensual, se debe ingresar a Editar, cambiar la modalidad de quincenal a mensual y establecer la nueva fecha de cobro; a partir de ese momento, el siguiente período se calculará al 10% mensual completo sobre el capital pendiente, sin alterar ni recalcular la primera quincena que ya fue pagada y registrada en el historial.
+          </p>
+        </div>
+        <button class="primary-button" type="button" data-close-dialog>Cerrar</button>
+      </section>
     </dialog>
 
     <dialog id="editDialog" class="modal">

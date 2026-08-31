@@ -101,6 +101,8 @@ const elements = {
   clientNameSelectLabel: $("#clientNameSelectLabel"),
   clientNameSelect: $("#clientNameSelect"),
   clientSubmitButton: $("#clientSubmitButton"),
+  interestInfoButton: $("#interestInfoButton"),
+  interestInfoDialog: $("#interestInfoDialog"),
   clientList: $("#clientList"),
   clientTabs: $$("[data-client-tab]"),
   filterName: $("#filterName"),
@@ -207,6 +209,7 @@ function bindEvents() {
   elements.forgotPasswordForm.addEventListener("submit", handleForgotPasswordSubmit);
   elements.passwordSuccessClose.addEventListener("click", () => elements.passwordSuccessDialog.close());
   elements.adminRefresh.addEventListener("click", refreshAdminPanel);
+  elements.interestInfoButton.addEventListener("click", () => elements.interestInfoDialog.showModal());
   $("#clientLoanStartDate").addEventListener("change", () => updateSuggestedDueDate("clientLoan"));
   $("#clientLoanInterestMode").addEventListener("change", () => updateSuggestedDueDate("clientLoan"));
   $("#editLoanStartDate").addEventListener("change", () => updateSuggestedDueDate("editLoan"));
