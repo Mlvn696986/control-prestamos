@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Control de Prestamos</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="authScreen" class="auth-screen">
+      <section class="auth-panel" aria-labelledby="authTitle">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48" role="img">
+              <path d="M8 34c8-1 11-14 19-14 4 0 6 3 7 6 1 4 3 7 6 8" />
+              <path d="M13 18h22" />
+              <path d="M18 12h12" />
+              <circle cx="24" cy="24" r="18" />
+            </svg>
+          </div>
+          <div>
+            <p class="eyebrow">SaaS basico</p>
+            <h1 id="authTitle">Control de Prestamos</h1>
+          </div>
+        </div>
+
+        <form id="registerForm" class="form-grid">
+          <div class="auth-mode-switch" role="tablist" aria-label="Modo de acceso">
+            <button id="showSignup" class="auth-mode active" type="button">Crear cuenta</button>
+            <button id="showLogin" class="auth-mode" type="button">Iniciar sesion</button>
+          </div>
+          <div id="authNotice" class="auth-notice"></div>
+          <label>
+            Correo electronico
+            <input id="authEmail" name="email" type="email" placeholder="tu@email.com" required />
+          </label>
+          <label id="authPasswordLabel">
+            <span id="authPasswordLabelText">Contrasena</span>
+            <input id="authPassword" name="password" type="password" minlength="6" placeholder="Minimo 6 caracteres" required />
+          </label>
+          <button id="forgotPassword" class="text-button is-hidden" type="button">Olvide mi contrasena</button>
+          <label>
+            Nombre del negocio
+            <input id="businessName" name="businessName" type="text" placeholder="Ej. Capital Diario" required />
+          </label>
+          <label>
+            Tu nombre
+            <input id="ownerName" name="ownerName" type="text" placeholder="Ej. Rosa Mendoza" required />
+          </label>
+          <label>
+            Moneda
+            <select id="currency" name="currency" class="notranslate" translate="no">
+              <option value="PEN" translate="no">PEN - Soles</option>
+              <option value="USD" translate="no">USD - Dolares</option>
+            </select>
+          </label>
+          <input id="authMode" type="hidden" value="signup" />
+          <button class="primary-button" type="submit">
+            <span id="authSubmitText">Crear mi plataforma</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14" />
+              <path d="m13 6 6 6-6 6" />
+            </svg>
+          </button>
+        </form>
+      </section>
+    </div>
+
+    <main id="appShell" class="app-shell is-hidden">
+      <aside class="sidebar">
+        <div class="brand-lockup compact">
+          <div class="brand-mark small" aria-hidden="true">
+            <svg viewBox="0 0 48 48" role="img">
+              <path d="M8 34c8-1 11-14 19-14 4 0 6 3 7 6 1 4 3 7 6 8" />
+              <path d="M13 18h22" />
+              <path d="M18 12h12" />
+              <circle cx="24" cy="24" r="18" />
+            </svg>
+          </div>
+          <div>
+            <strong id="businessLabel">Control</strong>
+            <span id="ownerLabel">Prestamista</span>
+          </div>
+        </div>
+
+        <nav class="nav-tabs" aria-label="Vistas principales">
+          <button class="nav-tab active" data-view="dashboard" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Z" /><path d="M14 20h6V4h-6v16Z" /><path d="M4 20h6v-3H4v3Z" /></svg>
+            Resumen
+          </button>
+          <button class="nav-tab" data-view="clients" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="10" cy="7" r="4" /><path d="M20 20v-2a4 4 0 0 0-3-3.87" /><path d="M17 3.13a4 4 0 0 1 0 7.75" /></svg>
+            Clientes
+          </button>
+          <button class="nav-tab" data-view="plans" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12V8H4v4" /><path d="M4 16h16" /><path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" /></svg>
+            Planes
+          </button>
+          <button id="adminNav" class="nav-tab is-hidden" data-view="admin" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 7v5c0 5 3.4 8.6 8 9 4.6-.4 8-4 8-9V7l-8-4Z" /><path d="M9 12l2 2 4-4" /></svg>
+            Admin
+          </button>
+        </nav>
+
+        <div class="plan-card">
+          <span>Plan actual</span>
+          <strong id="planLabel">Gratis</strong>
+          <small id="planUsage">0 de 10 clientes</small>
+        </div>
+
+        <button id="resetDemo" class="ghost-button danger" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></svg>
+          Cerrar sesion
+        </button>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="todayLabel">Hoy</p>
+            <h2 id="viewTitle">Resumen</h2>
+          </div>
+          <div class="topbar-actions">
+            <button id="exportExcel" class="ghost-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z" /><path d="M4 10h16" /><path d="M10 4v16" /><path d="m14 14 3 3" /><path d="m17 14-3 3" /></svg>
+              Exportar Excel
+            </button>
+            <details class="data-menu">
+              <summary class="ghost-button data-menu-toggle">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 7v5c0 5 3.4 8.6 8 9 4.6-.4 8-4 8-9V7l-8-4Z" /><path d="M9 12l2 2 4-4" /></svg>
+                Seguridad de datos
+              </summary>
+              <div class="data-menu-panel" aria-label="Opciones de seguridad de datos">
+                <button
+                  id="exportData"
+                  class="data-menu-item"
+                  type="button"
+                  data-tooltip="Descarga un archivo con todos tus datos para guardarlo como respaldo."
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
+                  Descargar copia
+                </button>
+                <button
+                  id="restoreBackup"
+                  class="data-menu-item"
+                  type="button"
+                  data-tooltip="Recupera la copia automatica mas reciente si borraste o cambiaste datos por error."
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v6h6" /><path d="M12 7v5l3 2" /></svg>
+                  Restaurar copia
+                </button>
+                <button
+                  id="importData"
+                  class="data-menu-item"
+                  type="button"
+                  data-tooltip="Carga una copia guardada para reemplazar los datos actuales de tu cuenta."
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M17 8l-5-5-5 5" /><path d="M12 3v12" /></svg>
+                  Importar copia
+                </button>
+              </div>
+            </details>
+            <input id="importFile" class="is-hidden" type="file" accept="application/json,.json" />
+            <button id="openClientView" class="primary-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+              Nuevo cliente
+            </button>
+          </div>
+        </header>
+
+        <section id="dashboardView" class="view active-view">
+          <div class="metric-grid">
+            <article class="metric-card">
+              <span>Capital activo</span>
+              <strong id="metricCapital">S/ 0.00</strong>
+            </article>
+            <article class="metric-card">
+              <span>Interes mensual esperado</span>
+              <strong id="metricInterest">S/ 0.00</strong>
+            </article>
+            <article class="metric-card">
+              <span>Cobros vencidos</span>
+              <strong id="metricOverdue">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>Capital recuperado</span>
+              <strong id="metricRecovered">S/ 0.00</strong>
+            </article>
+          </div>
+
+          <section class="panel pending-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Cobranza</p>
+                <h3>Cobros pendientes</h3>
+              </div>
+            </div>
+            <div class="pending-groups">
+              <section>
+                <h4>Hoy</h4>
+                <div id="pendingToday" class="pending-list empty-target"></div>
+              </section>
+              <section>
+                <h4>Vencidos</h4>
+                <div id="pendingOverdue" class="pending-list empty-target"></div>
+              </section>
+              <section>
+                <h4>Proximos 7 dias</h4>
+                <div id="pendingSoon" class="pending-list empty-target"></div>
+              </section>
+            </div>
+          </section>
+
+          <div class="dashboard-grid">
+            <section class="panel chart-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Cartera</p>
+                  <h3>Estado de prestamos</h3>
+                </div>
+              </div>
+              <div class="donut-layout">
+                <div id="statusDonut" class="donut-chart" aria-label="Estado de prestamos"></div>
+                <div id="statusLegend" class="legend-list"></div>
+              </div>
+            </section>
+
+            <section class="panel chart-panel wide-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Ingresos</p>
+                  <h3>Cobros reales por mes</h3>
+                </div>
+              </div>
+              <div id="monthlyBars" class="bar-chart"></div>
+            </section>
+
+            <section class="panel chart-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Riesgo</p>
+                  <h3>Capital por vencer</h3>
+                </div>
+              </div>
+              <div id="riskBars" class="risk-stack"></div>
+            </section>
+
+            <section class="panel chart-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Control</p>
+                  <h3>Indicadores importantes</h3>
+                </div>
+              </div>
+              <div class="insight-grid">
+                <article>
+                  <span>Clientes activos</span>
+                  <strong id="metricActiveClients">0</strong>
+                </article>
+                <article>
+                  <span>Cobran este mes</span>
+                  <strong id="metricDueThisMonth">0</strong>
+                </article>
+                <article>
+                  <span>Tasa promedio</span>
+                  <strong id="metricAverageRate">0%</strong>
+                </article>
+                <article>
+                  <span>Interes cobrado este mes</span>
+                  <strong id="metricInterestPaidMonth">S/ 0.00</strong>
+                </article>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="clientsView" class="view">
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Cartera</p>
+                <div class="client-tabs" role="tablist" aria-label="Filtro de clientes">
+                  <button class="client-tab active" type="button" role="tab" aria-selected="true" data-client-tab="all">
+                    Todos mis clientes
+                  </button>
+                  <button class="client-tab" type="button" role="tab" aria-selected="false" data-client-tab="closed">
+                    Préstamos cerrados
+                  </button>
+                  <button class="client-tab" type="button" role="tab" aria-selected="false" data-client-tab="overdue">
+                    Clientes atrasados
+                  </button>
+                  <button class="client-tab" type="button" role="tab" aria-selected="false" data-client-tab="today">
+                    Cobrar hoy
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="client-table-wrap">
+              <div class="client-table client-table-head">
+                <label class="filter-cell search-filter">
+                  <span>Nombre</span>
+                  <span class="filter-input-wrap">
+                    <input id="filterName" data-client-filter type="text" />
+                  </span>
+                </label>
+                <label class="filter-cell search-filter">
+                  <span>Telefono</span>
+                  <span class="filter-input-wrap">
+                    <input id="filterPhone" data-client-filter type="text" />
+                  </span>
+                </label>
+                <label class="filter-cell search-filter">
+                  <span>Monto prestado</span>
+                  <span class="filter-input-wrap">
+                    <input id="filterAmount" data-client-filter type="number" min="0" step="0.01" />
+                  </span>
+                </label>
+                <label class="filter-cell">
+                  <span>Fecha prestada</span>
+                  <input id="filterStartDate" data-client-filter type="date" />
+                </label>
+                <label class="filter-cell">
+                  <span>Fecha de cobro</span>
+                  <input id="filterDueDate" data-client-filter type="date" />
+                </label>
+                <span class="filter-actions">
+                  <span>Acciones</span>
+                </span>
+              </div>
+              <div id="clientList" class="client-table-list empty-target"></div>
+            </div>
+          </section>
+        </section>
+
+        <section id="plansView" class="view">
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Suscripcion</p>
+                <h3>Planes disponibles</h3>
+              </div>
+            </div>
+            <div id="plansGrid" class="plans-grid"></div>
+          </section>
+        </section>
+
+        <section id="adminView" class="view">
+          <div class="metric-grid admin-metrics">
+            <article class="metric-card">
+              <span>Usuarios registrados</span>
+              <strong id="adminTotalUsers">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>Clientes totales</span>
+              <strong id="adminTotalClients">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>Solicitudes pendientes</span>
+              <strong id="adminPendingRequests">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>Ingreso mensual activo</span>
+              <strong id="adminMonthlyRevenue">S/ 0</strong>
+            </article>
+          </div>
+
+          <section class="panel admin-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Administracion</p>
+                <h3>Solicitudes de planes</h3>
+              </div>
+              <button id="adminRefresh" class="ghost-button small-button" type="button">Actualizar</button>
+            </div>
+            <div id="adminRequestsList" class="admin-list empty-target"></div>
+          </section>
+
+          <section class="panel admin-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Usuarios</p>
+                <h3>Cuentas registradas</h3>
+              </div>
+            </div>
+            <div id="adminUserList" class="admin-list empty-target"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="clientChoiceDialog" class="modal">
+      <div class="modal-panel choice-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Registro</p>
+            <h3>Selecciona una opcion</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <p class="choice-question">Deseas registrar un cliente nuevo o realizar una ampliacion de prestamo?</p>
+        <div class="choice-actions">
+          <button id="chooseNewClient" class="primary-button" type="button">Cliente nuevo</button>
+          <button id="chooseLoanExtension" class="ghost-button" type="button">Ampliacion de prestamo</button>
+        </div>
+        <small id="extensionHint" class="choice-hint">La ampliacion se guardara dentro del perfil del cliente seleccionado.</small>
+      </div>
+    </dialog>
+
+    <dialog id="clientDialog" class="modal">
+      <form id="clientForm" method="dialog" class="modal-panel form-grid">
+        <div class="section-heading">
+          <div>
+            <p id="clientDialogEyebrow" class="eyebrow">Registro</p>
+            <h3 id="clientDialogTitle">Nuevo cliente</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <input id="clientFormMode" type="hidden" value="new" />
+        <label id="clientNameTextLabel">
+          Nombres y apellidos
+          <input id="clientName" type="text" required />
+        </label>
+        <label id="clientNameSelectLabel" class="is-hidden">
+          Nombres y apellidos
+          <select id="clientNameSelect"></select>
+        </label>
+        <label>
+          Telefono
+          <input id="clientPhone" type="tel" />
+        </label>
+        <div class="field-row">
+          <label>
+            Monto prestado
+            <input id="clientLoanAmount" type="number" min="1" step="0.01" required />
+          </label>
+          <label>
+            Interes mensual %
+            <input id="clientLoanRate" type="number" min="0" step="0.01" value="10" required />
+          </label>
+        </div>
+        <div class="field-row">
+          <label>
+            Fecha prestada
+            <input id="clientLoanStartDate" type="date" required />
+          </label>
+          <label>
+            Fecha de cobro
+            <input id="clientLoanDueDate" type="date" required />
+          </label>
+        </div>
+        <label>
+          Nota
+          <textarea id="clientNote" rows="4" placeholder="Direccion, referencia o acuerdo especial"></textarea>
+        </label>
+        <button id="clientSubmitButton" class="primary-button" type="submit">Guardar cliente</button>
+      </form>
+    </dialog>
+
+    <dialog id="editDialog" class="modal">
+      <form id="editForm" method="dialog" class="modal-panel form-grid">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Actualizar</p>
+            <h3>Editar datos</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <input id="editClientId" type="hidden" />
+        <input id="editLoanId" type="hidden" />
+        <label>
+          Nombre completo
+          <input id="editClientName" type="text" required />
+        </label>
+        <label>
+          Telefono
+          <input id="editClientPhone" type="tel" />
+        </label>
+        <div class="field-row">
+          <label>
+            Capital prestado
+            <input id="editLoanAmount" type="number" min="0" step="0.01" required />
+          </label>
+          <label>
+            Interes mensual %
+            <input id="editLoanRate" type="number" min="0" step="0.01" required />
+          </label>
+        </div>
+        <div class="field-row">
+          <label>
+            Fecha prestada
+            <input id="editLoanStartDate" type="date" required />
+          </label>
+          <label>
+            Fecha de cobro
+            <input id="editLoanDueDate" type="date" required />
+          </label>
+        </div>
+        <label>
+          Nota
+          <textarea id="editClientNote" rows="3"></textarea>
+        </label>
+        <button class="primary-button" type="submit">Guardar cambios</button>
+      </form>
+    </dialog>
+
+    <dialog id="paymentDialog" class="modal">
+      <form id="paymentForm" method="dialog" class="modal-panel form-grid">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Cobro mensual</p>
+            <h3 id="paymentTitle">Registrar pago</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <input id="paymentLoanId" type="hidden" />
+        <div class="payment-summary" id="paymentSummary"></div>
+        <div class="field-row">
+          <label>
+            Fecha de pago
+            <input id="paymentDate" type="date" required />
+          </label>
+          <label>
+            Interes pagado
+            <input id="paymentInterest" type="number" min="0" step="0.01" required />
+          </label>
+        </div>
+        <label>
+          Capital voluntario
+          <input id="paymentCapital" type="number" min="0" step="0.01" value="0" />
+        </label>
+        <label>
+          Nota
+          <textarea id="paymentNote" rows="3"></textarea>
+        </label>
+        <button class="primary-button" type="submit">Registrar pago</button>
+      </form>
+    </dialog>
+
+    <dialog id="historyDialog" class="modal">
+      <section class="modal-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Historial</p>
+            <h3 id="historyTitle">Cobros del cliente</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div id="historySummary" class="payment-summary"></div>
+        <div id="historyList" class="history-list"></div>
+      </section>
+    </dialog>
+
+    <dialog id="planRequestDialog" class="modal">
+      <form id="planRequestForm" method="dialog" class="modal-panel form-grid">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Solicitud</p>
+            <h3 id="planRequestTitle">Cambiar plan</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <input id="requestedPlan" type="hidden" />
+        <div id="planRequestSummary" class="payment-summary"></div>
+        <label>
+          Mensaje
+          <textarea id="planRequestMessage" rows="3" placeholder="Quiero activar este plan para mi cuenta."></textarea>
+        </label>
+        <button class="primary-button" type="submit">Enviar solicitud</button>
+      </form>
+    </dialog>
+
+    <dialog id="forgotPasswordDialog" class="modal">
+      <form id="forgotPasswordForm" method="dialog" class="modal-panel form-grid">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Recuperacion</p>
+            <h3>Recuperar contrasena</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div id="forgotPasswordNotice" class="auth-notice">Escribe el correo de tu cuenta y te enviaremos un enlace para crear una nueva contrasena.</div>
+        <label>
+          Correo electronico
+          <input id="forgotPasswordEmail" name="forgotPasswordEmail" type="email" placeholder="tu@email.com" required />
+        </label>
+        <button class="primary-button" type="submit">Enviar enlace</button>
+      </form>
+    </dialog>
+
+    <dialog id="passwordSuccessDialog" class="modal success-modal">
+      <section class="modal-panel success-panel">
+        <div class="success-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        </div>
+        <div>
+          <p class="eyebrow">Listo</p>
+          <h3>Muchas gracias</h3>
+          <p>Has restablecido tu contrasena con exito.</p>
+        </div>
+        <button id="passwordSuccessClose" class="primary-button" type="button">Iniciar sesion</button>
+      </section>
+    </dialog>
+
+    <dialog id="signupSuccessDialog" class="modal success-modal">
+      <section class="modal-panel success-panel">
+        <div class="success-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        </div>
+        <div>
+          <p class="eyebrow">Cuenta creada</p>
+          <h3>Muchas gracias</h3>
+          <p>Tu cuenta fue creada con exito.</p>
+        </div>
+      </section>
+    </dialog>
+
+    <template id="emptyTemplate">
+      <div class="empty-state">
+        <strong>Sin datos todavia</strong>
+        <span>Empieza registrando un cliente y luego su prestamo.</span>
+      </div>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
