@@ -134,6 +134,40 @@ const elements = {
   metricInterest: $("#metricInterest"),
   metricOverdue: $("#metricOverdue"),
   metricRecovered: $("#metricRecovered"),
+  summaryHeroMeta: $("#summaryHeroMeta"),
+  summaryHealth: $("#summaryHealth"),
+  summaryRange: $("#summaryRange"),
+  summaryStatus: $("#summaryStatus"),
+  summaryMode: $("#summaryMode"),
+  summaryClientQuery: $("#summaryClientQuery"),
+  summaryCustomStart: $("#summaryCustomStart"),
+  summaryCustomEnd: $("#summaryCustomEnd"),
+  summaryRefresh: $("#summaryRefresh"),
+  summaryExport: $("#summaryExport"),
+  summaryCriticalGrid: $("#summaryCriticalGrid"),
+  summaryTodayList: $("#summaryTodayList"),
+  summaryOverdueList: $("#summaryOverdueList"),
+  summarySoonList: $("#summarySoonList"),
+  summaryMonthList: $("#summaryMonthList"),
+  summaryManagementGrid: $("#summaryManagementGrid"),
+  summaryMonthlyChart: $("#summaryMonthlyChart"),
+  summaryLoansChart: $("#summaryLoansChart"),
+  summaryStatusChart: $("#summaryStatusChart"),
+  summaryCapitalChart: $("#summaryCapitalChart"),
+  summaryModeChart: $("#summaryModeChart"),
+  summaryProjectionChart: $("#summaryProjectionChart"),
+  summaryDelinquencyChart: $("#summaryDelinquencyChart"),
+  summaryCashflowChart: $("#summaryCashflowChart"),
+  summaryDebtList: $("#summaryDebtList"),
+  summaryProfitList: $("#summaryProfitList"),
+  summaryExtensionList: $("#summaryExtensionList"),
+  summaryPunctualList: $("#summaryPunctualList"),
+  summaryLateList: $("#summaryLateList"),
+  summaryPaymentList: $("#summaryPaymentList"),
+  summaryLoanList: $("#summaryLoanList"),
+  summaryRecentExtensionList: $("#summaryRecentExtensionList"),
+  summaryAdvancedGrid: $("#summaryAdvancedGrid"),
+  summaryAlerts: $("#summaryAlerts"),
   statusDonut: $("#statusDonut"),
   statusLegend: $("#statusLegend"),
   monthlyBars: $("#monthlyBars"),
@@ -210,6 +244,12 @@ function bindEvents() {
   elements.passwordSuccessClose.addEventListener("click", () => elements.passwordSuccessDialog.close());
   elements.adminRefresh.addEventListener("click", refreshAdminPanel);
   elements.interestInfoButton.addEventListener("click", () => elements.interestInfoDialog.showModal());
+  $$("[data-dashboard-filter]").forEach((filter) => {
+    filter.addEventListener("input", renderDashboard);
+    filter.addEventListener("change", renderDashboard);
+  });
+  elements.summaryRefresh.addEventListener("click", renderDashboard);
+  elements.summaryExport.addEventListener("click", exportDashboardSummary);
   $("#clientLoanStartDate").addEventListener("change", () => updateSuggestedDueDate("clientLoan"));
   $("#clientLoanInterestMode").addEventListener("change", () => updateSuggestedDueDate("clientLoan"));
   $("#editLoanStartDate").addEventListener("change", () => updateSuggestedDueDate("editLoan"));
@@ -1437,33 +1477,627 @@ function setView(view) {
 }
 
 function renderDashboard() {
-  const activeLoans = state.loans.filter((loan) => loan.status === "active");
-  const totalCapital = activeLoans.reduce((sum, loan) => sum + loan.remainingCapital, 0);
-  const monthlyInterest = activeLoans.reduce((sum, loan) => sum + expectedInterest(loan), 0);
-  const overdueCount = activeLoans.filter(isOverdue).length;
-  const recovered = state.payments.reduce((sum, payment) => sum + payment.capitalPaid, 0);
-  const activeClientCount = new Set(activeLoans.map((loan) => loan.clientId)).size;
-  const dueThisMonth = activeLoans.filter((loan) => isSameMonth(loan.nextDueDate, todayISO())).length;
-  const averageRate = activeLoans.length
-    ? activeLoans.reduce((sum, loan) => sum + loan.monthlyRate, 0) / activeLoans.length
+  const dashboard = buildDashboardData();
+  renderDashboardHeader(dashboard);
+  renderDashboardKpis(dashboard);
+  renderDashboardCollections(dashboard);
+  renderDashboardManagement(dashboard);
+  renderDashboardCharts(dashboard);
+  renderDashboardLists(dashboard);
+  renderDashboardAdvanced(dashboard);
+  renderDashboardAlerts(dashboard);
+}
+
+function buildDashboardData() {
+  const filters = getDashboardFilters();
+  const range = getDashboardDateRange(filters.range);
+  const scopeLoans = state.loans.filter((loan) => loanMatchesDashboardScope(loan, filters));
+  const loans = scopeLoans.filter((loan) => loanTouchesRange(loan, range));
+  const payments = state.payments.filter((payment) => paymentMatchesDashboardFilters(payment, scopeLoans, filters, range));
+  const activeLoans = loans.filter((loan) => loan.status === "active");
+  const overdueLoans = activeLoans.filter(isOverdue);
+  const todayLoans = scopeLoans.filter((loan) => loan.status === "active" && loan.nextDueDate === todayISO()).sort(sortLoansByDueDate);
+  const soonLoans = scopeLoans
+    .filter((loan) => loan.status === "active" && !isOverdue(loan) && daysBetween(todayISO(), loan.nextDueDate) > 0 && daysBetween(todayISO(), loan.nextDueDate) <= 7)
+    .sort(sortLoansByDueDate);
+  const monthLoans = scopeLoans
+    .filter((loan) => loan.status === "active" && !isOverdue(loan) && daysBetween(todayISO(), loan.nextDueDate) > 7 && daysBetween(todayISO(), loan.nextDueDate) <= 30)
+    .sort(sortLoansByDueDate);
+  const extensionLoans = loans.filter((loan) => !isPrimaryLoan(loan));
+  const activeExtensions = activeLoans.filter((loan) => !isPrimaryLoan(loan));
+  const currentMonthRange = getDashboardDateRange("month");
+  const previousMonthRange = getDashboardDateRange("previousMonth");
+  const nextMonthRange = getDashboardDateRange("nextMonth");
+  const currentMonthPayments = payments.filter((payment) => dateInRange(payment.date, currentMonthRange));
+  const previousMonthPayments = payments.filter((payment) => dateInRange(payment.date, previousMonthRange));
+  const nextMonthLoans = scopeLoans.filter((loan) => loan.status === "active" && dateInRange(loan.nextDueDate, nextMonthRange));
+  const capitalPending = sum(activeLoans, "remainingCapital");
+  const capitalRecovered = sum(payments, "capitalPaid");
+  const realProfit = sum(payments, "interestPaid");
+  const projectedProfit = activeLoans.reduce((total, loan) => total + expectedInterest(loan), 0);
+  const capitalPlaced = sum(activeLoans, "remainingCapital");
+  const capitalTotal = capitalPending + capitalRecovered;
+  const periodLoanAmount = sum(loans, "amount");
+  const firstPaymentDate = payments.slice().sort((a, b) => new Date(a.date) - new Date(b.date))[0]?.date || null;
+  const reinvested = firstPaymentDate ? Math.min(capitalRecovered, loans.filter((loan) => loan.startDate >= firstPaymentDate).reduce((total, loan) => total + loan.amount, 0)) : 0;
+  const availableCapital = Math.max(capitalRecovered - reinvested, 0);
+  const newMoney = Math.max(periodLoanAmount - capitalRecovered, 0);
+  const overdueAmount = overdueLoans.reduce((total, loan) => total + loan.remainingCapital + expectedInterest(loan), 0);
+  const todayAmount = todayLoans.reduce((total, loan) => total + loan.remainingCapital + expectedInterest(loan), 0);
+  const nextMonthInterest = nextMonthLoans.reduce((total, loan) => total + expectedInterest(loan), 0);
+  const nextMonthCapital = sum(nextMonthLoans, "remainingCapital");
+  const averageLateDays = overdueLoans.length
+    ? overdueLoans.reduce((total, loan) => total + Math.max(daysBetween(loan.nextDueDate, todayISO()), 0), 0) / overdueLoans.length
     : 0;
-  const interestPaidThisMonth = state.payments
-    .filter((payment) => isSameMonth(payment.date, todayISO()))
-    .reduce((sum, payment) => sum + payment.interestPaid, 0);
+  const recoveryRate = periodLoanAmount ? (capitalRecovered / periodLoanAmount) * 100 : 0;
+  const delinquencyRate = capitalPending ? (sum(overdueLoans, "remainingCapital") / capitalPending) * 100 : 0;
+  const activeClientCount = new Set(activeLoans.map((loan) => loan.clientId)).size;
+  const modeSegments = Object.keys(INTEREST_MODES).map((mode) => ({
+    label: INTEREST_MODES[mode].label,
+    value: loans.filter((loan) => normalizeInterestMode(loan.interestMode) === mode).length,
+  }));
+  const statusSegments = [
+    { label: "Activos", value: activeLoans.filter((loan) => !isOverdue(loan)).length, color: "#00a76f" },
+    { label: "Vencidos", value: overdueLoans.length, color: "#061826" },
+    { label: "Cerrados", value: loans.filter((loan) => loan.status === "closed").length, color: "#ffb000" },
+  ];
 
-  elements.metricCapital.textContent = money(totalCapital);
-  elements.metricInterest.textContent = money(monthlyInterest);
-  elements.metricOverdue.textContent = overdueCount;
-  elements.metricRecovered.textContent = money(recovered);
-  elements.metricActiveClients.textContent = activeClientCount;
-  elements.metricDueThisMonth.textContent = dueThisMonth;
-  elements.metricAverageRate.textContent = `${roundMoney(averageRate)}%`;
-  elements.metricInterestPaidMonth.textContent = money(interestPaidThisMonth);
+  return {
+    filters,
+    range,
+    loans,
+    scopeLoans,
+    payments,
+    activeLoans,
+    overdueLoans,
+    todayLoans,
+    soonLoans,
+    monthLoans,
+    metrics: {
+      capitalTotal,
+      availableCapital,
+      capitalPlaced,
+      capitalPending,
+      capitalRecovered,
+      realProfit,
+      projectedProfit,
+      totalToCollect: capitalPending + projectedProfit,
+      todayCount: todayLoans.length,
+      todayAmount,
+      activeLoans: activeLoans.length,
+      overdueLoans: overdueLoans.length,
+      overdueAmount,
+      closedLoans: loans.filter((loan) => loan.status === "closed").length,
+      activeClientCount,
+      activeExtensions: activeExtensions.length,
+      activeExtensionsAmount: sum(activeExtensions, "remainingCapital"),
+      reinvested,
+      newMoney,
+      currentMonthProfit: sum(currentMonthPayments, "interestPaid"),
+      previousMonthProfit: sum(previousMonthPayments, "interestPaid"),
+      nextMonthProfit: nextMonthInterest,
+      nextMonthCapital,
+      nextMonthTotal: nextMonthCapital + nextMonthInterest,
+      chargedThisMonth: currentMonthPayments.reduce((total, payment) => total + payment.capitalPaid + payment.interestPaid, 0),
+      lentThisMonth: loans.filter((loan) => dateInRange(loan.startDate, currentMonthRange)).reduce((total, loan) => total + loan.amount, 0),
+      newLoansPeriod: loans.filter(isPrimaryLoan).length,
+      extensionsPeriod: extensionLoans.length,
+      extensionAmount: sum(extensionLoans, "amount"),
+      lateClients: new Set(overdueLoans.map((loan) => loan.clientId)).size,
+      averageLateDays,
+      capitalRisk: sum(overdueLoans, "remainingCapital"),
+      pendingInterest: projectedProfit,
+      averageLoan: loans.length ? periodLoanAmount / loans.length : 0,
+      averageInterestPaid: payments.length ? realProfit / payments.length : 0,
+      cashflow: payments.reduce((total, payment) => total + payment.capitalPaid + payment.interestPaid, 0) - periodLoanAmount,
+      availableAfterProjected: availableCapital + nextMonthCapital + nextMonthInterest,
+      profitability: capitalTotal ? (realProfit / capitalTotal) * 100 : 0,
+      monthlyRoi: capitalPending ? (projectedProfit / capitalPending) * 100 : 0,
+      delinquencyRate,
+      recoveryRate,
+    },
+    charts: {
+      months: buildMonthSeries(6, loans, payments),
+      loansByMonth: buildLoanMonthSeries(6, loans),
+      statusSegments,
+      modeSegments,
+      projections: [
+        { label: "Prox. mes", value: nextMonthInterest },
+        { label: "3 meses", value: projectedProfit * 3 },
+        { label: "6 meses", value: projectedProfit * 6 },
+        { label: "12 meses", value: projectedProfit * 12 },
+      ],
+      delinquency: buildDelinquencySeries(6, scopeLoans),
+      cashflow: [
+        { label: "Ingresos", value: payments.reduce((total, payment) => total + payment.capitalPaid + payment.interestPaid, 0), color: "#00a76f" },
+        { label: "Egresos", value: periodLoanAmount, color: "#ffb000" },
+        { label: "Reinversion", value: reinvested, color: "#2f6fed" },
+      ],
+    },
+    lists: buildDashboardLists(loans, payments, scopeLoans),
+  };
+}
 
-  renderStatusChart(activeLoans);
-  renderMonthlyBars();
-  renderRiskBars(activeLoans);
-  renderPendingCollections(activeLoans);
+function getDashboardFilters() {
+  return {
+    range: elements.summaryRange?.value || "month",
+    status: elements.summaryStatus?.value || "all",
+    mode: elements.summaryMode?.value || "all",
+    query: normalizeText(elements.summaryClientQuery?.value || ""),
+    customStart: elements.summaryCustomStart?.value || "",
+    customEnd: elements.summaryCustomEnd?.value || "",
+  };
+}
+
+function getDashboardDateRange(rangeName) {
+  const today = parseLocalDate(todayISO());
+  const weekDay = today.getDay() || 7;
+  const startOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const endOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const ranges = {
+    today: { start: todayISO(), end: todayISO(), label: "Hoy" },
+    week: { start: toISODate(addDateDays(today, 1 - weekDay)), end: toISODate(addDateDays(today, 7 - weekDay)), label: "Esta semana" },
+    month: { start: toISODate(startOfCurrentMonth), end: toISODate(endOfCurrentMonth), label: "Este mes" },
+    previousMonth: {
+      start: toISODate(new Date(today.getFullYear(), today.getMonth() - 1, 1)),
+      end: toISODate(new Date(today.getFullYear(), today.getMonth(), 0)),
+      label: "Mes anterior",
+    },
+    nextMonth: {
+      start: toISODate(new Date(today.getFullYear(), today.getMonth() + 1, 1)),
+      end: toISODate(new Date(today.getFullYear(), today.getMonth() + 2, 0)),
+      label: "Proximo mes",
+    },
+    last3: { start: toISODate(new Date(today.getFullYear(), today.getMonth() - 2, 1)), end: todayISO(), label: "Ultimos 3 meses" },
+    last6: { start: toISODate(new Date(today.getFullYear(), today.getMonth() - 5, 1)), end: todayISO(), label: "Ultimos 6 meses" },
+    year: { start: toISODate(new Date(today.getFullYear(), 0, 1)), end: toISODate(new Date(today.getFullYear(), 11, 31)), label: "Este ano" },
+  };
+  if (rangeName === "custom") {
+    const start = elements.summaryCustomStart?.value || "1900-01-01";
+    const end = elements.summaryCustomEnd?.value || "2999-12-31";
+    return { start, end, label: "Personalizado" };
+  }
+  return ranges[rangeName] || ranges.month;
+}
+
+function addDateDays(date, dayCount) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + dayCount);
+  return copy;
+}
+
+function loanMatchesDashboardScope(loan, filters) {
+  const client = getClient(loan.clientId);
+  if (filters.query && !normalizeText(`${client?.name || ""} ${client?.phone || ""}`).includes(filters.query)) return false;
+  if (filters.mode !== "all" && normalizeInterestMode(loan.interestMode) !== filters.mode) return false;
+  if (filters.status === "active" && loan.status !== "active") return false;
+  if (filters.status === "overdue" && (loan.status !== "active" || !isOverdue(loan))) return false;
+  if (filters.status === "closed" && loan.status !== "closed") return false;
+  if (filters.status === "today" && (loan.status !== "active" || loan.nextDueDate !== todayISO())) return false;
+  if (filters.status === "extensions" && !getLoansForClient(loan.clientId).slice(1).length) return false;
+  return true;
+}
+
+function paymentMatchesDashboardFilters(payment, scopeLoans, filters, range) {
+  if (!dateInRange(payment.date, range)) return false;
+  const loan = scopeLoans.find((item) => item.id === payment.loanId);
+  if (!loan) return false;
+  const client = getClient(payment.clientId);
+  if (filters.query && !normalizeText(`${client?.name || ""} ${client?.phone || ""}`).includes(filters.query)) return false;
+  return true;
+}
+
+function loanTouchesRange(loan, range) {
+  return (
+    dateInRange(loan.startDate, range) ||
+    dateInRange(loan.nextDueDate, range) ||
+    (loan.closedAt && dateInRange(String(loan.closedAt).slice(0, 10), range))
+  );
+}
+
+function dateInRange(dateString, range) {
+  if (!dateString) return false;
+  return startOfDay(dateString) >= startOfDay(range.start) && startOfDay(dateString) <= startOfDay(range.end);
+}
+
+function isPrimaryLoan(loan) {
+  return getPrimaryLoanForClient(loan.clientId)?.id === loan.id;
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function sum(items, key) {
+  return items.reduce((total, item) => total + Number(item[key] || 0), 0);
+}
+
+function renderDashboardHeader(dashboard) {
+  const health = dashboard.metrics.overdueLoans ? "Atencion" : dashboard.metrics.todayCount ? "Cobrar hoy" : "Saludable";
+  const healthClass = dashboard.metrics.overdueLoans ? "danger" : dashboard.metrics.todayCount ? "warn" : "ok";
+  elements.summaryHeroMeta.textContent = `${dashboard.range.label}: ${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}. ${dashboard.loans.length} prestamo(s) analizados.`;
+  elements.summaryHealth.innerHTML = `
+    <span class="status-pill ${healthClass}">${health}</span>
+    <strong>${money(dashboard.metrics.totalToCollect)}</strong>
+    <small>Total por cobrar estimado</small>
+  `;
+}
+
+function renderDashboardKpis(dashboard) {
+  const m = dashboard.metrics;
+  const cards = [
+    ["Capital total", money(m.capitalTotal), "Suma estimada del capital pendiente mas capital recuperado registrado.", "Todo el dinero total destinado al negocio de prestamos."],
+    ["Capital disponible", money(m.availableCapital), "Estimado con el capital recuperado que no aparece reinvertido.", "Dinero libre actualmente disponible para volver a prestar."],
+    ["Capital prestado", money(m.capitalPlaced), "Dinero que aun esta colocado en prestamos activos.", "Dinero que actualmente esta colocado en prestamos o ampliaciones."],
+    ["Capital pendiente", money(m.capitalPending), "Capital que falta recuperar en prestamos activos.", "Parte del capital que aun falta recuperar."],
+    ["Capital recuperado", money(m.capitalRecovered), "Capital ya devuelto por clientes en el periodo filtrado.", "Capital que los clientes ya han devuelto."],
+    ["Ganancia real", money(m.realProfit), "Intereses cobrados y registrados como pago.", "Intereses que realmente ya fueron cobrados."],
+    ["Ganancia proyectada", money(m.projectedProfit), "Interes esperado de prestamos activos segun su modalidad.", "Intereses estimados si los prestamos pendientes se pagan segun lo previsto."],
+    ["Total por cobrar", money(m.totalToCollect), "Capital pendiente mas interes pendiente estimado.", "Capital pendiente + intereses pendientes por cobrar."],
+    ["Cobros de hoy", m.todayCount, "Cantidad de prestamos con fecha de cobro exacta de hoy.", "Cantidad de cobros programados exactamente para hoy."],
+    ["Monto a cobrar hoy", money(m.todayAmount), "Capital pendiente e interes esperado de los cobros de hoy.", "Monto total esperado para cobrar hoy."],
+    ["Prestamos activos", m.activeLoans, "Prestamos y ampliaciones con saldo pendiente.", "Cantidad de prestamos o ampliaciones activas."],
+    ["Prestamos vencidos", m.overdueLoans, "Prestamos activos cuya fecha de cobro ya paso.", "Cantidad de prestamos vencidos."],
+    ["Monto vencido", money(m.overdueAmount), "Capital pendiente e interes esperado de obligaciones vencidas.", "Total de obligaciones vencidas."],
+    ["Prestamos cerrados", m.closedLoans, "Prestamos totalmente cancelados.", "Cantidad de prestamos totalmente cancelados."],
+    ["Clientes activos", m.activeClientCount, "Clientes con al menos un prestamo pendiente.", "Clientes que tienen al menos un prestamo o ampliacion pendiente."],
+    ["Ampliaciones activas", `${m.activeExtensions} / ${money(m.activeExtensionsAmount)}`, "Cantidad y monto pendiente de ampliaciones activas.", "Numero o monto de ampliaciones aun pendientes."],
+  ];
+  elements.summaryCriticalGrid.innerHTML = cards.map(([title, value, note, tip]) => renderKpiCard(title, value, note, tip)).join("");
+}
+
+function renderKpiCard(title, value, note, tip) {
+  return `
+    <article class="summary-kpi-card">
+      <div>
+        <span>${escapeHTML(title)} ${renderInfoDot(tip)}</span>
+        <strong>${escapeHTML(value)}</strong>
+      </div>
+      <small>${escapeHTML(note)}</small>
+    </article>
+  `;
+}
+
+function renderInfoDot(text) {
+  return `<i class="info-dot" tabindex="0" data-tip="${escapeHTML(text)}">i</i>`;
+}
+
+function renderDashboardCollections(dashboard) {
+  renderLoanMiniList(elements.summaryTodayList, dashboard.todayLoans, "No hay cobros para hoy.");
+  renderLoanMiniList(elements.summaryOverdueList, dashboard.overdueLoans.sort(sortLoansByDueDate), "No hay cobros vencidos.");
+  renderLoanMiniList(elements.summarySoonList, dashboard.soonLoans, "No hay cobros en los proximos 7 dias.");
+  renderLoanMiniList(elements.summaryMonthList, dashboard.monthLoans, "No hay cobros en los proximos 30 dias.");
+}
+
+function renderLoanMiniList(container, loans, emptyMessage) {
+  container.innerHTML = loans
+    .slice(0, 4)
+    .map((loan) => {
+      const client = getClient(loan.clientId);
+      const status = getLoanStatus(loan);
+      return `
+        <article class="summary-mini-item">
+          <div>
+            <strong>${escapeHTML(client?.name || "Cliente sin nombre")}</strong>
+            <span>${escapeHTML(client?.phone || "Sin telefono")} · ${formatDate(loan.nextDueDate)}</span>
+            <small>${money(loan.remainingCapital)} pendiente · ${money(expectedInterest(loan))} interes</small>
+          </div>
+          <span class="status-pill ${status.className}">${status.label}</span>
+          <button class="primary-button small-button" type="button" data-pay-loan="${loan.id}">${icons.coin} Cobro</button>
+        </article>
+      `;
+    })
+    .join("");
+  renderEmpty(container, emptyMessage);
+}
+
+function renderDashboardManagement(dashboard) {
+  const m = dashboard.metrics;
+  const modeText = dashboard.charts.modeSegments.map((item) => `${item.label}: ${item.value}`).join(" · ");
+  const cards = [
+    ["Capital reinvertido", money(m.reinvested), "Capital recuperado que volvio a salir en nuevos prestamos."],
+    ["Dinero nuevo aportado", money(m.newMoney), "Capital colocado que no proviene de cobros registrados."],
+    ["Ganancia del mes actual", money(m.currentMonthProfit), "Intereses cobrados durante el mes actual."],
+    ["Ganancia del mes anterior", money(m.previousMonthProfit), "Intereses cobrados durante el mes anterior."],
+    ["Ganancia esperada proximo mes", money(m.nextMonthProfit), "Intereses esperados con vencimiento el proximo mes."],
+    ["Capital que regresara proximo mes", money(m.nextMonthCapital), "Capital pendiente con cobro previsto para el proximo mes."],
+    ["Total estimado proximo mes", money(m.nextMonthTotal), "Capital mas interes previsto para el proximo mes."],
+    ["Cobrado este mes", money(m.chargedThisMonth), "Capital e intereses registrados este mes."],
+    ["Prestado este mes", money(m.lentThisMonth), "Prestamos y ampliaciones creados este mes."],
+    ["Nuevos prestamos del periodo", m.newLoansPeriod, "Prestamos principales dentro del filtro actual."],
+    ["Ampliaciones del periodo", m.extensionsPeriod, "Ampliaciones creadas dentro del filtro actual."],
+    ["Monto total en ampliaciones", money(m.extensionAmount), "Suma total de ampliaciones del periodo."],
+    ["Clientes atrasados", m.lateClients, "Clientes con al menos un prestamo vencido."],
+    ["Dias promedio de atraso", `${roundMoney(m.averageLateDays)} dias`, "Promedio de dias vencidos entre prestamos atrasados."],
+    ["Capital en riesgo", money(m.capitalRisk), "Capital pendiente de prestamos vencidos."],
+    ["Interes pendiente", money(m.pendingInterest), "Interes proyectado aun no cobrado."],
+    ["Promedio de prestamo", money(m.averageLoan), "Monto promedio de prestamos analizados."],
+    ["Promedio de interes cobrado", money(m.averageInterestPaid), "Promedio de interes por pago registrado."],
+    ["Distribucion por modalidad", modeText || "Sin datos", "Cantidad de prestamos por modalidad de interes."],
+    ["Flujo de caja", money(m.cashflow), "Ingresos del periodo menos dinero colocado."],
+    ["Disponible despues de cobros previstos", money(m.availableAfterProjected), "Disponible estimado mas cobros previstos del proximo mes."],
+  ];
+  elements.summaryManagementGrid.innerHTML = cards.map(([title, value, tip]) => renderCompactMetric(title, value, tip)).join("");
+}
+
+function renderCompactMetric(title, value, tip) {
+  return `
+    <article class="summary-compact-card">
+      <span>${escapeHTML(title)} ${renderInfoDot(tip)}</span>
+      <strong>${escapeHTML(value)}</strong>
+    </article>
+  `;
+}
+
+function renderDashboardCharts(dashboard) {
+  renderStackedMonthChart(elements.summaryMonthlyChart, dashboard.charts.months, "capital", "interest");
+  renderSimpleBarChart(elements.summaryLoansChart, dashboard.charts.loansByMonth);
+  renderDonutChart(elements.summaryStatusChart, dashboard.charts.statusSegments);
+  renderHorizontalChart(elements.summaryCapitalChart, [
+    { label: "Capital pendiente", value: dashboard.metrics.capitalPending, color: "#00a76f" },
+    { label: "Capital recuperado", value: dashboard.metrics.capitalRecovered, color: "#2f6fed" },
+    { label: "Ganancia real", value: dashboard.metrics.realProfit, color: "#ffb000" },
+    { label: "Ganancia proyectada", value: dashboard.metrics.projectedProfit, color: "#0f766e" },
+  ]);
+  renderDonutChart(
+    elements.summaryModeChart,
+    dashboard.charts.modeSegments.map((item, index) => ({ ...item, color: ["#00a76f", "#2f6fed", "#ffb000", "#0f766e"][index] }))
+  );
+  renderProjectionChart(elements.summaryProjectionChart, dashboard.charts.projections);
+  renderSimpleBarChart(elements.summaryDelinquencyChart, dashboard.charts.delinquency);
+  renderHorizontalChart(elements.summaryCashflowChart, dashboard.charts.cashflow);
+}
+
+function buildMonthSeries(count, loans, payments) {
+  return getLastMonthKeys(count).map((month) => {
+    const monthPayments = payments.filter((payment) => getMonthKey(payment.date) === month.key);
+    return {
+      label: month.label,
+      capital: sum(monthPayments, "capitalPaid"),
+      interest: sum(monthPayments, "interestPaid"),
+    };
+  });
+}
+
+function buildLoanMonthSeries(count, loans) {
+  return getLastMonthKeys(count).map((month) => ({
+    label: month.label,
+    value: loans.filter((loan) => getMonthKey(loan.startDate) === month.key).reduce((total, loan) => total + loan.amount, 0),
+  }));
+}
+
+function buildDelinquencySeries(count, loans) {
+  return getLastMonthKeys(count).map((month) => ({
+    label: month.label,
+    value: loans.filter((loan) => loan.status === "active" && getMonthKey(loan.nextDueDate) === month.key && isOverdue(loan)).length,
+  }));
+}
+
+function renderStackedMonthChart(container, data, firstKey, secondKey) {
+  const max = Math.max(...data.map((item) => item[firstKey] + item[secondKey]), 1);
+  container.innerHTML = data
+    .map((item) => {
+      const firstHeight = Math.max((item[firstKey] / max) * 100, item[firstKey] ? 7 : 0);
+      const secondHeight = Math.max((item[secondKey] / max) * 100, item[secondKey] ? 7 : 0);
+      return `
+        <div class="summary-bar-item">
+          <div class="summary-bar-track" title="${money(item[firstKey] + item[secondKey])}">
+            <span class="summary-bar-fill capital-fill" style="height:${firstHeight}%"></span>
+            <span class="summary-bar-fill interest-fill" style="height:${secondHeight}%"></span>
+          </div>
+          <strong>${escapeHTML(item.label)}</strong>
+          <span>${money(item[firstKey] + item[secondKey])}</span>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderSimpleBarChart(container, data) {
+  const max = Math.max(...data.map((item) => item.value), 1);
+  container.innerHTML = data
+    .map((item) => `
+      <div class="summary-bar-item">
+        <div class="summary-bar-track" title="${typeof item.value === "number" ? money(item.value) : item.value}">
+          <span class="summary-bar-fill single-fill" style="height:${Math.max((item.value / max) * 100, item.value ? 7 : 0)}%"></span>
+        </div>
+        <strong>${escapeHTML(item.label)}</strong>
+        <span>${typeof item.value === "number" && item.value > 20 ? money(item.value) : escapeHTML(roundMoney(item.value))}</span>
+      </div>
+    `)
+    .join("");
+}
+
+function renderDonutChart(container, segments) {
+  const total = segments.reduce((value, segment) => value + segment.value, 0);
+  const chartSegments = segments.map((segment, index) => ({ ...segment, color: segment.color || ["#00a76f", "#ffb000", "#061826", "#2f6fed"][index] }));
+  container.innerHTML = `
+    <div class="donut-chart" style="background:${total ? buildConicGradient(chartSegments, total) : "rgba(0, 167, 111, 0.12)"}">
+      <div class="donut-center"><strong>${total}</strong><span>total</span></div>
+    </div>
+    <div class="legend-list">
+      ${chartSegments
+        .map((segment) => `
+          <div class="legend-item">
+            <i style="background:${segment.color}"></i>
+            <span>${escapeHTML(segment.label)}</span>
+            <strong>${segment.value}</strong>
+          </div>
+        `)
+        .join("")}
+    </div>
+  `;
+}
+
+function renderHorizontalChart(container, rows) {
+  const max = Math.max(...rows.map((row) => row.value), 1);
+  container.innerHTML = rows
+    .map((row) => `
+      <div class="summary-horizontal-row">
+        <div><strong>${escapeHTML(row.label)}</strong><span>${money(row.value)}</span></div>
+        <div class="risk-track"><span style="width:${Math.max((row.value / max) * 100, row.value ? 5 : 0)}%; background:${row.color}"></span></div>
+      </div>
+    `)
+    .join("");
+}
+
+function renderProjectionChart(container, projections) {
+  container.innerHTML = projections
+    .map((item) => `
+      <article>
+        <span>${escapeHTML(item.label)}</span>
+        <strong>${money(item.value)}</strong>
+      </article>
+    `)
+    .join("");
+}
+
+function buildDashboardLists(loans, payments, scopeLoans) {
+  const clients = state.clients.map((client) => {
+    const clientLoans = loans.filter((loan) => loan.clientId === client.id);
+    const allClientLoans = scopeLoans.filter((loan) => loan.clientId === client.id);
+    const clientPayments = payments.filter((payment) => payment.clientId === client.id);
+    return {
+      client,
+      debt: clientLoans.filter((loan) => loan.status === "active").reduce((total, loan) => total + loan.remainingCapital, 0),
+      profit: clientPayments.reduce((total, payment) => total + payment.interestPaid, 0),
+      extensions: Math.max(allClientLoans.length - 1, 0),
+      overdue: allClientLoans.filter((loan) => loan.status === "active" && isOverdue(loan)).length,
+      punctual: clientPayments.filter((payment) => payment.scheduledDueDate && startOfDay(payment.date) <= startOfDay(payment.scheduledDueDate)).length,
+    };
+  });
+
+  return {
+    debt: clients.filter((item) => item.debt > 0).sort((a, b) => b.debt - a.debt).slice(0, 5),
+    profit: clients.filter((item) => item.profit > 0).sort((a, b) => b.profit - a.profit).slice(0, 5),
+    extensions: clients.filter((item) => item.extensions > 0).sort((a, b) => b.extensions - a.extensions).slice(0, 5),
+    punctual: clients.filter((item) => item.punctual > 0).sort((a, b) => b.punctual - a.punctual).slice(0, 5),
+    late: clients.filter((item) => item.overdue > 0).sort((a, b) => b.overdue - a.overdue).slice(0, 5),
+    payments: payments.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5),
+    loans: loans.filter(isPrimaryLoan).slice().sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate)).slice(0, 5),
+    recentExtensions: loans.filter((loan) => !isPrimaryLoan(loan)).slice().sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate)).slice(0, 5),
+  };
+}
+
+function renderDashboardLists(dashboard) {
+  renderClientMetricList(elements.summaryDebtList, dashboard.lists.debt, "No hay deuda activa.", (item) => [money(item.debt), "Capital pendiente"]);
+  renderClientMetricList(elements.summaryProfitList, dashboard.lists.profit, "No hay ganancias registradas.", (item) => [money(item.profit), "Interes cobrado"]);
+  renderClientMetricList(elements.summaryExtensionList, dashboard.lists.extensions, "No hay ampliaciones registradas.", (item) => [item.extensions, "Ampliaciones"]);
+  renderClientMetricList(elements.summaryPunctualList, dashboard.lists.punctual, "No hay pagos puntuales registrados.", (item) => [item.punctual, "Pagos puntuales"]);
+  renderClientMetricList(elements.summaryLateList, dashboard.lists.late, "No hay clientes atrasados.", (item) => [item.overdue, "Prestamos vencidos"]);
+  renderMovementList(elements.summaryPaymentList, dashboard.lists.payments, "No hay pagos registrados.", "payment");
+  renderMovementList(elements.summaryLoanList, dashboard.lists.loans, "No hay prestamos creados.", "loan");
+  renderMovementList(elements.summaryRecentExtensionList, dashboard.lists.recentExtensions, "No hay ampliaciones creadas.", "loan");
+}
+
+function renderClientMetricList(container, items, emptyMessage, getValue) {
+  container.innerHTML = items
+    .map((item) => {
+      const [value, label] = getValue(item);
+      return `
+        <article class="summary-mini-item">
+          <div>
+            <strong>${escapeHTML(item.client.name)}</strong>
+            <span>${escapeHTML(item.client.phone || "Sin telefono")}</span>
+          </div>
+          <div class="summary-mini-value"><strong>${escapeHTML(value)}</strong><small>${escapeHTML(label)}</small></div>
+        </article>
+      `;
+    })
+    .join("");
+  renderEmpty(container, emptyMessage);
+}
+
+function renderMovementList(container, items, emptyMessage, type) {
+  container.innerHTML = items
+    .map((item) => {
+      const client = getClient(item.clientId);
+      const value = type === "payment" ? money(Number(item.interestPaid || 0) + Number(item.capitalPaid || 0)) : money(item.amount);
+      const date = type === "payment" ? item.date : item.startDate;
+      return `
+        <article class="summary-mini-item">
+          <div>
+            <strong>${escapeHTML(client?.name || "Cliente eliminado")}</strong>
+            <span>${formatDate(date)} · ${type === "payment" ? "Pago" : isPrimaryLoan(item) ? "Prestamo" : "Ampliacion"}</span>
+          </div>
+          <div class="summary-mini-value"><strong>${value}</strong><small>${type === "payment" ? "Registrado" : getInterestModeLabel(item.interestMode)}</small></div>
+        </article>
+      `;
+    })
+    .join("");
+  renderEmpty(container, emptyMessage);
+}
+
+function renderDashboardAdvanced(dashboard) {
+  const m = dashboard.metrics;
+  const mostProfitable = dashboard.lists.profit[0]?.client.name || "Sin datos";
+  const highestDebt = dashboard.lists.debt[0]?.client.name || "Sin datos";
+  const mostExtensions = dashboard.lists.extensions[0]?.client.name || "Sin datos";
+  const cards = [
+    ["Rentabilidad sobre capital", `${roundMoney(m.profitability)}%`, "Interes real dividido entre capital total estimado."],
+    ["ROI mensual", `${roundMoney(m.monthlyRoi)}%`, "Ganancia proyectada frente al capital pendiente."],
+    ["Cliente mas rentable", mostProfitable, "Cliente con mayor interes cobrado."],
+    ["Cliente con mayor deuda", highestDebt, "Cliente con mas capital pendiente."],
+    ["Cliente con mas ampliaciones", mostExtensions, "Cliente con mayor cantidad de ampliaciones."],
+    ["Clientes puntuales", dashboard.lists.punctual.length, "Clientes con pagos realizados en fecha o antes."],
+    ["Clientes con historial de atraso", dashboard.lists.late.length, "Clientes con al menos una obligacion vencida."],
+    ["Porcentaje de morosidad", `${roundMoney(m.delinquencyRate)}%`, "Capital vencido frente al capital pendiente."],
+    ["Tasa de recuperacion", `${roundMoney(m.recoveryRate)}%`, "Capital recuperado frente al capital colocado."],
+    ["Ganancia por modalidad", dashboard.charts.modeSegments.map((item) => `${item.label}: ${item.value}`).join(" · ") || "Sin datos", "Distribucion de prestamos por modalidad."],
+    ["Proyeccion a 3 meses", money(m.projectedProfit * 3), "Interes estimado a tres meses."],
+    ["Proyeccion a 6 meses", money(m.projectedProfit * 6), "Interes estimado a seis meses."],
+    ["Proyeccion a 12 meses", money(m.projectedProfit * 12), "Interes estimado a doce meses."],
+    ["Meta mensual de ganancia", "Configurable", "Dato reservado para una meta futura."],
+    ["Progreso hacia la meta", m.currentMonthProfit ? "En movimiento" : "Sin avance", "Lectura general frente a una meta mensual futura."],
+    ["Ranking de clientes", `${dashboard.lists.debt.length + dashboard.lists.profit.length} destacados`, "Clientes destacados por deuda o rentabilidad."],
+    ["Nivel de riesgo del cliente", m.overdueLoans ? "Riesgo activo" : "Controlado", "Riesgo inferido por vencimientos actuales."],
+    ["Crecimiento del capital", money(m.lentThisMonth - m.nextMonthCapital), "Prestado este mes menos capital que regresara el proximo mes."],
+    ["Crecimiento de la ganancia", money(m.currentMonthProfit - m.previousMonthProfit), "Diferencia entre ganancia del mes actual y anterior."],
+    ["Comparativo capital vs interes", `${money(m.capitalPending)} / ${money(m.projectedProfit)}`, "Capital pendiente comparado con interes proyectado."],
+  ];
+  elements.summaryAdvancedGrid.innerHTML = cards.map(([title, value, tip]) => renderCompactMetric(title, value, tip)).join("");
+}
+
+function renderDashboardAlerts(dashboard) {
+  const alerts = [];
+  if (dashboard.metrics.overdueLoans) {
+    alerts.push(`Hay ${dashboard.metrics.overdueLoans} prestamo(s) vencido(s) por ${money(dashboard.metrics.overdueAmount)}.`);
+  }
+  if (dashboard.metrics.todayCount) {
+    alerts.push(`Hoy tienes ${dashboard.metrics.todayCount} cobro(s) programado(s) por ${money(dashboard.metrics.todayAmount)}.`);
+  }
+  if (!dashboard.metrics.activeLoans) {
+    alerts.push("No hay prestamos activos dentro del filtro actual.");
+  }
+  if (dashboard.metrics.delinquencyRate > 30) {
+    alerts.push(`La morosidad estimada esta en ${roundMoney(dashboard.metrics.delinquencyRate)}%. Conviene revisar clientes atrasados.`);
+  }
+  if (!alerts.length) {
+    alerts.push("La cartera filtrada se ve estable: no hay alertas criticas en este momento.");
+  }
+  elements.summaryAlerts.innerHTML = alerts.map((alert) => `<article>${escapeHTML(alert)}</article>`).join("");
+}
+
+function exportDashboardSummary() {
+  const dashboard = buildDashboardData();
+  const criticalRows = Array.from(elements.summaryCriticalGrid.querySelectorAll(".summary-kpi-card")).map((card) => [
+    card.querySelector("span")?.textContent?.replace(/\s+i$/, "").trim() || "",
+    card.querySelector("strong")?.textContent || "",
+    card.querySelector("small")?.textContent || "",
+  ]);
+  const managementRows = Array.from(elements.summaryManagementGrid.querySelectorAll(".summary-compact-card")).map((card) => [
+    card.querySelector("span")?.textContent?.replace(/\s+i$/, "").trim() || "",
+    card.querySelector("strong")?.textContent || "",
+  ]);
+  const workbook = buildExcelWorkbook([
+    { name: "Resumen", rows: [["Filtro", dashboard.range.label], ["Desde", formatDate(dashboard.range.start)], ["Hasta", formatDate(dashboard.range.end)]] },
+    { name: "Indicadores criticos", rows: [["Indicador", "Valor", "Nota"], ...criticalRows] },
+    { name: "Gestion", rows: [["Indicador", "Valor"], ...managementRows] },
+  ]);
+  downloadBlob(workbook, "application/vnd.ms-excel;charset=utf-8", `resumen-prestamos-${todayISO()}.xls`);
 }
 
 function renderStatusChart(activeLoans) {

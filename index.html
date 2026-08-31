@@ -169,107 +169,179 @@
         </header>
 
         <section id="dashboardView" class="view active-view">
-          <div class="metric-grid">
-            <article class="metric-card">
-              <span>Capital activo</span>
-              <strong id="metricCapital">S/ 0.00</strong>
-            </article>
-            <article class="metric-card">
-              <span>Interes mensual esperado</span>
-              <strong id="metricInterest">S/ 0.00</strong>
-            </article>
-            <article class="metric-card">
-              <span>Cobros vencidos</span>
-              <strong id="metricOverdue">0</strong>
-            </article>
-            <article class="metric-card">
-              <span>Capital recuperado</span>
-              <strong id="metricRecovered">S/ 0.00</strong>
-            </article>
-          </div>
-
-          <section class="panel pending-panel">
-            <div class="section-heading">
+          <div class="summary-dashboard">
+            <section class="summary-hero panel">
               <div>
-                <p class="eyebrow">Cobranza</p>
-                <h3>Cobros pendientes</h3>
+                <p class="eyebrow">Panel ejecutivo</p>
+                <h3>Resumen financiero</h3>
+                <span id="summaryHeroMeta">Lectura general de tu cartera.</span>
               </div>
+              <div class="summary-health" id="summaryHealth"></div>
+            </section>
+
+            <section class="summary-filters panel" aria-label="Filtros generales del resumen">
+              <label>
+                Rango de fechas
+                <select id="summaryRange" data-dashboard-filter>
+                  <option value="today">Hoy</option>
+                  <option value="week">Esta semana</option>
+                  <option value="month" selected>Este mes</option>
+                  <option value="previousMonth">Mes anterior</option>
+                  <option value="nextMonth">Proximo mes</option>
+                  <option value="last3">Ultimos 3 meses</option>
+                  <option value="last6">Ultimos 6 meses</option>
+                  <option value="year">Este ano</option>
+                  <option value="custom">Personalizado</option>
+                </select>
+              </label>
+              <label>
+                Estado
+                <select id="summaryStatus" data-dashboard-filter>
+                  <option value="all">Todos</option>
+                  <option value="active">Activos</option>
+                  <option value="overdue">Vencidos</option>
+                  <option value="closed">Cerrados</option>
+                  <option value="today">Por cobrar hoy</option>
+                  <option value="extensions">Con ampliaciones</option>
+                </select>
+              </label>
+              <label>
+                Modalidad de interes
+                <select id="summaryMode" data-dashboard-filter>
+                  <option value="all">Todas</option>
+                  <option value="monthly">Mensual</option>
+                  <option value="biweekly">Quincenal</option>
+                  <option value="weekly">Semanal</option>
+                  <option value="daily">Diario</option>
+                </select>
+              </label>
+              <label>
+                Cliente
+                <input id="summaryClientQuery" data-dashboard-filter type="search" placeholder="Buscar cliente" />
+              </label>
+              <label>
+                Desde
+                <input id="summaryCustomStart" data-dashboard-filter type="date" />
+              </label>
+              <label>
+                Hasta
+                <input id="summaryCustomEnd" data-dashboard-filter type="date" />
+              </label>
+              <div class="summary-filter-actions">
+                <button id="summaryRefresh" class="ghost-button" type="button">Actualizar resumen</button>
+                <button id="summaryExport" class="ghost-button" type="button">Exportar resumen</button>
+              </div>
+            </section>
+
+            <div id="summaryCriticalGrid" class="summary-kpi-grid"></div>
+
+            <section class="summary-collections panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Cobranza rapida</p>
+                  <h3>Cobros y vencimientos</h3>
+                </div>
+              </div>
+              <div class="summary-collection-grid">
+                <section>
+                  <h4>Cobrar hoy</h4>
+                  <div id="summaryTodayList" class="summary-mini-list empty-target"></div>
+                </section>
+                <section>
+                  <h4>Cobros vencidos</h4>
+                  <div id="summaryOverdueList" class="summary-mini-list empty-target"></div>
+                </section>
+                <section>
+                  <h4>Proximos 7 dias</h4>
+                  <div id="summarySoonList" class="summary-mini-list empty-target"></div>
+                </section>
+                <section>
+                  <h4>Proximos 30 dias</h4>
+                  <div id="summaryMonthList" class="summary-mini-list empty-target"></div>
+                </section>
+              </div>
+            </section>
+
+            <section class="summary-section panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Analisis operativo</p>
+                  <h3>Indicadores de gestion</h3>
+                </div>
+              </div>
+              <div id="summaryManagementGrid" class="summary-compact-grid"></div>
+            </section>
+
+            <div class="summary-charts-grid">
+              <section class="panel summary-chart-panel">
+                <h3>Cobros reales por mes <span class="info-dot" tabindex="0" data-tip="Muestra capital recuperado e intereses cobrados en los ultimos meses.">i</span></h3>
+                <div id="summaryMonthlyChart" class="summary-bar-chart"></div>
+              </section>
+              <section class="panel summary-chart-panel">
+                <h3>Prestamos otorgados por mes <span class="info-dot" tabindex="0" data-tip="Suma de prestamos y ampliaciones creados por mes.">i</span></h3>
+                <div id="summaryLoansChart" class="summary-bar-chart"></div>
+              </section>
+              <section class="panel summary-chart-panel">
+                <h3>Cartera por estado <span class="info-dot" tabindex="0" data-tip="Distribucion de prestamos activos, vencidos y cerrados.">i</span></h3>
+                <div id="summaryStatusChart" class="summary-donut-layout"></div>
+              </section>
+              <section class="panel summary-chart-panel">
+                <h3>Capital vs intereses <span class="info-dot" tabindex="0" data-tip="Compara capital pendiente, capital recuperado e intereses reales o proyectados.">i</span></h3>
+                <div id="summaryCapitalChart" class="summary-horizontal-chart"></div>
+              </section>
+              <section class="panel summary-chart-panel">
+                <h3>Modalidad de interes <span class="info-dot" tabindex="0" data-tip="Prestamos agrupados por modalidad mensual, quincenal, semanal o diaria.">i</span></h3>
+                <div id="summaryModeChart" class="summary-donut-layout"></div>
+              </section>
+              <section class="panel summary-chart-panel">
+                <h3>Proyeccion de ganancias <span class="info-dot" tabindex="0" data-tip="Estimacion de intereses futuros usando los prestamos activos actuales.">i</span></h3>
+                <div id="summaryProjectionChart" class="summary-projection-grid"></div>
+              </section>
+              <section class="panel summary-chart-panel">
+                <h3>Tendencia de morosidad <span class="info-dot" tabindex="0" data-tip="Cantidad de cobros vencidos observados por mes.">i</span></h3>
+                <div id="summaryDelinquencyChart" class="summary-bar-chart"></div>
+              </section>
+              <section class="panel summary-chart-panel">
+                <h3>Flujo de caja <span class="info-dot" tabindex="0" data-tip="Ingresos por cobros frente a dinero colocado en nuevos prestamos.">i</span></h3>
+                <div id="summaryCashflowChart" class="summary-horizontal-chart"></div>
+              </section>
             </div>
-            <div class="pending-groups">
-              <section>
-                <h4>Hoy</h4>
-                <div id="pendingToday" class="pending-list empty-target"></div>
-              </section>
-              <section>
-                <h4>Vencidos</h4>
-                <div id="pendingOverdue" class="pending-list empty-target"></div>
-              </section>
-              <section>
-                <h4>Proximos 7 dias</h4>
-                <div id="pendingSoon" class="pending-list empty-target"></div>
-              </section>
-            </div>
-          </section>
 
-          <div class="dashboard-grid">
-            <section class="panel chart-panel">
+            <section class="summary-lists panel">
               <div class="section-heading">
                 <div>
-                  <p class="eyebrow">Cartera</p>
-                  <h3>Estado de prestamos</h3>
+                  <p class="eyebrow">Listas inteligentes</p>
+                  <h3>Clientes y movimientos clave</h3>
                 </div>
               </div>
-              <div class="donut-layout">
-                <div id="statusDonut" class="donut-chart" aria-label="Estado de prestamos"></div>
-                <div id="statusLegend" class="legend-list"></div>
+              <div class="summary-lists-grid">
+                <section><h4>Clientes con mayor deuda</h4><div id="summaryDebtList" class="summary-mini-list empty-target"></div></section>
+                <section><h4>Clientes mas rentables</h4><div id="summaryProfitList" class="summary-mini-list empty-target"></div></section>
+                <section><h4>Clientes con mas ampliaciones</h4><div id="summaryExtensionList" class="summary-mini-list empty-target"></div></section>
+                <section><h4>Clientes puntuales</h4><div id="summaryPunctualList" class="summary-mini-list empty-target"></div></section>
+                <section><h4>Clientes atrasados</h4><div id="summaryLateList" class="summary-mini-list empty-target"></div></section>
+                <section><h4>Ultimos pagos registrados</h4><div id="summaryPaymentList" class="summary-mini-list empty-target"></div></section>
+                <section><h4>Ultimos prestamos creados</h4><div id="summaryLoanList" class="summary-mini-list empty-target"></div></section>
+                <section><h4>Ultimas ampliaciones creadas</h4><div id="summaryRecentExtensionList" class="summary-mini-list empty-target"></div></section>
               </div>
             </section>
 
-            <section class="panel chart-panel wide-panel">
-              <div class="section-heading">
-                <div>
-                  <p class="eyebrow">Ingresos</p>
-                  <h3>Cobros reales por mes</h3>
-                </div>
-              </div>
-              <div id="monthlyBars" class="bar-chart"></div>
-            </section>
+            <details class="summary-advanced panel" open>
+              <summary>
+                <span>Indicadores avanzados</span>
+                <small>Analisis adicional de rentabilidad, riesgo y crecimiento</small>
+              </summary>
+              <div id="summaryAdvancedGrid" class="summary-compact-grid"></div>
+            </details>
 
-            <section class="panel chart-panel">
+            <section class="summary-alerts panel">
               <div class="section-heading">
                 <div>
-                  <p class="eyebrow">Riesgo</p>
-                  <h3>Capital por vencer</h3>
+                  <p class="eyebrow">Alertas</p>
+                  <h3>Observaciones de la cartera</h3>
                 </div>
               </div>
-              <div id="riskBars" class="risk-stack"></div>
-            </section>
-
-            <section class="panel chart-panel">
-              <div class="section-heading">
-                <div>
-                  <p class="eyebrow">Control</p>
-                  <h3>Indicadores importantes</h3>
-                </div>
-              </div>
-              <div class="insight-grid">
-                <article>
-                  <span>Clientes activos</span>
-                  <strong id="metricActiveClients">0</strong>
-                </article>
-                <article>
-                  <span>Cobran este mes</span>
-                  <strong id="metricDueThisMonth">0</strong>
-                </article>
-                <article>
-                  <span>Tasa promedio</span>
-                  <strong id="metricAverageRate">0%</strong>
-                </article>
-                <article>
-                  <span>Interes cobrado este mes</span>
-                  <strong id="metricInterestPaidMonth">S/ 0.00</strong>
-                </article>
-              </div>
+              <div id="summaryAlerts" class="summary-alert-list"></div>
             </section>
           </div>
         </section>
