@@ -1725,8 +1725,13 @@ function renderDashboardHeader(dashboard) {
 }
 
 function renderDashboardKpis(dashboard) {
+  const cards = getDashboardKpiItems(dashboard);
+  elements.summaryCriticalGrid.innerHTML = cards.map((item) => renderKpiCard(item)).join("");
+}
+
+function getDashboardKpiItems(dashboard) {
   const m = dashboard.metrics;
-  const cards = [
+  return [
     ["Capital total", money(m.capitalTotal), "Suma estimada del capital pendiente mas capital recuperado registrado.", "Todo el dinero total destinado al negocio de prestamos."],
     ["Capital disponible", money(m.availableCapital), "Estimado con el capital recuperado que no aparece reinvertido.", "Dinero libre actualmente disponible para volver a prestar."],
     ["Capital prestado", money(m.capitalPlaced), "Dinero que aun esta colocado en prestamos activos.", "Dinero que actualmente esta colocado en prestamos o ampliaciones."],
@@ -1743,11 +1748,10 @@ function renderDashboardKpis(dashboard) {
     ["Prestamos cerrados", m.closedLoans, "Prestamos totalmente cancelados.", "Cantidad de prestamos totalmente cancelados."],
     ["Clientes activos", m.activeClientCount, "Clientes con al menos un prestamo pendiente.", "Clientes que tienen al menos un prestamo o ampliacion pendiente."],
     ["Ampliaciones activas", `${m.activeExtensions} / ${money(m.activeExtensionsAmount)}`, "Cantidad y monto pendiente de ampliaciones activas.", "Numero o monto de ampliaciones aun pendientes."],
-  ];
-  elements.summaryCriticalGrid.innerHTML = cards.map(([title, value, note, tip]) => renderKpiCard(title, value, note, tip)).join("");
+  ].map(([title, value, note, tip]) => ({ title, value, note, tip }));
 }
 
-function renderKpiCard(title, value, note, tip) {
+function renderKpiCard({ title, value, note, tip }) {
   const tooltipText = note && tip && note !== tip ? `${tip} ${note}` : tip || note;
   return `
     <article class="summary-kpi-card">
@@ -1791,9 +1795,14 @@ function renderLoanMiniList(container, loans, emptyMessage) {
 }
 
 function renderDashboardManagement(dashboard) {
+  const cards = getDashboardManagementItems(dashboard);
+  elements.summaryManagementGrid.innerHTML = cards.map((item) => renderCompactMetric(item)).join("");
+}
+
+function getDashboardManagementItems(dashboard) {
   const m = dashboard.metrics;
   const modeText = dashboard.charts.modeSegments.map((item) => `${item.label}: ${item.value}`).join(" · ");
-  const cards = [
+  return [
     ["Capital reinvertido", money(m.reinvested), "Capital recuperado que volvio a salir en nuevos prestamos."],
     ["Dinero nuevo aportado", money(m.newMoney), "Capital colocado que no proviene de cobros registrados."],
     ["Ganancia del mes actual", money(m.currentMonthProfit), "Intereses cobrados durante el mes actual."],
@@ -1815,11 +1824,10 @@ function renderDashboardManagement(dashboard) {
     ["Distribucion por modalidad", modeText || "Sin datos", "Cantidad de prestamos por modalidad de interes."],
     ["Flujo de caja", money(m.cashflow), "Ingresos del periodo menos dinero colocado."],
     ["Disponible despues de cobros previstos", money(m.availableAfterProjected), "Disponible estimado mas cobros previstos del proximo mes."],
-  ];
-  elements.summaryManagementGrid.innerHTML = cards.map(([title, value, tip]) => renderCompactMetric(title, value, tip)).join("");
+  ].map(([title, value, tip]) => ({ title, value, tip }));
 }
 
-function renderCompactMetric(title, value, tip) {
+function renderCompactMetric({ title, value, tip }) {
   return `
     <article class="summary-compact-card">
       <span>${escapeHTML(title)} ${renderInfoDot(tip)}</span>
@@ -2028,11 +2036,16 @@ function renderMovementList(container, items, emptyMessage, type) {
 }
 
 function renderDashboardAdvanced(dashboard) {
+  const cards = getDashboardAdvancedItems(dashboard);
+  elements.summaryAdvancedGrid.innerHTML = cards.map((item) => renderCompactMetric(item)).join("");
+}
+
+function getDashboardAdvancedItems(dashboard) {
   const m = dashboard.metrics;
   const mostProfitable = dashboard.lists.profit[0]?.client.name || "Sin datos";
   const highestDebt = dashboard.lists.debt[0]?.client.name || "Sin datos";
   const mostExtensions = dashboard.lists.extensions[0]?.client.name || "Sin datos";
-  const cards = [
+  return [
     ["Rentabilidad sobre capital", `${roundMoney(m.profitability)}%`, "Interes real dividido entre capital total estimado."],
     ["ROI mensual", `${roundMoney(m.monthlyRoi)}%`, "Ganancia proyectada frente al capital pendiente."],
     ["Cliente mas rentable", mostProfitable, "Cliente con mayor interes cobrado."],
@@ -2053,11 +2066,15 @@ function renderDashboardAdvanced(dashboard) {
     ["Crecimiento del capital", money(m.lentThisMonth - m.nextMonthCapital), "Prestado este mes menos capital que regresara el proximo mes."],
     ["Crecimiento de la ganancia", money(m.currentMonthProfit - m.previousMonthProfit), "Diferencia entre ganancia del mes actual y anterior."],
     ["Comparativo capital vs interes", `${money(m.capitalPending)} / ${money(m.projectedProfit)}`, "Capital pendiente comparado con interes proyectado."],
-  ];
-  elements.summaryAdvancedGrid.innerHTML = cards.map(([title, value, tip]) => renderCompactMetric(title, value, tip)).join("");
+  ].map(([title, value, tip]) => ({ title, value, tip }));
 }
 
 function renderDashboardAlerts(dashboard) {
+  const alerts = buildDashboardAlertMessages(dashboard);
+  elements.summaryAlerts.innerHTML = alerts.map((alert) => `<article>${escapeHTML(alert)}</article>`).join("");
+}
+
+function buildDashboardAlertMessages(dashboard) {
   const alerts = [];
   if (dashboard.metrics.overdueLoans) {
     alerts.push(`Hay ${dashboard.metrics.overdueLoans} prestamo(s) vencido(s) por ${money(dashboard.metrics.overdueAmount)}.`);
@@ -2074,26 +2091,257 @@ function renderDashboardAlerts(dashboard) {
   if (!alerts.length) {
     alerts.push("La cartera filtrada se ve estable: no hay alertas criticas en este momento.");
   }
-  elements.summaryAlerts.innerHTML = alerts.map((alert) => `<article>${escapeHTML(alert)}</article>`).join("");
+  return alerts;
 }
 
 function exportDashboardSummary() {
   const dashboard = buildDashboardData();
-  const criticalRows = Array.from(elements.summaryCriticalGrid.querySelectorAll(".summary-kpi-card")).map((card) => [
-    card.querySelector("span")?.textContent?.replace(/\s+i$/, "").trim() || "",
-    card.querySelector("strong")?.textContent || "",
-    card.querySelector(".info-dot")?.dataset.tip || "",
-  ]);
-  const managementRows = Array.from(elements.summaryManagementGrid.querySelectorAll(".summary-compact-card")).map((card) => [
-    card.querySelector("span")?.textContent?.replace(/\s+i$/, "").trim() || "",
-    card.querySelector("strong")?.textContent || "",
-  ]);
+  const criticalRows = getDashboardKpiItems(dashboard).map((item) => dashboardIndicatorRow(item));
+  const managementRows = getDashboardManagementItems(dashboard).map((item) => dashboardIndicatorRow(item));
+  const advancedRows = getDashboardAdvancedItems(dashboard).map((item) => dashboardIndicatorRow(item));
+  const alerts = buildDashboardAlertMessages(dashboard);
   const workbook = buildExcelWorkbook([
-    { name: "Resumen", rows: [["Filtro", dashboard.range.label], ["Desde", formatDate(dashboard.range.start)], ["Hasta", formatDate(dashboard.range.end)]] },
-    { name: "Indicadores criticos", rows: [["Indicador", "Valor", "Nota"], ...criticalRows] },
-    { name: "Gestion", rows: [["Indicador", "Valor"], ...managementRows] },
+    buildSummaryIndicatorsSheet(dashboard, criticalRows, managementRows, advancedRows),
+    buildSummaryCollectionsSheet(dashboard, alerts),
+    buildSummaryChartsSheet(dashboard),
+    buildSummaryListsSheet(dashboard),
   ]);
   downloadBlob(workbook, "application/vnd.ms-excel;charset=utf-8", `resumen-prestamos-${todayISO()}.xls`);
+}
+
+function buildSummaryIndicatorsSheet(dashboard, criticalRows, managementRows, advancedRows) {
+  return {
+    name: "Resumen financiero",
+    columns: [230, 145, 190, 420],
+    rows: [
+      excelTitleRow("REPORTE DE RESUMEN FINANCIERO", 3),
+      excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", `${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}`),
+      excelMetaRow("Rango", dashboard.range.label, "Estado", dashboardStatusLabel(dashboard.filters.status)),
+      excelMetaRow("Modalidad", dashboardModeLabel(dashboard.filters.mode), "Cliente", dashboard.filters.query || "Todos"),
+      excelSpacerRow(),
+      excelSectionRow("INDICADORES PRINCIPALES", 3),
+      excelHeaderRow(["Indicador", "Valor", "Explicacion"]),
+      ...criticalRows,
+      excelSpacerRow(),
+      excelSectionRow("INDICADORES DE GESTION", 3),
+      excelHeaderRow(["Indicador", "Valor", "Explicacion"]),
+      ...managementRows,
+      excelSpacerRow(),
+      excelSectionRow("INDICADORES AVANZADOS", 3),
+      excelHeaderRow(["Indicador", "Valor", "Explicacion"]),
+      ...advancedRows,
+    ],
+  };
+}
+
+function buildSummaryCollectionsSheet(dashboard, alerts) {
+  return {
+    name: "Cobranza y alertas",
+    columns: [180, 120, 125, 110, 120, 120, 125, 120],
+    rows: [
+      excelTitleRow("COBRANZA RAPIDA", 7),
+      excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", `${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}`),
+      excelSpacerRow(),
+      ...dashboardLoanSectionRows("COBRAR HOY", dashboard.todayLoans),
+      excelSpacerRow(),
+      ...dashboardLoanSectionRows("COBROS VENCIDOS", dashboard.overdueLoans.slice().sort(sortLoansByDueDate)),
+      excelSpacerRow(),
+      ...dashboardLoanSectionRows("PROXIMOS 7 DIAS", dashboard.soonLoans),
+      excelSpacerRow(),
+      ...dashboardLoanSectionRows("PROXIMOS 30 DIAS", dashboard.monthLoans),
+      excelSpacerRow(),
+      excelSectionRow("ALERTAS DEL RESUMEN", 7),
+      excelHeaderRow(["Alerta"]),
+      ...alerts.map((alert) => [excelCellData(alert, "Text", 7)]),
+    ],
+  };
+}
+
+function buildSummaryChartsSheet(dashboard) {
+  return {
+    name: "Graficos y tendencias",
+    columns: [180, 140, 140, 140],
+    rows: [
+      excelTitleRow("DATOS PARA GRAFICOS DEL RESUMEN", 3),
+      excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", `${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}`),
+      excelSpacerRow(),
+      excelSectionRow("COBROS REALES POR MES", 3),
+      excelHeaderRow(["Mes", "Capital recuperado", "Interes cobrado", "Total"]),
+      ...dashboard.charts.months.map((item) => [excelCellData(item.label, "Text"), excelCellData(money(item.capital), "MoneyText"), excelCellData(money(item.interest), "MoneyText"), excelCellData(money(item.capital + item.interest), "MoneyText")]),
+      excelSpacerRow(),
+      excelSectionRow("PRESTAMOS OTORGADOS POR MES", 3),
+      excelHeaderRow(["Mes", "Prestamos creados"]),
+      ...dashboard.charts.loansByMonth.map((item) => [excelCellData(item.label, "Text"), excelCellData(item.value, "Number")]),
+      excelSpacerRow(),
+      excelSectionRow("CARTERA POR ESTADO", 3),
+      excelHeaderRow(["Estado", "Cantidad"]),
+      ...dashboard.charts.statusSegments.map((item) => [excelCellData(item.label, "Text"), excelCellData(item.value, "Number")]),
+      excelSpacerRow(),
+      excelSectionRow("MODALIDAD DE INTERES", 3),
+      excelHeaderRow(["Modalidad", "Cantidad"]),
+      ...dashboard.charts.modeSegments.map((item) => [excelCellData(item.label, "Text"), excelCellData(item.value, "Number")]),
+      excelSpacerRow(),
+      excelSectionRow("PROYECCION DE GANANCIAS", 3),
+      excelHeaderRow(["Periodo", "Ganancia proyectada"]),
+      ...dashboard.charts.projections.map((item) => [excelCellData(item.label, "Text"), excelCellData(money(item.value), "MoneyText")]),
+      excelSpacerRow(),
+      excelSectionRow("TENDENCIA DE MOROSIDAD", 3),
+      excelHeaderRow(["Mes", "Prestamos vencidos"]),
+      ...dashboard.charts.delinquency.map((item) => [excelCellData(item.label, "Text"), excelCellData(item.value, "Number")]),
+      excelSpacerRow(),
+      excelSectionRow("FLUJO DE CAJA", 3),
+      excelHeaderRow(["Concepto", "Monto"]),
+      ...dashboard.charts.cashflow.map((item) => [excelCellData(item.label, "Text"), excelCellData(money(item.value), "MoneyText")]),
+    ],
+  };
+}
+
+function buildSummaryListsSheet(dashboard) {
+  return {
+    name: "Listas inteligentes",
+    columns: [210, 130, 160, 140],
+    rows: [
+      excelTitleRow("LISTAS INTELIGENTES DEL RESUMEN", 3),
+      excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", `${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}`),
+      excelSpacerRow(),
+      ...dashboardClientSectionRows("CLIENTES CON MAYOR DEUDA", dashboard.lists.debt, (item) => [money(item.debt), "Capital pendiente"]),
+      excelSpacerRow(),
+      ...dashboardClientSectionRows("CLIENTES MAS RENTABLES", dashboard.lists.profit, (item) => [money(item.profit), "Interes cobrado"]),
+      excelSpacerRow(),
+      ...dashboardClientSectionRows("CLIENTES CON MAS AMPLIACIONES", dashboard.lists.extensions, (item) => [item.extensions, "Ampliaciones"]),
+      excelSpacerRow(),
+      ...dashboardClientSectionRows("CLIENTES PUNTUALES", dashboard.lists.punctual, (item) => [item.punctual, "Pagos puntuales"]),
+      excelSpacerRow(),
+      ...dashboardClientSectionRows("CLIENTES ATRASADOS", dashboard.lists.late, (item) => [item.overdue, "Prestamos vencidos"]),
+      excelSpacerRow(),
+      ...dashboardMovementSectionRows("ULTIMOS PAGOS REGISTRADOS", dashboard.lists.payments, "payment"),
+      excelSpacerRow(),
+      ...dashboardMovementSectionRows("ULTIMOS PRESTAMOS CREADOS", dashboard.lists.loans, "loan"),
+      excelSpacerRow(),
+      ...dashboardMovementSectionRows("ULTIMAS AMPLIACIONES CREADAS", dashboard.lists.recentExtensions, "loan"),
+    ],
+  };
+}
+
+function dashboardIndicatorRow(item) {
+  const explanation = item.note && item.tip && item.note !== item.tip ? `${item.tip} ${item.note}` : item.tip || item.note || "";
+  return [excelCellData(item.title, "Text"), excelCellData(item.value, "Value"), excelCellData(explanation, "Text")];
+}
+
+function dashboardLoanSectionRows(title, loans) {
+  const rows = [
+    excelSectionRow(title, 7),
+    excelHeaderRow(["Cliente", "Telefono", "Prestamo", "Estado", "Fecha de cobro", "Capital pendiente", "Interes esperado", "Total estimado"]),
+  ];
+  if (!loans.length) {
+    rows.push([excelCellData("Sin datos para esta seccion.", "Muted", 7)]);
+    return rows;
+  }
+  loans.forEach((loan) => {
+    const client = getClient(loan.clientId);
+    const status = getLoanStatus(loan);
+    const interest = expectedInterest(loan);
+    rows.push([
+      excelCellData(client?.name || "Cliente sin nombre", "Text"),
+      excelCellData(client?.phone || "Sin telefono", "Text"),
+      excelCellData(getLoanExcelLabel(loan), "Text"),
+      excelCellData(status.label, "Status"),
+      excelCellData(formatDate(loan.nextDueDate), "Text"),
+      excelCellData(money(loan.remainingCapital), "MoneyText"),
+      excelCellData(money(interest), "MoneyText"),
+      excelCellData(money(Number(loan.remainingCapital || 0) + interest), "MoneyText"),
+    ]);
+  });
+  return rows;
+}
+
+function dashboardClientSectionRows(title, items, getValue) {
+  const rows = [excelSectionRow(title, 3), excelHeaderRow(["Cliente", "Telefono", "Valor", "Detalle"])];
+  if (!items.length) {
+    rows.push([excelCellData("Sin datos para esta seccion.", "Muted", 3)]);
+    return rows;
+  }
+  items.forEach((item) => {
+    const [value, label] = getValue(item);
+    rows.push([
+      excelCellData(item.client.name, "Text"),
+      excelCellData(item.client.phone || "Sin telefono", "Text"),
+      excelCellData(value, "Value"),
+      excelCellData(label, "Text"),
+    ]);
+  });
+  return rows;
+}
+
+function dashboardMovementSectionRows(title, items, type) {
+  const rows = [excelSectionRow(title, 3), excelHeaderRow(["Cliente", "Fecha", "Tipo", "Monto"])];
+  if (!items.length) {
+    rows.push([excelCellData("Sin datos para esta seccion.", "Muted", 3)]);
+    return rows;
+  }
+  items.forEach((item) => {
+    const client = getClient(item.clientId);
+    const value = type === "payment" ? Number(item.interestPaid || 0) + Number(item.capitalPaid || 0) : Number(item.amount || 0);
+    const date = type === "payment" ? item.date : item.startDate;
+    rows.push([
+      excelCellData(client?.name || "Cliente eliminado", "Text"),
+      excelCellData(formatDate(date), "Text"),
+      excelCellData(type === "payment" ? "Pago registrado" : getLoanExcelLabel(item), "Text"),
+      excelCellData(money(value), "MoneyText"),
+    ]);
+  });
+  return rows;
+}
+
+function getLoanExcelLabel(loan) {
+  const loans = getLoansForClient(loan.clientId);
+  const index = loans.findIndex((item) => item.id === loan.id);
+  return index <= 0 ? "Prestamo principal" : `Ampliacion ${index}`;
+}
+
+function dashboardStatusLabel(status) {
+  const labels = {
+    all: "Todos",
+    active: "Activos",
+    overdue: "Vencidos",
+    closed: "Cerrados",
+    today: "Por cobrar hoy",
+    extensions: "Con ampliaciones",
+  };
+  return labels[status] || "Todos";
+}
+
+function dashboardModeLabel(mode) {
+  return mode === "all" ? "Todas" : INTEREST_MODES[mode]?.label || "Todas";
+}
+
+function excelTitleRow(title, mergeAcross = 1) {
+  return { height: 32, cells: [excelCellData(title, "Title", mergeAcross)] };
+}
+
+function excelSectionRow(title, mergeAcross = 1) {
+  return { height: 24, cells: [excelCellData(title, "Section", mergeAcross)] };
+}
+
+function excelHeaderRow(values) {
+  return values.map((value) => excelCellData(value, "Header"));
+}
+
+function excelMetaRow(labelA, valueA, labelB = "", valueB = "") {
+  return [
+    excelCellData(labelA, "MetaLabel"),
+    excelCellData(valueA, "MetaValue"),
+    excelCellData(labelB, "MetaLabel"),
+    excelCellData(valueB, "MetaValue"),
+  ];
+}
+
+function excelSpacerRow() {
+  return { height: 10, cells: [excelCellData("", "Blank")] };
+}
+
+function excelCellData(value, styleId = "Text", mergeAcross = 0) {
+  return { value, styleId, mergeAcross };
 }
 
 function renderStatusChart(activeLoans) {
@@ -3079,11 +3327,16 @@ function buildExcelWorkbook(sheets) {
     (sheet) => `
       <Worksheet ss:Name="${escapeXML(sheet.name)}">
         <Table>
+          ${(sheet.columns || []).map((width) => `<Column ss:AutoFitWidth="0" ss:Width="${Number(width) || 120}"/>`).join("")}
           ${sheet.rows
             .map(
-              (row) => `
-                <Row>${row.map(excelCell).join("")}</Row>
-              `
+              (row) => {
+                const rowCells = Array.isArray(row) ? row : row.cells || [];
+                const height = !Array.isArray(row) && row.height ? ` ss:AutoFitHeight="0" ss:Height="${Number(row.height)}"` : "";
+                return `
+                <Row${height}>${rowCells.map(excelCell).join("")}</Row>
+              `;
+              }
             )
             .join("")}
         </Table>
@@ -3098,13 +3351,94 @@ function buildExcelWorkbook(sheets) {
   xmlns:x="urn:schemas-microsoft-com:office:excel"
   xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
   xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Styles>
+    <Style ss:ID="Default" ss:Name="Normal">
+      <Alignment ss:Vertical="Center" ss:WrapText="1"/>
+      <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#061826"/>
+    </Style>
+    <Style ss:ID="Title">
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+      <Font ss:FontName="Calibri" ss:Size="18" ss:Bold="1" ss:Color="#FFFFFF"/>
+      <Interior ss:Color="#00A76F" ss:Pattern="Solid"/>
+    </Style>
+    <Style ss:ID="Section">
+      <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+      <Font ss:FontName="Calibri" ss:Size="12" ss:Bold="1" ss:Color="#FFFFFF"/>
+      <Interior ss:Color="#061826" ss:Pattern="Solid"/>
+    </Style>
+    <Style ss:ID="Header">
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+      <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#061826"/>
+      <Interior ss:Color="#E9F1F5" ss:Pattern="Solid"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#AFC8C4"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D8E2E0"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D8E2E0"/>
+        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D8E2E0"/>
+      </Borders>
+    </Style>
+    <Style ss:ID="MetaLabel">
+      <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#435565"/>
+      <Interior ss:Color="#F3FAF7" ss:Pattern="Solid"/>
+    </Style>
+    <Style ss:ID="MetaValue">
+      <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#061826"/>
+      <Interior ss:Color="#F3FAF7" ss:Pattern="Solid"/>
+    </Style>
+    <Style ss:ID="Text">
+      <Alignment ss:Vertical="Center" ss:WrapText="1"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D8E2E0"/>
+      </Borders>
+    </Style>
+    <Style ss:ID="Value">
+      <Alignment ss:Vertical="Center" ss:WrapText="1"/>
+      <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#061826"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D8E2E0"/>
+      </Borders>
+    </Style>
+    <Style ss:ID="MoneyText">
+      <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+      <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#061826"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D8E2E0"/>
+      </Borders>
+    </Style>
+    <Style ss:ID="Number">
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+      <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#061826"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D8E2E0"/>
+      </Borders>
+    </Style>
+    <Style ss:ID="Status">
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+      <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#007A52"/>
+      <Interior ss:Color="#EAF6EF" ss:Pattern="Solid"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D8E2E0"/>
+      </Borders>
+    </Style>
+    <Style ss:ID="Muted">
+      <Alignment ss:Vertical="Center" ss:WrapText="1"/>
+      <Font ss:FontName="Calibri" ss:Size="11" ss:Italic="1" ss:Color="#6B7A86"/>
+      <Interior ss:Color="#F4F7FB" ss:Pattern="Solid"/>
+    </Style>
+    <Style ss:ID="Blank">
+      <Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>
+    </Style>
+  </Styles>
   ${worksheets.join("")}
 </Workbook>`;
 }
 
 function excelCell(value) {
-  const isNumber = typeof value === "number" && Number.isFinite(value);
-  return `<Cell><Data ss:Type="${isNumber ? "Number" : "String"}">${escapeXML(isNumber ? String(value) : value ?? "")}</Data></Cell>`;
+  const cell = value && typeof value === "object" && !Array.isArray(value) ? value : { value };
+  const isNumber = typeof cell.value === "number" && Number.isFinite(cell.value);
+  const style = cell.styleId ? ` ss:StyleID="${escapeXML(cell.styleId)}"` : "";
+  const mergeAcross = Number(cell.mergeAcross || 0) > 0 ? ` ss:MergeAcross="${Number(cell.mergeAcross)}"` : "";
+  return `<Cell${style}${mergeAcross}><Data ss:Type="${isNumber ? "Number" : "String"}">${escapeXML(isNumber ? String(cell.value) : cell.value ?? "")}</Data></Cell>`;
 }
 
 function escapeXML(value) {
