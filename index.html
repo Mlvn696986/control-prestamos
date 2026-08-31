@@ -560,6 +560,27 @@
       </section>
     </dialog>
 
+    <dialog id="loanDeleteDialog" class="modal">
+      <form id="loanDeleteForm" method="dialog" class="modal-panel form-grid">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Eliminar ampliacion</p>
+            <h3>Eliminar ampliacion</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div id="loanDeleteSummary" class="payment-summary">
+          Estas seguro de que deseas eliminar esta ampliacion? Esta accion eliminara unicamente esta ampliacion y su historial asociado.
+        </div>
+        <div class="choice-actions">
+          <button class="ghost-button" value="cancel" type="button" data-close-dialog>Cancelar</button>
+          <button class="delete-button" type="submit">Eliminar ampliacion</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="planRequestDialog" class="modal">
       <form id="planRequestForm" method="dialog" class="modal-panel form-grid">
         <div class="section-heading">

@@ -34,6 +34,7 @@ let state = createEmptyState();
 let adminState = createEmptyAdminState();
 let activeClientTab = "all";
 let signupSuccessTimer = null;
+let pendingLoanDelete = null;
 const pendingCarousel = {
   today: 0,
   overdue: 0,
@@ -111,6 +112,9 @@ const elements = {
   historyTitle: $("#historyTitle"),
   historySummary: $("#historySummary"),
   historyList: $("#historyList"),
+  loanDeleteDialog: $("#loanDeleteDialog"),
+  loanDeleteForm: $("#loanDeleteForm"),
+  loanDeleteSummary: $("#loanDeleteSummary"),
   plansGrid: $("#plansGrid"),
   planRequestDialog: $("#planRequestDialog"),
   planRequestForm: $("#planRequestForm"),
@@ -169,6 +173,7 @@ function bindEvents() {
   elements.clientForm.addEventListener("submit", handleClientSubmit);
   elements.editForm.addEventListener("submit", handleEditSubmit);
   elements.paymentForm.addEventListener("submit", handlePaymentSubmit);
+  elements.loanDeleteForm.addEventListener("submit", handleLoanDeleteSubmit);
   elements.planRequestForm.addEventListener("submit", handlePlanRequestSubmit);
   $$("[data-client-filter]").forEach((filter) => {
     filter.addEventListener("input", renderClients);
@@ -218,6 +223,7 @@ function bindEvents() {
     const editLoanButton = event.target.closest("[data-edit-loan]");
     const paymentButton = event.target.closest("[data-pay-loan]");
     const historyButton = event.target.closest("[data-history-client]");
+    const deleteLoanButton = event.target.closest("[data-delete-loan]");
     const deleteButton = event.target.closest("[data-delete-client]");
     const planButton = event.target.closest("[data-request-plan]");
     const adminPlanButton = event.target.closest("[data-admin-plan]");
@@ -243,6 +249,11 @@ function bindEvents() {
 
     if (historyButton) {
       openHistoryDialog(historyButton.dataset.historyClient);
+    }
+
+    if (deleteLoanButton) {
+      openLoanDeleteDialog(deleteLoanButton.dataset.deleteClient, deleteLoanButton.dataset.deleteLoan);
+      return;
     }
 
     if (deleteButton) {
@@ -562,6 +573,27 @@ async function deleteCloudClient(clientId) {
 
   const clientDelete = await saas.client.from("clients").delete().eq("user_id", userId).eq("id", clientId);
   if (clientDelete.error) throw clientDelete.error;
+}
+
+async function deleteCloudLoanExtension(clientId, loanId) {
+  if (!isCloudMode()) return;
+  const userId = saas.session.user.id;
+
+  const paymentsDelete = await saas.client
+    .from("payments")
+    .delete()
+    .eq("user_id", userId)
+    .eq("client_id", clientId)
+    .eq("loan_id", loanId);
+  if (paymentsDelete.error) throw paymentsDelete.error;
+
+  const loanDelete = await saas.client
+    .from("loans")
+    .delete()
+    .eq("user_id", userId)
+    .eq("client_id", clientId)
+    .eq("id", loanId);
+  if (loanDelete.error) throw loanDelete.error;
 }
 
 async function createPlanRequest(requestedPlan, message) {
@@ -1677,6 +1709,7 @@ function renderClientExtensions(client, extensions) {
                 <span class="row-actions" data-label="Acciones">
                   <button class="ghost-button small-button" type="button" data-edit-client="${client.id}" data-edit-loan="${loan.id}">${icons.edit} Editar</button>
                   ${paymentButton}
+                  <button class="delete-button small-button" type="button" data-delete-client="${client.id}" data-delete-loan="${loan.id}">${icons.trash} Eliminar</button>
                   <button class="icon-button square-action" title="Ver cobros" type="button" data-history-client="${client.id}">
                     ${icons.history}
                     <span>${paymentCount}</span>
@@ -1689,6 +1722,41 @@ function renderClientExtensions(client, extensions) {
       </div>
     </div>
   `;
+}
+
+function openLoanDeleteDialog(clientId, loanId) {
+  const client = state.clients.find((item) => item.id === clientId);
+  const loan = state.loans.find((item) => item.id === loanId && item.clientId === clientId);
+  if (!client || !loan || getLoansForClient(clientId)[0]?.id === loanId) return;
+
+  pendingLoanDelete = { clientId, loanId };
+  elements.loanDeleteSummary.textContent =
+    "Estas seguro de que deseas eliminar esta ampliacion? Esta accion eliminara unicamente esta ampliacion y su historial asociado.";
+  elements.loanDeleteDialog.showModal();
+}
+
+async function handleLoanDeleteSubmit(event) {
+  event.preventDefault();
+  if (!pendingLoanDelete) return;
+
+  const { clientId, loanId } = pendingLoanDelete;
+  try {
+    await ensureAutomaticBackup(true);
+    await deleteCloudLoanExtension(clientId, loanId);
+
+    state.loans = state.loans.filter((loan) => loan.id !== loanId);
+    state.payments = state.payments.filter((payment) => payment.loanId !== loanId);
+
+    pendingLoanDelete = null;
+    saveState();
+    elements.loanDeleteDialog.close();
+    render();
+  } catch (error) {
+    if (isCloudMode()) {
+      await reloadAfterCloudError();
+    }
+    window.alert(error.message || "No se pudo eliminar la ampliacion.");
+  }
 }
 
 function renderLoanAmount(loan) {
