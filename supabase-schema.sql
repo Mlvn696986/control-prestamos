@@ -34,6 +34,7 @@ create table if not exists loans (
   amount numeric not null,
   remaining_capital numeric not null,
   monthly_rate numeric not null,
+  interest_mode text not null default 'monthly',
   start_date date not null,
   next_due_date date not null,
   due_day integer not null,
@@ -77,6 +78,7 @@ create table if not exists user_backups (
 alter table profiles add column if not exists email text;
 alter table profiles add column if not exists is_admin boolean not null default false;
 alter table subscriptions alter column client_limit drop not null;
+alter table loans add column if not exists interest_mode text not null default 'monthly';
 
 update profiles
 set email = auth.users.email

@@ -3,6 +3,12 @@ const BACKUP_STORAGE_KEY = "prestamos-control-backups-v1";
 const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const MAX_BACKUPS = 7;
 const FREE_CLIENT_LIMIT = 10;
+const INTEREST_MODES = {
+  monthly: { label: "Mensual", shortLabel: "mensual", days: null, rateFactor: 1 },
+  biweekly: { label: "Quincenal", shortLabel: "quincenal", days: 15, rateFactor: 1 / 2 },
+  weekly: { label: "Semanal", shortLabel: "semanal", days: 7, rateFactor: 7 / 30 },
+  daily: { label: "Diario", shortLabel: "diario", days: 1, rateFactor: 1 / 30 },
+};
 const PLAN_CATALOG = {
   free: {
     id: "free",
@@ -201,6 +207,10 @@ function bindEvents() {
   elements.forgotPasswordForm.addEventListener("submit", handleForgotPasswordSubmit);
   elements.passwordSuccessClose.addEventListener("click", () => elements.passwordSuccessDialog.close());
   elements.adminRefresh.addEventListener("click", refreshAdminPanel);
+  $("#clientLoanStartDate").addEventListener("change", () => updateSuggestedDueDate("clientLoan"));
+  $("#clientLoanInterestMode").addEventListener("change", () => updateSuggestedDueDate("clientLoan"));
+  $("#editLoanStartDate").addEventListener("change", () => updateSuggestedDueDate("editLoan"));
+  $("#editLoanInterestMode").addEventListener("change", () => updateSuggestedDueDate("editLoan"));
 
   $("#openClientView").addEventListener("click", () => {
     openClientChoiceDialog();
@@ -311,9 +321,25 @@ function normalizeState(raw) {
     user: raw.user || null,
     subscription: raw.subscription || createFreeSubscription(raw.user?.id || "local-user"),
     clients: Array.isArray(raw.clients) ? raw.clients : [],
-    loans: Array.isArray(raw.loans) ? raw.loans : [],
+    loans: normalizeLoans(raw.loans),
     payments: Array.isArray(raw.payments) ? raw.payments : [],
   };
+}
+
+function normalizeLoans(loans) {
+  return Array.isArray(loans)
+    ? loans.map((loan) => ({
+        ...loan,
+        amount: Number(loan.amount || 0),
+        remainingCapital: Number(loan.remainingCapital || loan.remaining_capital || 0),
+        monthlyRate: Number(loan.monthlyRate || loan.monthly_rate || 0),
+        interestMode: normalizeInterestMode(loan.interestMode || loan.interest_mode),
+      }))
+    : [];
+}
+
+function normalizeInterestMode(mode) {
+  return INTEREST_MODES[mode] ? mode : "monthly";
 }
 
 function saveState() {
@@ -519,15 +545,13 @@ async function createCloudClientAndLoan(client, loan) {
   const userId = saas.session.user.id;
   const { error: clientError } = await saas.client.from("clients").insert(clientToRow(client, userId));
   if (clientError) throw clientError;
-  const { error: loanError } = await saas.client.from("loans").insert(loanToRow(loan, userId));
-  if (loanError) throw loanError;
+  await insertCloudLoanRow(loan, userId);
 }
 
 async function createCloudLoan(loan) {
   if (!isCloudMode()) return;
   const userId = saas.session.user.id;
-  const { error } = await saas.client.from("loans").insert(loanToRow(loan, userId));
-  if (error) throw error;
+  await insertCloudLoanRow(loan, userId);
 }
 
 async function updateCloudClientAndLoan(client, loan) {
@@ -540,25 +564,46 @@ async function updateCloudClientAndLoan(client, loan) {
     .eq("user_id", userId);
   if (clientError) throw clientError;
   if (!loan) return;
-  const { error: loanError } = await saas.client
-    .from("loans")
-    .update(loanToRow(loan, userId))
-    .eq("id", loan.id)
-    .eq("user_id", userId);
-  if (loanError) throw loanError;
+  await updateCloudLoanRow(loan, userId);
 }
 
 async function createCloudPaymentAndUpdateLoan(payment, loan) {
   if (!isCloudMode()) return;
   const userId = saas.session.user.id;
-  const { error: loanError } = await saas.client
-    .from("loans")
-    .update(loanToRow(loan, userId))
-    .eq("id", loan.id)
-    .eq("user_id", userId);
-  if (loanError) throw loanError;
+  await updateCloudLoanRow(loan, userId);
   const { error: paymentError } = await saas.client.from("payments").insert(paymentToRow(payment, userId));
   if (paymentError) throw paymentError;
+}
+
+async function insertCloudLoanRow(loan, userId) {
+  let row = loanToRow(loan, userId);
+  let { error } = await saas.client.from("loans").insert(row);
+  if (isInterestModeColumnError(error)) {
+    row = withoutInterestMode(row);
+    const retry = await saas.client.from("loans").insert(row);
+    error = retry.error;
+  }
+  if (error) throw error;
+}
+
+async function updateCloudLoanRow(loan, userId) {
+  let row = loanToRow(loan, userId);
+  let { error } = await saas.client.from("loans").update(row).eq("id", loan.id).eq("user_id", userId);
+  if (isInterestModeColumnError(error)) {
+    row = withoutInterestMode(row);
+    const retry = await saas.client.from("loans").update(row).eq("id", loan.id).eq("user_id", userId);
+    error = retry.error;
+  }
+  if (error) throw error;
+}
+
+function withoutInterestMode(row) {
+  const { interest_mode, ...compatibleRow } = row;
+  return compatibleRow;
+}
+
+function isInterestModeColumnError(error) {
+  return Boolean(error && /interest_mode|schema cache/i.test(error.message || ""));
 }
 
 async function deleteCloudClient(clientId) {
@@ -657,6 +702,7 @@ function loanFromRow(row) {
     amount: Number(row.amount),
     remainingCapital: Number(row.remaining_capital),
     monthlyRate: Number(row.monthly_rate),
+    interestMode: normalizeInterestMode(row.interest_mode),
     startDate: row.start_date,
     nextDueDate: row.next_due_date,
     dueDay: Number(row.due_day),
@@ -702,6 +748,7 @@ function loanToRow(loan, userId) {
     amount: loan.amount,
     remaining_capital: loan.remainingCapital,
     monthly_rate: loan.monthlyRate,
+    interest_mode: normalizeInterestMode(loan.interestMode),
     start_date: loan.startDate,
     next_due_date: loan.nextDueDate,
     due_day: loan.dueDay,
@@ -743,7 +790,7 @@ function normalizeBackupSnapshot(snapshot) {
   const data = typeof snapshot === "string" ? JSON.parse(snapshot) : snapshot || {};
   return {
     clients: Array.isArray(data.clients) ? data.clients : [],
-    loans: Array.isArray(data.loans) ? data.loans : [],
+    loans: normalizeLoans(data.loans),
     payments: Array.isArray(data.payments) ? data.payments : [],
   };
 }
@@ -892,13 +939,24 @@ async function restoreCloudSnapshot(snapshot) {
     if (error) throw error;
   }
   if (snapshot.loans.length) {
-    const { error } = await saas.client.from("loans").insert(snapshot.loans.map((loan) => loanToRow(loan, userId)));
-    if (error) throw error;
+    await insertCloudLoanRows(snapshot.loans, userId);
   }
   if (snapshot.payments.length) {
     const { error } = await saas.client.from("payments").insert(snapshot.payments.map((payment) => paymentToRow(payment, userId)));
     if (error) throw error;
   }
+}
+
+async function insertCloudLoanRows(loans, userId) {
+  if (!loans.length) return;
+  let rows = loans.map((loan) => loanToRow(loan, userId));
+  let { error } = await saas.client.from("loans").insert(rows);
+  if (isInterestModeColumnError(error)) {
+    rows = rows.map(withoutInterestMode);
+    const retry = await saas.client.from("loans").insert(rows);
+    error = retry.error;
+  }
+  if (error) throw error;
 }
 
 async function initSaaS() {
@@ -1101,6 +1159,7 @@ async function handleClientSubmit(event) {
   const startDate = $("#clientLoanStartDate").value;
   const dueDate = $("#clientLoanDueDate").value;
   const rateValue = $("#clientLoanRate").value.trim();
+  const interestMode = normalizeInterestMode($("#clientLoanInterestMode").value);
   if (!name || amount <= 0 || !startDate || !dueDate) return;
   if (isExtension && !selectedClient) {
     window.alert("Selecciona el cliente que solicita la ampliacion.");
@@ -1144,6 +1203,7 @@ async function handleClientSubmit(event) {
     amount,
     remainingCapital: amount,
     monthlyRate: toNumber(rateValue),
+    interestMode,
     startDate,
     nextDueDate: dueDate,
     dueDay: getDayOfMonth(dueDate),
@@ -1188,6 +1248,7 @@ async function handleEditSubmit(event) {
   const startDate = $("#editLoanStartDate").value;
   const dueDate = $("#editLoanDueDate").value;
   const rateValue = $("#editLoanRate").value.trim();
+  const interestMode = normalizeInterestMode($("#editLoanInterestMode").value);
   const note = $("#editClientNote").value.trim();
   const phone = $("#editClientPhone").value.trim();
 
@@ -1216,6 +1277,7 @@ async function handleEditSubmit(event) {
       amount,
       remainingCapital: amount,
       monthlyRate: toNumber(rateValue),
+      interestMode,
       startDate,
       nextDueDate: dueDate,
       dueDay: getDayOfMonth(dueDate),
@@ -1238,6 +1300,7 @@ async function handleEditSubmit(event) {
     loan.amount = amount;
     loan.remainingCapital = Math.max(roundMoney(amount - alreadyPaidCapital), 0);
     loan.monthlyRate = toNumber(rateValue);
+    loan.interestMode = interestMode;
     loan.startDate = startDate;
     loan.nextDueDate = dueDate;
     loan.dueDay = getDayOfMonth(dueDate);
@@ -1276,7 +1339,7 @@ async function handlePaymentSubmit(event) {
   }
 
   loan.remainingCapital = roundMoney(loan.remainingCapital - capitalPaid);
-  loan.nextDueDate = addOneMonthKeepingDay(loan.nextDueDate, loan.dueDay);
+  loan.nextDueDate = getNextDueDateAfterPayment(loan);
 
   if (loan.remainingCapital <= 0) {
     loan.remainingCapital = 0;
@@ -1765,7 +1828,7 @@ function renderLoanAmount(loan) {
   return `
     <span class="amount-stack">
       <strong>${money(loan.amount)}</strong>
-      <small>Interes: ${roundMoney(loan.monthlyRate)}%</small>
+      <small>Interes: ${roundMoney(loan.monthlyRate)}% ${getInterestModeShortLabel(loan.interestMode)}</small>
     </span>
   `;
 }
@@ -2025,8 +2088,9 @@ function openEditDialog(clientId, loanId = null) {
   $("#editClientNote").value = client.note || loan?.note || "";
   $("#editLoanAmount").value = loan ? loan.amount : "";
   $("#editLoanRate").value = loan ? loan.monthlyRate : 10;
+  $("#editLoanInterestMode").value = normalizeInterestMode(loan?.interestMode);
   $("#editLoanStartDate").value = loan ? loan.startDate : todayISO();
-  $("#editLoanDueDate").value = loan ? loan.nextDueDate : addOneMonthKeepingDay(todayISO(), getDayOfMonth(todayISO()));
+  $("#editLoanDueDate").value = loan ? loan.nextDueDate : getSuggestedDueDate(todayISO(), $("#editLoanInterestMode").value);
   elements.editDialog.showModal();
 }
 
@@ -2052,6 +2116,8 @@ function openClientDialog(mode = "new") {
 
   elements.clientForm.reset();
   setDefaultDates();
+  $("#clientLoanInterestMode").value = "monthly";
+  updateSuggestedDueDate("clientLoan");
   elements.clientFormMode.value = isExtension ? "extension" : "new";
   elements.clientDialogEyebrow.textContent = isExtension ? "Ampliacion" : "Registro";
   elements.clientDialogTitle.textContent = isExtension ? "Ampliacion de prestamo" : "Nuevo cliente";
@@ -2101,7 +2167,7 @@ function openPaymentDialog(loanId) {
   $("#paymentCapital").value = "0";
   $("#paymentNote").value = "";
   elements.paymentTitle.textContent = client?.name || "Registrar pago";
-  elements.paymentSummary.textContent = `Cobro programado: ${formatDate(loan.nextDueDate)}. Interes esperado: ${money(interest)}. Capital pendiente: ${money(loan.remainingCapital)}.`;
+  elements.paymentSummary.textContent = `Cobro programado: ${formatDate(loan.nextDueDate)}. Modalidad: ${getInterestModeLabel(loan.interestMode)}. Interes esperado: ${money(interest)}. Capital pendiente: ${money(loan.remainingCapital)}.`;
   elements.paymentDialog.showModal();
 }
 
@@ -2476,13 +2542,69 @@ function resetData() {
 
 function setDefaultDates() {
   const today = todayISO();
-  const nextMonth = addOneMonthKeepingDay(today, getDayOfMonth(today));
+  const interestMode = normalizeInterestMode($("#clientLoanInterestMode")?.value);
   if ($("#clientLoanStartDate")) $("#clientLoanStartDate").value = today;
-  if ($("#clientLoanDueDate")) $("#clientLoanDueDate").value = nextMonth;
+  if ($("#clientLoanDueDate")) $("#clientLoanDueDate").value = getSuggestedDueDate(today, interestMode);
 }
 
 function expectedInterest(loan) {
-  return roundMoney(loan.remainingCapital * (loan.monthlyRate / 100));
+  return calculateInterestForMode(
+    loan.remainingCapital,
+    loan.monthlyRate,
+    normalizeInterestMode(loan.interestMode),
+    getInterestPeriodDays(loan)
+  );
+}
+
+function calculateInterestForMode(capital, monthlyRate, interestMode = "monthly", days = 1) {
+  const mode = normalizeInterestMode(interestMode);
+  const modeConfig = INTEREST_MODES[mode];
+  const periodDays = Math.max(Number(days) || 1, 1);
+  const factor = mode === "daily" ? modeConfig.rateFactor * periodDays : modeConfig.rateFactor;
+  return roundMoney(Number(capital || 0) * (Number(monthlyRate || 0) / 100) * factor);
+}
+
+function getInterestPeriodDays(loan) {
+  if (normalizeInterestMode(loan?.interestMode) !== "daily") return 1;
+  const latestPayment = state.payments
+    .filter((payment) => payment.loanId === loan.id && payment.scheduledDueDate)
+    .slice()
+    .sort((a, b) => new Date(a.scheduledDueDate) - new Date(b.scheduledDueDate))
+    .at(-1);
+  const periodStart = latestPayment?.scheduledDueDate || loan.startDate;
+  return Math.max(daysBetween(periodStart, loan.nextDueDate), 1);
+}
+
+function getSuggestedDueDate(startDate, interestMode) {
+  const mode = normalizeInterestMode(interestMode);
+  if (mode === "monthly") {
+    return addOneMonthKeepingDay(startDate, getDayOfMonth(startDate));
+  }
+  return addDays(startDate, INTEREST_MODES[mode].days);
+}
+
+function updateSuggestedDueDate(prefix) {
+  const startInput = $(`#${prefix}StartDate`);
+  const modeInput = $(`#${prefix}InterestMode`);
+  const dueInput = $(`#${prefix}DueDate`);
+  if (!startInput || !modeInput || !dueInput || !startInput.value) return;
+  dueInput.value = getSuggestedDueDate(startInput.value, modeInput.value);
+}
+
+function getNextDueDateAfterPayment(loan) {
+  const mode = normalizeInterestMode(loan.interestMode);
+  if (mode === "monthly") {
+    return addOneMonthKeepingDay(loan.nextDueDate, loan.dueDay);
+  }
+  return addDays(loan.nextDueDate, INTEREST_MODES[mode].days);
+}
+
+function getInterestModeLabel(mode) {
+  return INTEREST_MODES[normalizeInterestMode(mode)].label;
+}
+
+function getInterestModeShortLabel(mode) {
+  return INTEREST_MODES[normalizeInterestMode(mode)].shortLabel;
 }
 
 function isOverdue(loan) {
@@ -2536,6 +2658,12 @@ function addMonthsKeepingDay(dateString, preferredDay, monthOffset) {
   const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
   const day = Math.min(preferredDay, lastDay);
   return toISODate(new Date(target.getFullYear(), target.getMonth(), day));
+}
+
+function addDays(dateString, dayCount) {
+  const date = parseLocalDate(dateString);
+  date.setDate(date.getDate() + Number(dayCount || 0));
+  return toISODate(date);
 }
 
 function startOfDay(dateString) {
