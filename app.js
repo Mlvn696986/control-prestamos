@@ -41,6 +41,7 @@ let adminState = createEmptyAdminState();
 let activeClientTab = "all";
 let signupSuccessTimer = null;
 let pendingLoanDelete = null;
+let dashboardMessageTimers = [];
 const pendingCarousel = {
   today: 0,
   overdue: 0,
@@ -1484,6 +1485,7 @@ function renderDashboard() {
   renderDashboardLists(dashboard);
   renderDashboardAdvanced(dashboard);
   renderDashboardAlerts(dashboard);
+  initDashboardMessageRotators();
 }
 
 function buildDashboardData() {
@@ -1753,16 +1755,487 @@ function getDashboardKpiItems(dashboard) {
 
 function renderKpiCard({ title, value, note, tip }) {
   const tooltipText = tip || note;
+  const messages = getIndicatorMessages(title);
   return `
     <article class="summary-kpi-card">
       <span>${escapeHTML(title)} ${renderInfoDot(tooltipText)}</span>
       <strong>${escapeHTML(value)}</strong>
+      ${renderIndicatorMessage(messages, title)}
     </article>
   `;
 }
 
 function renderInfoDot(text) {
   return `<i class="info-dot" tabindex="0" data-tip="${escapeHTML(text)}">i</i>`;
+}
+
+const INDICATOR_MESSAGES = {
+  "Capital total": [
+    "😊 Buena base para seguir creciendo.",
+    "💰 Tu capital es el motor del negocio.",
+    "🚀 Cada sol bien usado abre oportunidades.",
+    "😉 Haz que tu dinero trabaje a tu favor.",
+    "✨ La constancia hace crecer el capital.",
+  ],
+  "Capital disponible": [
+    "💸 Capital listo para nuevos prestamos.",
+    "😊 Tener liquidez te da control.",
+    "🚀 Puede ser tu proximo crecimiento.",
+    "👏 Buen margen para decidir mejor.",
+    "😉 Liquidez sana, negocio mas flexible.",
+  ],
+  "Capital prestado": [
+    "🎉 Tu dinero ya esta trabajando.",
+    "💰 Capital colocado genera movimiento.",
+    "🚀 Cada prestamo es una oportunidad.",
+    "👏 Buen trabajo poniendo capital a producir.",
+    "😊 Ahora toca seguirlo de cerca.",
+  ],
+  "Capital pendiente": [
+    "💡 Este dinero debe volver a tus manos.",
+    "😉 Un buen seguimiento ayuda a recuperar.",
+    "📈 Recuperarlo aumenta tu capacidad.",
+    "💪 Controlarlo protege tu estabilidad.",
+    "😊 Cada retorno fortalece el negocio.",
+  ],
+  "Capital recuperado": [
+    "👏 Dinero que ya regreso a tu cartera.",
+    "💰 Puede convertirse en nuevos prestamos.",
+    "😊 Cada recuperacion fortalece tu base.",
+    "🚀 Lo recuperado impulsa crecimiento.",
+    "🔄 Recuperar y reinvertir mantiene movimiento.",
+  ],
+  "Ganancia real": [
+    "🎉 Esta ganancia ya esta en tus manos.",
+    "💰 Tus intereses ya dieron resultado.",
+    "😊 La utilidad real ya empezo a crecer.",
+    "📈 Cada interes cobrado suma ganancia.",
+    "👏 Ganar empieza cuando el interes se paga.",
+  ],
+  "Ganancia proyectada": [
+    "🚀 Potencial futuro de tu cartera.",
+    "💡 Aun hay utilidad por capturar.",
+    "😊 Buena cobranza la vuelve real.",
+    "📈 Te ayuda a mirar hacia adelante.",
+    "😉 No cobrado aun, pero con potencial.",
+  ],
+  "Total por cobrar": [
+    "💰 Dinero que todavia debe regresar.",
+    "👀 Tenerlo claro ordena tus cobros.",
+    "📌 Aqui esta una parte clave de la cartera.",
+    "😊 Recuperarlo mejora tu liquidez.",
+    "🚀 Cada cobro abre nuevas oportunidades.",
+  ],
+  "Cobros de hoy": [
+    "⏰ Hoy hay movimientos por atender.",
+    "😊 Buen dia para cobrar a tiempo.",
+    "📲 Revisa clientes y mantente activo.",
+    "👏 Cada cobro de hoy suma.",
+    "🚀 Convierte pendientes en dinero recuperado.",
+  ],
+  "Monto a cobrar hoy": [
+    "💸 Dinero que puedes recuperar hoy.",
+    "😊 Cobrar hoy mejora tu liquidez.",
+    "📈 Recuperarlo da margen para prestar.",
+    "👏 Hoy puede ser un gran dia de caja.",
+    "🚀 Cada sol recuperado fortalece capital.",
+  ],
+  "Prestamos activos": [
+    "📌 Prestamos que siguen en movimiento.",
+    "😊 Tu cartera activa esta trabajando.",
+    "💰 Cada prestamo activo produce oportunidad.",
+    "🚀 Buena gestion impulsa crecimiento.",
+    "👏 Seguimiento constante, mejores resultados.",
+  ],
+  "Prestamos vencidos": [
+    "⚠️ Necesitan seguimiento cercano.",
+    "👀 Recuperarlos protege tu capital.",
+    "📌 Detecta riesgos rapidamente.",
+    "💪 Menos vencidos, cartera mas fuerte.",
+    "🚨 Mientras menor, mas saludable.",
+  ],
+  "Monto vencido": [
+    "⚠️ Prioridad para recuperar.",
+    "👀 Cobrarlo rapido mejora tu flujo.",
+    "💡 Capital retrasado que debes vigilar.",
+    "📌 Mantenerlo bajo reduce riesgo.",
+    "💪 Recuperarlo da tranquilidad.",
+  ],
+  "Prestamos cerrados": [
+    "🎉 Operaciones que completaron su ciclo.",
+    "👏 Cada cierre es una meta alcanzada.",
+    "😊 Cerrar prestamos sana la cartera.",
+    "💰 Capital recuperado crea oportunidades.",
+    "🚀 Buenos cierres reflejan buena gestion.",
+  ],
+  "Clientes activos": [
+    "👥 Clientes con movimiento contigo.",
+    "😊 Son parte vital del negocio.",
+    "📈 Bien gestionados impulsan ingresos.",
+    "👏 Controlarlos mejora resultados.",
+    "💡 Seguimiento bueno fortalece relaciones.",
+  ],
+  "Ampliaciones activas": [
+    "🔄 Clientes que siguen confiando.",
+    "😊 Una ampliacion bien llevada suma.",
+    "💰 Mas capital trabajando.",
+    "👏 Reflejan continuidad en operaciones.",
+    "🚀 Bien gestionadas son oportunidad.",
+  ],
+  "Capital reinvertido": [
+    "🔄 Tu dinero vuelve a trabajar.",
+    "💰 Reinvertir acelera crecimiento.",
+    "🚀 Capital recuperado crea oportunidades.",
+    "😉 Recuperar y prestar mantiene ritmo.",
+    "📈 La reinversion puede potenciarte.",
+  ],
+  "Dinero nuevo aportado": [
+    "💪 Fortaleces tu negocio con mas capital.",
+    "🚀 Nuevo aporte, mas oportunidades.",
+    "💰 Mayor capacidad para prestar.",
+    "😊 Tu base financiera crece.",
+    "🌱 Cada aporte puede dar frutos.",
+  ],
+  "Ganancia del mes actual": [
+    "🎉 Esto ya va ganado este mes.",
+    "💰 Tus intereses estan dando resultado.",
+    "📈 Cada cobro aumenta la cifra.",
+    "😊 El mes ya esta produciendo.",
+    "🚀 Aun puedes subir este monto.",
+  ],
+  "Ganancia del mes anterior": [
+    "📊 Buen punto para comparar.",
+    "😉 Superarlo seria gran senal.",
+    "💰 Mira tu resultado anterior.",
+    "📈 Usalo como referencia.",
+    "🎯 Apunta a mejorar este mes.",
+  ],
+  "Ganancia esperada proximo mes": [
+    "🔮 Utilidad posible para el proximo mes.",
+    "💰 Hay intereses en camino.",
+    "🚀 Cobrar bien la vuelve real.",
+    "📈 Ingresos potenciales por venir.",
+    "😊 Mantente al dia para acercarte.",
+  ],
+  "Capital que regresara proximo mes": [
+    "🔄 Capital que podria volver pronto.",
+    "💰 Mas dinero disponible en camino.",
+    "🚀 Puede convertirse en nuevos prestamos.",
+    "😊 Planifica desde ahora.",
+    "📈 Recuperar capital aumenta capacidad.",
+  ],
+  "Total estimado proximo mes": [
+    "💰 Monto aproximado por recibir.",
+    "🚀 Nuevo mes con dinero por recuperar.",
+    "😊 Capital e intereses fortaleceran caja.",
+    "📊 Te ayuda a planificar.",
+    "🔮 Si cumplen, tendras mas liquidez.",
+  ],
+  "Cobrado este mes": [
+    "🎉 Buen trabajo, dinero ya ingresado.",
+    "💰 Cada cobro mejora tu flujo.",
+    "😊 Vas recuperando tu cartera.",
+    "📈 Cobrar a tiempo sube la cifra.",
+    "🚀 Buena cobranza mantiene salud.",
+  ],
+  "Prestado este mes": [
+    "💸 Capital puesto a trabajar.",
+    "🚀 Dinero saliendo a producir.",
+    "😊 Tu negocio sigue activo.",
+    "📈 Cada prestamo puede generar utilidad.",
+    "💰 Capital colocado trabaja por ti.",
+  ],
+  "Nuevos prestamos del periodo": [
+    "👏 Nuevas operaciones en este periodo.",
+    "🚀 Tu cartera sigue creciendo.",
+    "😊 Cada prestamo abre oportunidad.",
+    "📈 Buen movimiento puede mejorar resultados.",
+    "💰 El negocio mantiene actividad.",
+  ],
+  "Ampliaciones del periodo": [
+    "🔄 Clientes solicitando nuevos montos.",
+    "😊 Continuidad en tus operaciones.",
+    "💰 Mas capital con clientes actuales.",
+    "🚀 Bien gestionadas generan utilidad.",
+    "📈 Mantienen activa la cartera.",
+  ],
+  "Monto total en ampliaciones": [
+    "💰 Capital adicional entregado.",
+    "🔄 Tambien pone dinero a trabajar.",
+    "🚀 Puede subir ingresos futuros.",
+    "😊 Controlarlas cuida tu cartera.",
+    "📈 Aportan al crecimiento.",
+  ],
+  "Clientes atrasados": [
+    "⚠️ Necesitan seguimiento prioritario.",
+    "📲 Un recordatorio puede ayudar.",
+    "👀 Vigila el riesgo.",
+    "💪 Reducirlos fortalece la cartera.",
+    "🚨 Menos atrasos, mejor cobranza.",
+  ],
+  "Dias promedio de atraso": [
+    "⏳ Mide cuanto tardan en pagar.",
+    "⚠️ Si sube, refuerza seguimiento.",
+    "📲 Cobrar rapido baja el promedio.",
+    "👀 Bajo promedio, cartera sana.",
+    "💪 Intenta mantenerlo bajo.",
+  ],
+  "Capital en riesgo": [
+    "⚠️ Capital que requiere atencion.",
+    "👀 Dinero pendiente en vencidos.",
+    "💪 Recuperarlo es prioridad.",
+    "📲 Seguimiento reduce riesgo.",
+    "🚨 Menor monto, cartera mas sana.",
+  ],
+  "Interes pendiente": [
+    "💰 Ganancia que espera cobrarse.",
+    "📈 Puede convertirse en utilidad real.",
+    "😊 Buena cobranza ayuda.",
+    "🚀 Aun hay potencial.",
+    "💡 Pendiente no significa ganado.",
+  ],
+  "Promedio de prestamo": [
+    "📊 Tamano promedio de tus operaciones.",
+    "💰 Te muestra cuanto sueles prestar.",
+    "😊 Ayuda a distribuir capital.",
+    "📈 Vigilarlo controla riesgo.",
+    "💡 Evita concentrar demasiado.",
+  ],
+  "Promedio de interes cobrado": [
+    "💰 Interes promedio por operacion.",
+    "📊 Te ayuda a medir rendimiento.",
+    "😊 Cada interes suma ganancia.",
+    "📈 Un promedio sano mejora rentabilidad.",
+    "🚀 Buena cartera puede elevarlo.",
+  ],
+  "Distribucion por modalidad": [
+    "📊 Mira como repartes tus prestamos.",
+    "💡 Compara mensual, quincenal y mas.",
+    "😊 Detecta tu modalidad mas usada.",
+    "📈 Puede mejorar tu estrategia.",
+    "🔍 Observa que modalidad predomina.",
+  ],
+  "Flujo de caja": [
+    "💸 Muestra si entra mas de lo que sale.",
+    "📈 Flujo positivo fortalece liquidez.",
+    "⚠️ Si sale mucho, revisa disponible.",
+    "💰 Buen flujo permite prestar tranquilo.",
+    "🚀 Mantenerlo sano ayuda a crecer.",
+  ],
+  "Disponible despues de cobros previstos": [
+    "🔮 Capital posible tras proximos cobros.",
+    "💰 Pagos futuros aumentan capacidad.",
+    "🚀 Planifica nuevas oportunidades.",
+    "😊 Si cobran, tendras mas disponible.",
+    "📈 Anticipa tu liquidez futura.",
+  ],
+  "Rentabilidad sobre capital": [
+    "📈 Mide que tanto rinde tu capital.",
+    "💰 Mas intereses, mejor rentabilidad.",
+    "😊 Buen indicador para crecer con orden.",
+    "🚀 Una cartera sana mejora este valor.",
+    "🎯 Vigilarlo ayuda a decidir mejor.",
+  ],
+  "ROI mensual": [
+    "📊 Resultado mensual frente al capital.",
+    "💰 Te muestra eficiencia del mes.",
+    "🚀 ROI sano impulsa crecimiento.",
+    "😊 Buen dato para comparar meses.",
+    "🎯 Busca mejorarlo sin subir riesgo.",
+  ],
+  "Cliente mas rentable": [
+    "🏆 Cliente que mas ganancia genera.",
+    "💰 Buen historial puede valer mucho.",
+    "😊 Identifica tus mejores relaciones.",
+    "📈 Rentabilidad ayuda a priorizar.",
+    "👏 Cuida a quien paga bien.",
+  ],
+  "Cliente con mayor deuda": [
+    "👀 Cliente que requiere seguimiento.",
+    "💰 Mayor deuda merece control cercano.",
+    "📌 Ayuda a priorizar cobranza.",
+    "💪 Gestionarlo protege capital.",
+    "⚠️ Revisa siempre su estado.",
+  ],
+  "Cliente con mas ampliaciones": [
+    "🔄 Cliente con mas operaciones extra.",
+    "😊 Muestra continuidad contigo.",
+    "💰 Puede aportar mas rendimiento.",
+    "👀 Tambien requiere control cercano.",
+    "📈 Bien gestionado puede crecer.",
+  ],
+  "Clientes puntuales": [
+    "👏 Clientes que ayudan a la estabilidad.",
+    "😊 Pagar a tiempo fortalece confianza.",
+    "💰 Puntualidad mejora tu flujo.",
+    "📈 Buen historial vale mucho.",
+    "🏆 Clientes asi impulsan el negocio.",
+  ],
+  "Clientes con historial de atraso": [
+    "⚠️ Revisa antes de volver a prestar.",
+    "👀 Historial ayuda a medir riesgo.",
+    "📲 Seguimiento temprano puede servir.",
+    "💪 Controlarlos protege tu cartera.",
+    "📌 Buen dato para decidir.",
+  ],
+  "Porcentaje de morosidad": [
+    "⚠️ Mide que parte esta vencida.",
+    "👀 Menor morosidad, mejor salud.",
+    "📉 Bajarlo protege tu capital.",
+    "💪 Cobranza constante ayuda.",
+    "🚨 Vigila si empieza a subir.",
+  ],
+  "Tasa de recuperacion": [
+    "📈 Mide cuanto capital vuelve.",
+    "💰 Alta recuperacion mejora liquidez.",
+    "😊 Buen cobro fortalece este valor.",
+    "🚀 Recuperar rapido ayuda a crecer.",
+    "👏 Senal de cartera bien gestionada.",
+  ],
+  "Ganancia por modalidad": [
+    "📊 Compara que modalidad rinde mas.",
+    "💰 Detecta donde ganas mejor.",
+    "😊 Te ayuda a ajustar estrategia.",
+    "🔍 Observa patrones de interes.",
+    "📈 Buen dato para planificar.",
+  ],
+  "Proyeccion a 3 meses": [
+    "🔮 Vista corta de ganancias futuras.",
+    "💰 Ayuda a planificar proximos cobros.",
+    "📈 Tres meses dan una meta cercana.",
+    "😊 Buen horizonte para ordenar cartera.",
+    "🚀 Convierte proyeccion en cobro real.",
+  ],
+  "Proyeccion a 6 meses": [
+    "🔮 Mira medio ano hacia adelante.",
+    "📈 Ideal para planificar crecimiento.",
+    "💰 Intereses futuros en perspectiva.",
+    "😊 Ordena decisiones con anticipacion.",
+    "🚀 Buena gestion acerca esta cifra.",
+  ],
+  "Proyeccion a 12 meses": [
+    "🔮 Vision anual de utilidad.",
+    "📈 Te ayuda a pensar en grande.",
+    "💰 Intereses proyectados a largo plazo.",
+    "😊 Plan anual con mas claridad.",
+    "🎯 Buen dato para metas futuras.",
+  ],
+  "Meta mensual de ganancia": [
+    "🎯 Define una meta clara para el mes.",
+    "💰 Una meta ayuda a medir avance.",
+    "😊 Planificar mejora tus resultados.",
+    "📈 Buen objetivo ordena la cobranza.",
+    "🚀 Apunta alto, con control.",
+  ],
+  "Progreso hacia la meta": [
+    "📈 Mira cuanto llevas avanzado.",
+    "🎯 Cada cobro acerca la meta.",
+    "😊 El avance motiva a seguir.",
+    "💰 Intereses cobrados suman progreso.",
+    "🚀 Paso a paso se alcanza.",
+  ],
+  "Ranking de clientes": [
+    "🏆 Ubica clientes destacados.",
+    "😊 Buen historial merece atencion.",
+    "📊 Ranking ayuda a priorizar.",
+    "💰 Mejores clientes impulsan utilidad.",
+    "👏 Usa este dato para decidir.",
+  ],
+  "Nivel de riesgo del cliente": [
+    "⚠️ Ayuda a detectar cuidado especial.",
+    "👀 Riesgo controlado protege capital.",
+    "📌 Observa atrasos y saldos.",
+    "💪 Buen seguimiento reduce riesgo.",
+    "🚨 Alto riesgo pide accion.",
+  ],
+  "Crecimiento del capital": [
+    "📈 Mira si tu base va creciendo.",
+    "💰 Capital mayor abre oportunidades.",
+    "😊 Crecer con orden es clave.",
+    "🚀 Cada recuperacion puede impulsarlo.",
+    "🎯 Buen control mejora crecimiento.",
+  ],
+  "Crecimiento de la ganancia": [
+    "📈 Compara si ganas mas que antes.",
+    "💰 Ganancia creciente es buena senal.",
+    "😊 Cada interes suma al avance.",
+    "🚀 Buena cobranza impulsa utilidad.",
+    "🎯 Busca crecer sin descuidar riesgo.",
+  ],
+  "Comparativo capital vs interes": [
+    "📊 Separa deuda de utilidad.",
+    "💰 Capital e interes cuentan distinto.",
+    "😊 Te ayuda a leer mejor la cartera.",
+    "📈 Balance sano mejora decisiones.",
+    "🔍 Mira cuanto falta y cuanto ganas.",
+  ],
+};
+
+function getIndicatorMessages(title) {
+  return INDICATOR_MESSAGES[title] || [
+    "😊 Mantener este dato visible ayuda a decidir mejor.",
+    "📊 Revisa este indicador para entender tu cartera.",
+    "💰 Cada numero cuenta una parte del negocio.",
+    "🚀 Un buen control abre nuevas oportunidades.",
+    "🎯 Usa este dato para seguir mejorando.",
+  ];
+}
+
+function renderIndicatorMessage(messages, title) {
+  const safeMessages = messages.slice(0, 5);
+  const startIndex = Math.abs(hashText(title)) % safeMessages.length;
+  return `<small class="indicator-message" data-message-index="${startIndex}" data-messages="${escapeHTML(JSON.stringify(safeMessages))}">${escapeHTML(safeMessages[startIndex])}</small>`;
+}
+
+function initDashboardMessageRotators() {
+  clearDashboardMessageRotators();
+  const messageNodes = Array.from(document.querySelectorAll("#dashboardView .indicator-message"));
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  messageNodes.forEach((node, position) => {
+    let messages = [];
+    try {
+      messages = JSON.parse(node.dataset.messages || "[]");
+    } catch {
+      messages = [];
+    }
+    if (messages.length < 2) return;
+    let index = Number(node.dataset.messageIndex || 0);
+    const rotate = () => {
+      index = (index + 1) % messages.length;
+      if (reducedMotion) {
+        node.textContent = messages[index];
+        return;
+      }
+      node.classList.add("is-fading");
+      const fadeTimer = window.setTimeout(() => {
+        node.textContent = messages[index];
+        node.classList.remove("is-fading");
+      }, 260);
+      dashboardMessageTimers.push({ type: "timeout", id: fadeTimer });
+    };
+    const initialDelay = 450 + ((position * 419) % 2600);
+    const startTimer = window.setTimeout(() => {
+      rotate();
+      const intervalTimer = window.setInterval(rotate, 5000);
+      dashboardMessageTimers.push({ type: "interval", id: intervalTimer });
+    }, initialDelay);
+    dashboardMessageTimers.push({ type: "timeout", id: startTimer });
+  });
+}
+
+function clearDashboardMessageRotators() {
+  dashboardMessageTimers.forEach((timer) => {
+    if (timer.type === "interval") {
+      window.clearInterval(timer.id);
+    } else {
+      window.clearTimeout(timer.id);
+    }
+  });
+  dashboardMessageTimers = [];
+}
+
+function hashText(value) {
+  return String(value).split("").reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) | 0, 0);
 }
 
 function renderDashboardCollections(dashboard) {
@@ -1828,10 +2301,12 @@ function getDashboardManagementItems(dashboard) {
 }
 
 function renderCompactMetric({ title, value, tip }) {
+  const messages = getIndicatorMessages(title);
   return `
     <article class="summary-compact-card">
       <span>${escapeHTML(title)} ${renderInfoDot(tip)}</span>
       <strong>${escapeHTML(value)}</strong>
+      ${renderIndicatorMessage(messages, title)}
     </article>
   `;
 }

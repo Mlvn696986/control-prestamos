@@ -925,7 +925,7 @@ textarea:focus {
 }
 
 .summary-kpi-card {
-  min-height: 104px;
+  min-height: 132px;
   align-content: center;
 }
 
@@ -945,6 +945,25 @@ textarea:focus {
   font-size: clamp(1.35rem, 2.3vw, 2.05rem);
   line-height: 1.05;
   overflow-wrap: anywhere;
+}
+
+.indicator-message {
+  display: -webkit-box;
+  min-height: 2.7em;
+  margin-top: 2px;
+  color: #3f5f55;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  transition: opacity 0.32s ease;
+}
+
+.indicator-message.is-fading {
+  opacity: 0;
 }
 
 .info-dot {
@@ -1075,7 +1094,8 @@ textarea:focus {
 }
 
 .summary-compact-card {
-  min-height: 78px;
+  min-height: 112px;
+  align-content: center;
   box-shadow: none;
 }
 
@@ -1083,6 +1103,10 @@ textarea:focus {
   color: var(--ink);
   font-size: 1.08rem;
   overflow-wrap: anywhere;
+}
+
+.summary-compact-card .indicator-message {
+  font-size: 0.74rem;
 }
 
 .summary-charts-grid {
@@ -2432,6 +2456,10 @@ textarea:focus {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .indicator-message {
+    font-size: 0.72rem;
+  }
+
   .pending-item .status-pill,
   .pending-item button {
     justify-self: start;
@@ -2631,5 +2659,11 @@ textarea:focus {
 
   .icon-button {
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .indicator-message {
+    transition: none;
   }
 }
