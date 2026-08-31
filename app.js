@@ -142,7 +142,6 @@ const elements = {
   summaryClientQuery: $("#summaryClientQuery"),
   summaryCustomStart: $("#summaryCustomStart"),
   summaryCustomEnd: $("#summaryCustomEnd"),
-  summaryRefresh: $("#summaryRefresh"),
   summaryExport: $("#summaryExport"),
   summaryCriticalGrid: $("#summaryCriticalGrid"),
   summaryTodayList: $("#summaryTodayList"),
@@ -248,7 +247,6 @@ function bindEvents() {
     filter.addEventListener("input", renderDashboard);
     filter.addEventListener("change", renderDashboard);
   });
-  elements.summaryRefresh.addEventListener("click", renderDashboard);
   elements.summaryExport.addEventListener("click", exportDashboardSummary);
   $("#clientLoanStartDate").addEventListener("change", () => updateSuggestedDueDate("clientLoan"));
   $("#clientLoanInterestMode").addEventListener("change", () => updateSuggestedDueDate("clientLoan"));
