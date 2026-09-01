@@ -452,9 +452,12 @@
             <p id="capitalDialogEyebrow" class="eyebrow">Capital</p>
             <h3 id="capitalDialogTitle">Agregar capital</h3>
           </div>
-          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-          </button>
+          <div class="modal-heading-actions">
+            <button id="capitalHistoryButton" class="ghost-button capital-history-button" type="button">Historial de ingreso de capital</button>
+            <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+            </button>
+          </div>
         </div>
         <input id="capitalFormMode" type="hidden" value="deposit" />
         <label>
@@ -472,6 +475,22 @@
         <p id="capitalAvailableHint" class="capital-hint"></p>
         <button id="capitalSubmitButton" class="primary-button" type="submit">Guardar capital</button>
       </form>
+    </dialog>
+
+    <dialog id="capitalHistoryDialog" class="modal">
+      <section class="modal-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Historial</p>
+            <h3 id="capitalHistoryTitle">Historial de ingreso de capital</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <p id="capitalHistorySummary" class="history-summary"></p>
+        <div id="capitalHistoryList" class="history-list"></div>
+      </section>
     </dialog>
 
     <dialog id="clientChoiceDialog" class="modal">

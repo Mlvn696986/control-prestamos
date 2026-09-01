@@ -102,6 +102,11 @@ const elements = {
   capitalNote: $("#capitalNote"),
   capitalAvailableHint: $("#capitalAvailableHint"),
   capitalSubmitButton: $("#capitalSubmitButton"),
+  capitalHistoryButton: $("#capitalHistoryButton"),
+  capitalHistoryDialog: $("#capitalHistoryDialog"),
+  capitalHistoryTitle: $("#capitalHistoryTitle"),
+  capitalHistorySummary: $("#capitalHistorySummary"),
+  capitalHistoryList: $("#capitalHistoryList"),
   clientChoiceDialog: $("#clientChoiceDialog"),
   chooseNewClient: $("#chooseNewClient"),
   chooseLoanExtension: $("#chooseLoanExtension"),
@@ -229,6 +234,7 @@ function bindEvents() {
   elements.openAddCapitalButton.addEventListener("click", () => openCapitalDialog("deposit"));
   elements.openWithdrawCapitalButton.addEventListener("click", () => openCapitalDialog("withdrawal"));
   elements.capitalForm.addEventListener("submit", handleCapitalSubmit);
+  elements.capitalHistoryButton.addEventListener("click", () => openCapitalHistoryDialog(elements.capitalFormMode.value));
   elements.restoreBackupButton.addEventListener("click", restoreLatestBackup);
   elements.importButton.addEventListener("click", () => elements.importFile.click());
   elements.importFile.addEventListener("change", importData);
@@ -1613,6 +1619,7 @@ function openCapitalDialog(mode) {
   elements.capitalDate.value = todayISO();
   elements.capitalDialogEyebrow.textContent = isWithdrawal ? "Retiro" : "Capital";
   elements.capitalDialogTitle.textContent = isWithdrawal ? "Retirar capital" : "Agregar capital";
+  elements.capitalHistoryButton.textContent = isWithdrawal ? "Historial de retiro" : "Historial de ingreso de capital";
   elements.capitalSubmitButton.textContent = isWithdrawal ? "Retirar capital" : "Agregar capital";
   elements.capitalSubmitButton.classList.toggle("danger-button", isWithdrawal);
   elements.capitalSubmitButton.classList.toggle("primary-button", !isWithdrawal);
@@ -1621,6 +1628,41 @@ function openCapitalDialog(mode) {
     ? `Disponible actual para retirar: ${money(position.availableCapital)}. El retiro no afecta prestamos ni pagos registrados.`
     : `Registra aqui tu capital inicial o un aporte extra. Disponible actual: ${money(position.availableCapital)}.`;
   elements.capitalDialog.showModal();
+}
+
+function openCapitalHistoryDialog(type) {
+  const normalizedType = normalizeCapitalMovementType(type);
+  const isWithdrawal = normalizedType === "withdrawal";
+  const title = isWithdrawal ? "Historial de retiro" : "Historial de ingreso de capital";
+  const movements = (state.capitalMovements || [])
+    .filter((movement) => normalizeCapitalMovementType(movement.type) === normalizedType)
+    .slice()
+    .sort((a, b) => new Date(b.date) - new Date(a.date) || new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  const total = sum(movements, "amount");
+
+  elements.capitalHistoryTitle.textContent = title;
+  elements.capitalHistorySummary.textContent = movements.length
+    ? `${movements.length} movimiento(s). Total: ${money(total)}.`
+    : isWithdrawal
+    ? "Todavia no registraste retiros de capital."
+    : "Todavia no registraste ingresos de capital.";
+  elements.capitalHistoryList.innerHTML = movements.length
+    ? movements
+        .map(
+          (movement) => `
+            <article class="history-item ${isWithdrawal ? "withdrawal-history-item" : ""}">
+              <div>
+                <strong>${formatDate(movement.date)}</strong>
+                <span>${isWithdrawal ? "Retiro de capital" : "Ingreso de capital"}</span>
+                ${movement.note ? `<small>${escapeHTML(movement.note)}</small>` : ""}
+              </div>
+              <span class="status-pill ${isWithdrawal ? "withdrawal" : "ok"}">${money(movement.amount)}</span>
+            </article>
+          `
+        )
+        .join("")
+    : `<div class="empty-state compact-empty">${isWithdrawal ? "Sin retiros registrados." : "Sin ingresos registrados."}</div>`;
+  elements.capitalHistoryDialog.showModal();
 }
 
 async function handleCapitalSubmit(event) {

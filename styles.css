@@ -259,6 +259,13 @@ h3 {
   margin: 6px 0 16px;
 }
 
+.modal-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .panel > .section-heading:first-child,
 .modal-panel > .section-heading:first-child {
   margin-top: 0;
@@ -512,6 +519,14 @@ textarea:focus {
 .capital-action {
   min-width: 142px;
   min-height: 42px;
+  white-space: nowrap;
+}
+
+.capital-history-button {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.82rem;
+  font-weight: 900;
   white-space: nowrap;
 }
 
@@ -1558,6 +1573,11 @@ textarea:focus {
   background: var(--danger-soft);
 }
 
+.status-pill.withdrawal {
+  color: var(--withdraw);
+  background: rgba(217, 45, 32, 0.12);
+}
+
 .status-pill.muted {
   color: var(--muted);
   background: rgba(6, 24, 38, 0.08);
@@ -2048,6 +2068,10 @@ textarea:focus {
 
 .extension-item {
   background: rgba(0, 167, 111, 0.06);
+}
+
+.withdrawal-history-item {
+  border-top-color: var(--withdraw);
 }
 
 .compact-empty {
