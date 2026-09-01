@@ -42,11 +42,6 @@ let activeClientTab = "all";
 let signupSuccessTimer = null;
 let pendingLoanDelete = null;
 let dashboardMessageTimers = [];
-const pendingCarousel = {
-  today: 0,
-  overdue: 0,
-  soon: 0,
-};
 const saas = {
   client: null,
   session: null,
@@ -131,10 +126,6 @@ const elements = {
   requestedPlan: $("#requestedPlan"),
   planRequestSummary: $("#planRequestSummary"),
   planRequestMessage: $("#planRequestMessage"),
-  metricCapital: $("#metricCapital"),
-  metricInterest: $("#metricInterest"),
-  metricOverdue: $("#metricOverdue"),
-  metricRecovered: $("#metricRecovered"),
   summaryHeroMeta: $("#summaryHeroMeta"),
   summaryHealth: $("#summaryHealth"),
   summaryCustomStart: $("#summaryCustomStart"),
@@ -166,17 +157,6 @@ const elements = {
   summaryRecentExtensionList: $("#summaryRecentExtensionList"),
   summaryAdvancedGrid: $("#summaryAdvancedGrid"),
   summaryAlerts: $("#summaryAlerts"),
-  statusDonut: $("#statusDonut"),
-  statusLegend: $("#statusLegend"),
-  monthlyBars: $("#monthlyBars"),
-  riskBars: $("#riskBars"),
-  metricActiveClients: $("#metricActiveClients"),
-  metricDueThisMonth: $("#metricDueThisMonth"),
-  metricAverageRate: $("#metricAverageRate"),
-  metricInterestPaidMonth: $("#metricInterestPaidMonth"),
-  pendingToday: $("#pendingToday"),
-  pendingOverdue: $("#pendingOverdue"),
-  pendingSoon: $("#pendingSoon"),
   adminNav: $("#adminNav"),
   adminRefresh: $("#adminRefresh"),
   adminTotalUsers: $("#adminTotalUsers"),
@@ -277,13 +257,6 @@ function bindEvents() {
     const deleteButton = event.target.closest("[data-delete-client]");
     const planButton = event.target.closest("[data-request-plan]");
     const adminPlanButton = event.target.closest("[data-admin-plan]");
-    const pendingNavButton = event.target.closest("[data-pending-nav]");
-
-    if (pendingNavButton) {
-      movePendingCarousel(pendingNavButton.dataset.pendingNav, Number(pendingNavButton.dataset.direction));
-      return;
-    }
-
     if (editLoanButton) {
       openEditDialog(editLoanButton.dataset.editClient, editLoanButton.dataset.editLoan);
       return;
@@ -942,6 +915,8 @@ async function restoreLatestBackup() {
     );
     if (!confirmed) return;
 
+    await ensureAutomaticBackup(true);
+
     const snapshot = normalizeBackupSnapshot(backup.snapshot);
     if (isCloudMode()) {
       await restoreCloudSnapshot(snapshot);
@@ -966,6 +941,12 @@ async function restoreLatestBackup() {
 async function restoreCloudSnapshot(snapshot) {
   const userId = saas.session?.user?.id;
   if (!userId) return;
+
+  const rpcRestore = await saas.client.rpc("restore_user_snapshot", { snapshot });
+  if (!rpcRestore.error) return;
+  if (!/restore_user_snapshot|function|schema cache|not found/i.test(rpcRestore.error.message || "")) {
+    throw rpcRestore.error;
+  }
 
   const paymentsDelete = await saas.client.from("payments").delete().eq("user_id", userId);
   if (paymentsDelete.error) throw paymentsDelete.error;
@@ -1305,6 +1286,8 @@ async function handleEditSubmit(event) {
     if (!confirmed) return;
   }
 
+  await ensureAutomaticBackup();
+
   client.name = $("#editClientName").value.trim();
   client.phone = phone;
   client.note = note;
@@ -1349,8 +1332,6 @@ async function handleEditSubmit(event) {
     loan.closedAt = loan.status === "closed" ? loan.closedAt || new Date().toISOString() : null;
   }
 
-  await ensureAutomaticBackup();
-
   try {
     await updateCloudClientAndLoan(client, loan);
   } catch (error) {
@@ -1378,6 +1359,8 @@ async function handlePaymentSubmit(event) {
     return;
   }
 
+  await ensureAutomaticBackup();
+
   loan.remainingCapital = roundMoney(loan.remainingCapital - capitalPaid);
   loan.nextDueDate = getNextDueDateAfterPayment(loan);
 
@@ -1400,8 +1383,6 @@ async function handlePaymentSubmit(event) {
     note: $("#paymentNote").value.trim(),
     createdAt: new Date().toISOString(),
   };
-
-  await ensureAutomaticBackup();
 
   try {
     await createCloudPaymentAndUpdateLoan(payment, loan);
@@ -2999,192 +2980,6 @@ function excelSpacerRow() {
 
 function excelCellData(value, styleId = "Text", mergeAcross = 0) {
   return { value, styleId, mergeAcross };
-}
-
-function renderStatusChart(activeLoans) {
-  const segments = [
-    {
-      label: "Al dia",
-      color: "#00a76f",
-      value: activeLoans.filter((loan) => !isOverdue(loan) && daysBetween(todayISO(), loan.nextDueDate) > 5).length,
-    },
-    {
-      label: "Por cobrar",
-      color: "#ffb000",
-      value: activeLoans.filter((loan) => !isOverdue(loan) && daysBetween(todayISO(), loan.nextDueDate) <= 5).length,
-    },
-    {
-      label: "Vencidos",
-      color: "#061826",
-      value: activeLoans.filter(isOverdue).length,
-    },
-    {
-      label: "Cerrados",
-      color: "#ffb000",
-      value: state.loans.filter((loan) => loan.status === "closed").length,
-    },
-  ];
-  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
-
-  elements.statusDonut.innerHTML = `<div class="donut-center"><strong>${total}</strong><span>prestamos</span></div>`;
-  elements.statusDonut.style.background = total ? buildConicGradient(segments, total) : "rgba(0, 167, 111, 0.12)";
-  elements.statusLegend.innerHTML = segments
-    .map((segment) => {
-      const percent = total ? Math.round((segment.value / total) * 100) : 0;
-      return `
-        <div class="legend-item">
-          <i style="background:${segment.color}"></i>
-          <span>${segment.label}</span>
-          <strong>${segment.value} (${percent}%)</strong>
-        </div>
-      `;
-    })
-    .join("");
-}
-
-function renderMonthlyBars() {
-  const months = getLastMonthKeys(6);
-  const data = months.map((month) => {
-    const payments = state.payments.filter((payment) => getMonthKey(payment.date) === month.key);
-    return {
-      ...month,
-      interest: payments.reduce((sum, payment) => sum + payment.interestPaid, 0),
-      capital: payments.reduce((sum, payment) => sum + payment.capitalPaid, 0),
-    };
-  });
-  const max = Math.max(...data.map((item) => item.interest + item.capital), 1);
-
-  elements.monthlyBars.innerHTML = data
-    .map((item) => {
-      const interestHeight = Math.max((item.interest / max) * 100, item.interest ? 6 : 0);
-      const capitalHeight = Math.max((item.capital / max) * 100, item.capital ? 6 : 0);
-      return `
-        <div class="bar-item">
-          <div class="bar-track" title="${money(item.interest + item.capital)}">
-            <span class="bar-fill capital-fill" style="height:${capitalHeight}%"></span>
-            <span class="bar-fill interest-fill" style="height:${interestHeight}%"></span>
-          </div>
-          <strong>${item.label}</strong>
-          <span>${money(item.interest + item.capital)}</span>
-        </div>
-      `;
-    })
-    .join("");
-}
-
-function renderRiskBars(activeLoans) {
-  const buckets = [
-    {
-      label: "Vencido",
-      color: "#061826",
-      value: activeLoans.filter(isOverdue).reduce((sum, loan) => sum + loan.remainingCapital, 0),
-    },
-    {
-      label: "Prox. 7 dias",
-      color: "#ffb000",
-      value: activeLoans
-        .filter((loan) => !isOverdue(loan) && daysBetween(todayISO(), loan.nextDueDate) <= 7)
-        .reduce((sum, loan) => sum + loan.remainingCapital, 0),
-    },
-    {
-      label: "Despues",
-      color: "#00a76f",
-      value: activeLoans
-        .filter((loan) => !isOverdue(loan) && daysBetween(todayISO(), loan.nextDueDate) > 7)
-        .reduce((sum, loan) => sum + loan.remainingCapital, 0),
-    },
-  ];
-  const total = buckets.reduce((sum, bucket) => sum + bucket.value, 0) || 1;
-
-  elements.riskBars.innerHTML = buckets
-    .map((bucket) => {
-      const width = Math.max((bucket.value / total) * 100, bucket.value ? 5 : 0);
-      return `
-        <div class="risk-row">
-          <div>
-            <strong>${bucket.label}</strong>
-            <span>${money(bucket.value)}</span>
-          </div>
-          <div class="risk-track">
-            <span style="width:${width}%; background:${bucket.color}"></span>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-}
-
-function renderPendingCollections(activeLoans) {
-  const today = todayISO();
-  const overdue = activeLoans.filter(isOverdue).sort(sortLoansByDueDate);
-  const todayLoans = activeLoans.filter((loan) => loan.nextDueDate === today).sort(sortLoansByDueDate);
-  const soon = activeLoans
-    .filter((loan) => !isOverdue(loan) && loan.nextDueDate !== today && daysBetween(today, loan.nextDueDate) <= 7)
-    .sort(sortLoansByDueDate);
-
-  renderPendingList(elements.pendingToday, todayLoans, "No hay cobros para hoy.", { carousel: "today", label: "de hoy" });
-  renderPendingList(elements.pendingOverdue, overdue, "No hay cobros vencidos.", { carousel: "overdue", label: "vencidos" });
-  renderPendingList(elements.pendingSoon, soon, "No hay cobros en los proximos 7 dias.", { carousel: "soon", label: "proximos" });
-}
-
-function renderPendingList(container, loans, emptyMessage, options = {}) {
-  if (options.carousel && loans.length > 1) {
-    const carouselKey = options.carousel;
-    const currentIndex = normalizeCarouselIndex(carouselKey, loans.length);
-    const counter = `<p class="pending-counter">${currentIndex + 1} de ${loans.length} ${escapeHTML(options.label || "cobros")}</p>`;
-    container.innerHTML = `
-      <div class="pending-carousel">
-        <button class="pending-nav" type="button" data-pending-nav="${carouselKey}" data-direction="-1" aria-label="Ver cobro anterior">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-        <div class="pending-carousel-body">
-          ${renderPendingItem(loans[currentIndex], counter)}
-        </div>
-        <button class="pending-nav" type="button" data-pending-nav="${carouselKey}" data-direction="1" aria-label="Ver siguiente cobro">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-        </button>
-      </div>
-    `;
-  } else {
-    container.innerHTML = loans.map(renderPendingItem).join("");
-  }
-
-  renderEmpty(container, emptyMessage);
-}
-
-function renderPendingItem(loan, footer = "") {
-  const client = getClient(loan.clientId);
-  const status = getLoanStatus(loan);
-  return `
-    <article class="pending-item">
-      <div>
-        <strong>${escapeHTML(client?.name || "Cliente sin nombre")}</strong>
-        <span>${escapeHTML(client?.phone || "Sin telefono")}</span>
-      </div>
-      <div>
-        <span>Fecha: ${formatDate(loan.nextDueDate)}</span>
-        <strong>${money(expectedInterest(loan))}</strong>
-      </div>
-      <span class="status-pill ${status.className}">${status.label}</span>
-      <button class="primary-button small-button" type="button" data-pay-loan="${loan.id}">${icons.coin} Cobro</button>
-      ${footer}
-    </article>
-  `;
-}
-
-function normalizeCarouselIndex(key, total) {
-  if (!total) {
-    pendingCarousel[key] = 0;
-    return 0;
-  }
-  pendingCarousel[key] = ((pendingCarousel[key] || 0) % total + total) % total;
-  return pendingCarousel[key];
-}
-
-function movePendingCarousel(key, direction) {
-  pendingCarousel[key] = (pendingCarousel[key] || 0) + direction;
-  const activeLoans = state.loans.filter((loan) => loan.status === "active");
-  renderPendingCollections(activeLoans);
 }
 
 function renderClients() {

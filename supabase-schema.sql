@@ -113,6 +113,8 @@ drop policy if exists "profiles own select" on profiles;
 drop policy if exists "profiles own insert" on profiles;
 drop policy if exists "profiles own update" on profiles;
 drop policy if exists "subscriptions own data" on subscriptions;
+drop policy if exists "subscriptions own select" on subscriptions;
+drop policy if exists "subscriptions own insert" on subscriptions;
 drop policy if exists "clients own data" on clients;
 drop policy if exists "loans own data" on loans;
 drop policy if exists "payments own data" on payments;
@@ -144,10 +146,19 @@ on profiles for all
 using (public.is_admin())
 with check (public.is_admin());
 
-create policy "subscriptions own data"
-on subscriptions for all
+create policy "subscriptions own select"
+on subscriptions for select
 using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+;
+
+create policy "subscriptions own insert"
+on subscriptions for insert
+with check (
+  auth.uid() = user_id
+  and plan = 'free'
+  and status = 'active'
+  and client_limit = 10
+);
 
 create policy "subscriptions admin data"
 on subscriptions for all
@@ -203,6 +214,143 @@ create policy "user backups admin data"
 on user_backups for all
 using (public.is_admin())
 with check (public.is_admin());
+
+create or replace function public.restore_user_snapshot(snapshot jsonb)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  delete from payments where user_id = auth.uid();
+  delete from loans where user_id = auth.uid();
+  delete from clients where user_id = auth.uid();
+
+  insert into clients (id, user_id, name, phone, note, created_at)
+  select
+    item.id,
+    auth.uid(),
+    item.name,
+    coalesce(item.phone, ''),
+    coalesce(item.note, ''),
+    coalesce(item."createdAt", item.created_at, now())
+  from jsonb_to_recordset(coalesce(snapshot -> 'clients', '[]'::jsonb)) as item(
+    id uuid,
+    name text,
+    phone text,
+    note text,
+    "createdAt" timestamptz,
+    created_at timestamptz
+  );
+
+  insert into loans (
+    id,
+    user_id,
+    client_id,
+    amount,
+    remaining_capital,
+    monthly_rate,
+    interest_mode,
+    start_date,
+    next_due_date,
+    due_day,
+    note,
+    status,
+    created_at,
+    closed_at
+  )
+  select
+    item.id,
+    auth.uid(),
+    coalesce(item."clientId", item.client_id),
+    coalesce(item.amount, 0),
+    coalesce(item."remainingCapital", item.remaining_capital, 0),
+    coalesce(item."monthlyRate", item.monthly_rate, 0),
+    coalesce(item."interestMode", item.interest_mode, 'monthly'),
+    coalesce(item."startDate", item.start_date),
+    coalesce(item."nextDueDate", item.next_due_date),
+    coalesce(item."dueDay", item.due_day, extract(day from coalesce(item."nextDueDate", item.next_due_date))::integer),
+    coalesce(item.note, ''),
+    coalesce(item.status, 'active'),
+    coalesce(item."createdAt", item.created_at, now()),
+    coalesce(item."closedAt", item.closed_at)
+  from jsonb_to_recordset(coalesce(snapshot -> 'loans', '[]'::jsonb)) as item(
+    id uuid,
+    "clientId" uuid,
+    client_id uuid,
+    amount numeric,
+    "remainingCapital" numeric,
+    remaining_capital numeric,
+    "monthlyRate" numeric,
+    monthly_rate numeric,
+    "interestMode" text,
+    interest_mode text,
+    "startDate" date,
+    start_date date,
+    "nextDueDate" date,
+    next_due_date date,
+    "dueDay" integer,
+    due_day integer,
+    note text,
+    status text,
+    "createdAt" timestamptz,
+    created_at timestamptz,
+    "closedAt" timestamptz,
+    closed_at timestamptz
+  );
+
+  insert into payments (
+    id,
+    user_id,
+    loan_id,
+    client_id,
+    date,
+    scheduled_due_date,
+    interest_paid,
+    capital_paid,
+    remaining_capital_after,
+    next_due_date_after,
+    note,
+    created_at
+  )
+  select
+    item.id,
+    auth.uid(),
+    coalesce(item."loanId", item.loan_id),
+    coalesce(item."clientId", item.client_id),
+    item.date,
+    coalesce(item."scheduledDueDate", item.scheduled_due_date),
+    coalesce(item."interestPaid", item.interest_paid, 0),
+    coalesce(item."capitalPaid", item.capital_paid, 0),
+    coalesce(item."remainingCapitalAfter", item.remaining_capital_after, 0),
+    coalesce(item."nextDueDateAfter", item.next_due_date_after),
+    coalesce(item.note, ''),
+    coalesce(item."createdAt", item.created_at, now())
+  from jsonb_to_recordset(coalesce(snapshot -> 'payments', '[]'::jsonb)) as item(
+    id uuid,
+    "loanId" uuid,
+    loan_id uuid,
+    "clientId" uuid,
+    client_id uuid,
+    date date,
+    "scheduledDueDate" date,
+    scheduled_due_date date,
+    "interestPaid" numeric,
+    interest_paid numeric,
+    "capitalPaid" numeric,
+    capital_paid numeric,
+    "remainingCapitalAfter" numeric,
+    remaining_capital_after numeric,
+    "nextDueDateAfter" date,
+    next_due_date_after date,
+    note text,
+    "createdAt" timestamptz,
+    created_at timestamptz
+  );
+end;
+$$;
+
+grant execute on function public.restore_user_snapshot(jsonb) to authenticated;
 
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on profiles to authenticated;

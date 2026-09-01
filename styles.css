@@ -1412,101 +1412,6 @@ textarea:focus {
   color: var(--ink);
 }
 
-.bar-chart {
-  min-height: 190px;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(48px, 1fr));
-  gap: 12px;
-  align-items: end;
-}
-
-.bar-item {
-  min-width: 0;
-  display: grid;
-  gap: 8px;
-  justify-items: center;
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 800;
-}
-
-.bar-track {
-  width: 100%;
-  max-width: 52px;
-  height: 150px;
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: flex-start;
-  overflow: hidden;
-  background: rgba(6, 24, 38, 0.08);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-.bar-fill {
-  display: block;
-  width: 100%;
-  min-height: 0;
-}
-
-.interest-fill {
-  background: var(--accent);
-}
-
-.capital-fill {
-  background: var(--gold);
-}
-
-.bar-item strong {
-  color: var(--ink);
-  text-transform: capitalize;
-}
-
-.bar-item span {
-  max-width: 86px;
-  text-align: center;
-  overflow-wrap: anywhere;
-}
-
-.risk-stack {
-  display: grid;
-  gap: 16px;
-}
-
-.risk-row {
-  display: grid;
-  gap: 8px;
-}
-
-.risk-row > div:first-child {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.risk-row strong {
-  font-size: 0.9rem;
-}
-
-.risk-row span {
-  color: var(--muted);
-  font-weight: 800;
-}
-
-.risk-track {
-  height: 14px;
-  overflow: hidden;
-  background: rgba(6, 24, 38, 0.08);
-  border-radius: 999px;
-}
-
-.risk-track span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-}
-
 .insight-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1639,133 +1544,6 @@ textarea:focus {
 .pending-groups h4 {
   margin: 0 0 10px;
   font-size: 1.08rem;
-}
-
-.pending-list {
-  display: grid;
-  gap: 8px;
-}
-
-.pending-carousel {
-  position: relative;
-  padding: 0 30px;
-}
-
-.pending-carousel-body {
-  min-width: 0;
-}
-
-.pending-nav {
-  position: absolute;
-  top: 50%;
-  z-index: 2;
-  width: 28px;
-  min-height: 44px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  color: #ffffff;
-  background: var(--accent);
-  border: 0;
-  border-radius: 999px;
-  box-shadow: 0 10px 22px rgba(0, 167, 111, 0.2);
-  cursor: pointer;
-  transform: translateY(-50%);
-}
-
-.pending-nav[data-direction="-1"] {
-  left: 0;
-}
-
-.pending-nav[data-direction="1"] {
-  right: 0;
-}
-
-.pending-nav:hover {
-  background: var(--ink);
-}
-
-.pending-nav svg {
-  width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 3.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.pending-counter {
-  margin: 2px 0 0;
-  padding-top: 8px;
-  color: var(--muted);
-  font-size: 0.92rem;
-  font-weight: 800;
-  text-align: center;
-  border-top: 1px solid rgba(0, 167, 111, 0.16);
-}
-
-.pending-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(110px, auto);
-  gap: 10px;
-  align-items: center;
-  padding: 12px;
-  background: rgba(0, 167, 111, 0.06);
-  border: 1px solid rgba(0, 167, 111, 0.16);
-  border-top: 4px solid var(--accent);
-  border-radius: 8px;
-}
-
-.pending-carousel .pending-item {
-  min-height: 144px;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-
-.pending-carousel .pending-item > div:nth-child(2) {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.pending-carousel .pending-item > div:nth-child(2) > span {
-  margin-top: 0;
-}
-
-.pending-carousel .pending-item > div:nth-child(2) > strong {
-  white-space: nowrap;
-}
-
-.pending-carousel .pending-item .status-pill {
-  justify-self: start;
-}
-
-.pending-carousel .pending-item button {
-  justify-self: stretch;
-  width: 100%;
-}
-
-.pending-item > div {
-  min-width: 0;
-}
-
-.pending-item div strong,
-.pending-item div span {
-  display: block;
-}
-
-.pending-item div > span {
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 0.92rem;
-  font-weight: 700;
-}
-
-.pending-item .status-pill,
-.pending-item button {
-  justify-self: end;
 }
 
 .loan-grid {
@@ -2466,19 +2244,6 @@ textarea:focus {
     justify-content: stretch;
   }
 
-  .pending-carousel {
-    padding: 0 24px;
-  }
-
-  .pending-nav {
-    width: 24px;
-    min-height: 40px;
-  }
-
-  .pending-item {
-    grid-template-columns: 1fr;
-  }
-
   .summary-hero,
   .summary-advanced summary {
     align-items: stretch;
@@ -2514,11 +2279,6 @@ textarea:focus {
 
   .indicator-message {
     font-size: 0.72rem;
-  }
-
-  .pending-item .status-pill,
-  .pending-item button {
-    justify-self: start;
   }
 
   .topbar-actions > *,
@@ -2566,14 +2326,6 @@ textarea:focus {
   .donut-layout {
     grid-template-columns: 1fr;
     justify-items: center;
-  }
-
-  .bar-chart {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .bar-track {
-    height: 120px;
   }
 
   .client-table-wrap {
