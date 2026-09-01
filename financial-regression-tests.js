@@ -3,6 +3,7 @@ const vm = require("vm");
 
 const appCode = fs.readFileSync("app.js", "utf8");
 const sqlCode = fs.readFileSync("supabase-financial-integrity.sql", "utf8");
+const stylesCode = fs.readFileSync("styles.css", "utf8");
 
 function createElement() {
   return {
@@ -371,5 +372,10 @@ assertFileIncludes(sqlCode, "loans_client_same_user", "RLS/FK: falta relacion qu
 assertFileIncludes(sqlCode, "payments_loan_same_user", "RLS/FK: falta relacion que obliga pago y prestamo del mismo usuario.");
 assertFileIncludes(sqlCode, "loans_status_matches_remaining_capital", "Invariantes: falta constraint de estado vs capital pendiente.");
 assertFileIncludes(sqlCode, "payments_has_amount", "Invariantes: falta constraint que impide pagos en cero.");
+assertCondition(!appCode.includes(".slice(0, 4)"), "Cobranza rapida no debe cortar registros; debe usar scroll interno.");
+assertFileIncludes(appCode, "summary-scroll-count", "Cobranza rapida debe mostrar contador cuando hay mas de 3 registros.");
+assertFileIncludes(appCode, "scrollQuickCollection", "Cobranza rapida debe permitir avanzar con chevron.");
+assertFileIncludes(stylesCode, "overscroll-behavior: contain", "Cobranza rapida debe mantener scroll interno independiente.");
+assertFileIncludes(stylesCode, "scrollbar-width: thin", "Cobranza rapida debe usar scrollbar discreta.");
 
 console.log("Pruebas financieras OK");

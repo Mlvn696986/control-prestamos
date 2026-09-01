@@ -42,6 +42,7 @@ let activeClientTab = "all";
 let signupSuccessTimer = null;
 let pendingLoanDelete = null;
 let dashboardMessageTimers = [];
+let quickCollectionScrollPositions = new Map();
 let clientSubmissionInProgress = false;
 let editSubmissionInProgress = false;
 let paymentSubmissionInProgress = false;
@@ -276,6 +277,9 @@ function bindEvents() {
   $$(".nav-tab").forEach((tab) => {
     tab.addEventListener("click", () => setView(tab.dataset.view));
   });
+  window.addEventListener("resize", () => {
+    scheduleQuickCollectionSetup();
+  });
 
   document.addEventListener("click", (event) => {
     const editButton = event.target.closest("[data-edit-client]");
@@ -286,6 +290,12 @@ function bindEvents() {
     const deleteButton = event.target.closest("[data-delete-client]");
     const planButton = event.target.closest("[data-request-plan]");
     const adminPlanButton = event.target.closest("[data-admin-plan]");
+    const quickScrollButton = event.target.closest("[data-scroll-quick-list]");
+    if (quickScrollButton) {
+      scrollQuickCollection(quickScrollButton.dataset.scrollQuickList);
+      return;
+    }
+
     if (editLoanButton) {
       openEditDialog(editLoanButton.dataset.editClient, editLoanButton.dataset.editLoan);
       return;
@@ -2733,8 +2743,18 @@ function renderDashboardCollections(dashboard) {
 }
 
 function renderLoanMiniList(container, loans, emptyMessage) {
-  container.innerHTML = loans
-    .slice(0, 4)
+  const key = container.id || createId("quick-list");
+  const previousScroller = container.querySelector(".summary-mini-scroll");
+  if (previousScroller) quickCollectionScrollPositions.set(key, previousScroller.scrollTop);
+
+  if (!loans.length) {
+    container.classList.remove("is-scrollable");
+    container.innerHTML = "";
+    renderEmpty(container, emptyMessage);
+    return;
+  }
+
+  const items = loans
     .map((loan) => {
       const client = getClient(loan.clientId);
       const status = getLoanStatus(loan);
@@ -2751,7 +2771,98 @@ function renderLoanMiniList(container, loans, emptyMessage) {
       `;
     })
     .join("");
-  renderEmpty(container, emptyMessage);
+  const hasOverflow = loans.length > 3;
+
+  container.classList.toggle("is-scrollable", hasOverflow);
+  container.dataset.quickListKey = key;
+  container.innerHTML = `
+    <div class="summary-mini-scroll" tabindex="0" role="list" aria-label="Listado de cobros">
+      ${items}
+    </div>
+    ${
+      hasOverflow
+        ? `
+          <div class="summary-mini-scroll-footer">
+            <button class="summary-scroll-next" type="button" data-scroll-quick-list="${escapeHTML(key)}" aria-label="Ver siguiente cobro">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+            <span class="summary-scroll-count" aria-live="polite">3 de ${loans.length}</span>
+          </div>
+        `
+        : ""
+    }
+  `;
+  scheduleQuickCollectionSetup();
+}
+
+function scheduleQuickCollectionSetup() {
+  const schedule = window.requestAnimationFrame || ((callback) => window.setTimeout(callback, 0));
+  schedule(() => {
+    document.querySelectorAll(".summary-mini-list").forEach(setupQuickCollectionList);
+  });
+}
+
+function setupQuickCollectionList(container) {
+  const scroller = container.querySelector(".summary-mini-scroll");
+  if (!scroller) return;
+
+  const items = Array.from(scroller.querySelectorAll(".summary-mini-item"));
+  const isScrollable = items.length > 3;
+  if (!isScrollable) {
+    scroller.style.maxHeight = "";
+    return;
+  }
+
+  const scrollerStyles = window.getComputedStyle ? window.getComputedStyle(scroller) : null;
+  const gap = Number.parseFloat(scrollerStyles?.rowGap || scrollerStyles?.gap || "8") || 8;
+  const visibleHeight = items.slice(0, 3).reduce((total, item) => total + item.offsetHeight, 0) + gap * 2;
+  scroller.style.maxHeight = `${Math.ceil(visibleHeight)}px`;
+
+  const key = container.dataset.quickListKey || container.id;
+  const savedScrollTop = quickCollectionScrollPositions.get(key);
+  if (Number.isFinite(savedScrollTop)) {
+    scroller.scrollTop = Math.min(savedScrollTop, Math.max(scroller.scrollHeight - scroller.clientHeight, 0));
+  }
+
+  updateQuickCollectionControls(container);
+  if (!scroller.dataset.scrollBound) {
+    scroller.dataset.scrollBound = "true";
+    scroller.addEventListener("scroll", () => {
+      quickCollectionScrollPositions.set(key, scroller.scrollTop);
+      updateQuickCollectionControls(container);
+    });
+  }
+}
+
+function updateQuickCollectionControls(container) {
+  const scroller = container.querySelector(".summary-mini-scroll");
+  const counter = container.querySelector(".summary-scroll-count");
+  const nextButton = container.querySelector(".summary-scroll-next");
+  if (!scroller || !counter || !nextButton) return;
+
+  const total = scroller.querySelectorAll(".summary-mini-item").length;
+  const maxScroll = Math.max(scroller.scrollHeight - scroller.clientHeight, 0);
+  const progress = maxScroll ? scroller.scrollTop / maxScroll : 0;
+  const visibleEnd = Math.min(total, Math.max(3, Math.round(3 + progress * (total - 3))));
+  const isAtEnd = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2;
+
+  counter.textContent = `${visibleEnd} de ${total}`;
+  nextButton.classList.toggle("is-disabled", isAtEnd);
+  nextButton.disabled = isAtEnd;
+}
+
+function scrollQuickCollection(key) {
+  const container = Array.from(document.querySelectorAll(".summary-mini-list")).find((item) => item.dataset.quickListKey === key);
+  const scroller = container?.querySelector(".summary-mini-scroll");
+  const firstItem = scroller?.querySelector(".summary-mini-item");
+  if (!scroller || !firstItem) return;
+
+  const scrollerStyles = window.getComputedStyle ? window.getComputedStyle(scroller) : null;
+  const gap = Number.parseFloat(scrollerStyles?.rowGap || scrollerStyles?.gap || "8") || 8;
+  scroller.scrollBy({
+    top: firstItem.offsetHeight + gap,
+    behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? "auto" : "smooth",
+  });
 }
 
 function renderDashboardManagement(dashboard) {
