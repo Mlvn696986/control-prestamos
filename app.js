@@ -42,6 +42,12 @@ let activeClientTab = "all";
 let signupSuccessTimer = null;
 let pendingLoanDelete = null;
 let dashboardMessageTimers = [];
+let clientSubmissionInProgress = false;
+let editSubmissionInProgress = false;
+let paymentSubmissionInProgress = false;
+let loanDeletionInProgress = false;
+let clientDeletionInProgress = false;
+let capitalSubmissionInProgress = false;
 const saas = {
   client: null,
   session: null,
@@ -81,9 +87,21 @@ const elements = {
   viewTitle: $("#viewTitle"),
   exportButton: $("#exportData"),
   exportExcelButton: $("#exportExcel"),
+  openAddCapitalButton: $("#openAddCapital"),
+  openWithdrawCapitalButton: $("#openWithdrawCapital"),
   restoreBackupButton: $("#restoreBackup"),
   importButton: $("#importData"),
   importFile: $("#importFile"),
+  capitalDialog: $("#capitalDialog"),
+  capitalForm: $("#capitalForm"),
+  capitalFormMode: $("#capitalFormMode"),
+  capitalDialogEyebrow: $("#capitalDialogEyebrow"),
+  capitalDialogTitle: $("#capitalDialogTitle"),
+  capitalAmount: $("#capitalAmount"),
+  capitalDate: $("#capitalDate"),
+  capitalNote: $("#capitalNote"),
+  capitalAvailableHint: $("#capitalAvailableHint"),
+  capitalSubmitButton: $("#capitalSubmitButton"),
   clientChoiceDialog: $("#clientChoiceDialog"),
   chooseNewClient: $("#chooseNewClient"),
   chooseLoanExtension: $("#chooseLoanExtension"),
@@ -178,7 +196,9 @@ const icons = {
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>',
 };
 
-init();
+if (!window.__PRESTAMOS_TEST__) {
+  init();
+}
 
 async function init() {
   setDefaultDates();
@@ -206,6 +226,9 @@ function bindEvents() {
   });
   elements.exportButton.addEventListener("click", exportData);
   elements.exportExcelButton.addEventListener("click", exportClientsExcel);
+  elements.openAddCapitalButton.addEventListener("click", () => openCapitalDialog("deposit"));
+  elements.openWithdrawCapitalButton.addEventListener("click", () => openCapitalDialog("withdrawal"));
+  elements.capitalForm.addEventListener("submit", handleCapitalSubmit);
   elements.restoreBackupButton.addEventListener("click", restoreLatestBackup);
   elements.importButton.addEventListener("click", () => elements.importFile.click());
   elements.importFile.addEventListener("change", importData);
@@ -314,6 +337,7 @@ function createEmptyState() {
     clients: [],
     loans: [],
     payments: [],
+    capitalMovements: [],
   };
 }
 
@@ -336,7 +360,25 @@ function normalizeState(raw) {
     clients: Array.isArray(raw.clients) ? raw.clients : [],
     loans: normalizeLoans(raw.loans),
     payments: Array.isArray(raw.payments) ? raw.payments : [],
+    capitalMovements: normalizeCapitalMovements(raw.capitalMovements || raw.capital_movements),
   };
+}
+
+function normalizeCapitalMovements(movements) {
+  return Array.isArray(movements)
+    ? movements.map((movement) => ({
+        ...movement,
+        type: normalizeCapitalMovementType(movement.type),
+        amount: Number(movement.amount || 0),
+        date: movement.date || todayISO(),
+        note: movement.note || "",
+        createdAt: movement.createdAt || movement.created_at || new Date().toISOString(),
+      }))
+    : [];
+}
+
+function normalizeCapitalMovementType(type) {
+  return type === "withdrawal" ? "withdrawal" : "deposit";
 }
 
 function normalizeLoans(loans) {
@@ -349,6 +391,82 @@ function normalizeLoans(loans) {
         interestMode: normalizeInterestMode(loan.interestMode || loan.interest_mode),
       }))
     : [];
+}
+
+function validateStateIntegrity(candidate) {
+  const errors = [];
+  const clients = Array.isArray(candidate?.clients) ? candidate.clients : [];
+  const loans = Array.isArray(candidate?.loans) ? candidate.loans : [];
+  const payments = Array.isArray(candidate?.payments) ? candidate.payments : [];
+  const capitalMovements = Array.isArray(candidate?.capitalMovements) ? candidate.capitalMovements : [];
+  const clientIds = new Set();
+  const loanIds = new Set();
+  const paymentIds = new Set();
+  const capitalMovementIds = new Set();
+
+  clients.forEach((client, index) => {
+    if (!client?.id) errors.push(`Cliente #${index + 1} sin ID.`);
+    if (client?.id && clientIds.has(client.id)) errors.push(`Cliente duplicado: ${client.id}.`);
+    if (client?.id) clientIds.add(client.id);
+    if (!String(client?.name || "").trim()) errors.push(`Cliente #${index + 1} sin nombre.`);
+  });
+
+  loans.forEach((loan, index) => {
+    if (!loan?.id) errors.push(`Prestamo #${index + 1} sin ID.`);
+    if (loan?.id && loanIds.has(loan.id)) errors.push(`Prestamo duplicado: ${loan.id}.`);
+    if (loan?.id) loanIds.add(loan.id);
+    if (!clientIds.has(loan?.clientId)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} sin cliente valido.`);
+    if (!isPositiveMoney(loan?.amount)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con monto invalido.`);
+    if (!isNonNegativeMoney(loan?.remainingCapital)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con capital pendiente invalido.`);
+    if (Number(loan?.remainingCapital || 0) > Number(loan?.amount || 0)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con capital pendiente mayor al monto.`);
+    if (!isNonNegativeMoney(loan?.monthlyRate)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con tasa invalida.`);
+    if (!INTEREST_MODES[normalizeInterestMode(loan?.interestMode)]) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con modalidad invalida.`);
+    if (!isBusinessDate(loan?.startDate)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con fecha prestada invalida.`);
+    if (!isBusinessDate(loan?.nextDueDate)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con fecha de cobro invalida.`);
+    if (isBusinessDate(loan?.startDate) && isBusinessDate(loan?.nextDueDate) && startOfDay(loan.nextDueDate) < startOfDay(loan.startDate)) {
+      errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con fecha de cobro antes de fecha prestada.`);
+    }
+    if (!Number.isInteger(Number(loan?.dueDay)) || Number(loan?.dueDay) < 1 || Number(loan?.dueDay) > 31) {
+      errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con dia de cobro invalido.`);
+    }
+    if (!["active", "closed"].includes(loan?.status)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con estado invalido.`);
+    if (loan?.status === "closed" && Number(loan?.remainingCapital || 0) !== 0) {
+      errors.push(`Prestamo ${loan?.id || `#${index + 1}`} cerrado con capital pendiente.`);
+    }
+    if (loan?.status === "active" && Number(loan?.remainingCapital || 0) <= 0) {
+      errors.push(`Prestamo ${loan?.id || `#${index + 1}`} activo sin capital pendiente.`);
+    }
+  });
+
+  payments.forEach((payment, index) => {
+    const loan = loans.find((item) => item.id === payment?.loanId);
+    if (!payment?.id) errors.push(`Pago #${index + 1} sin ID.`);
+    if (payment?.id && paymentIds.has(payment.id)) errors.push(`Pago duplicado: ${payment.id}.`);
+    if (payment?.id) paymentIds.add(payment.id);
+    if (!loanIds.has(payment?.loanId)) errors.push(`Pago ${payment?.id || `#${index + 1}`} sin prestamo valido.`);
+    if (!clientIds.has(payment?.clientId)) errors.push(`Pago ${payment?.id || `#${index + 1}`} sin cliente valido.`);
+    if (loan && payment?.clientId !== loan.clientId) errors.push(`Pago ${payment?.id || `#${index + 1}`} no pertenece al cliente del prestamo.`);
+    if (!isBusinessDate(payment?.date)) errors.push(`Pago ${payment?.id || `#${index + 1}`} con fecha invalida.`);
+    if (!isNonNegativeMoney(payment?.interestPaid)) errors.push(`Pago ${payment?.id || `#${index + 1}`} con interes invalido.`);
+    if (!isNonNegativeMoney(payment?.capitalPaid)) errors.push(`Pago ${payment?.id || `#${index + 1}`} con capital invalido.`);
+    if (Number(payment?.interestPaid || 0) === 0 && Number(payment?.capitalPaid || 0) === 0) {
+      errors.push(`Pago ${payment?.id || `#${index + 1}`} sin monto cobrado.`);
+    }
+    if (payment?.remainingCapitalAfter !== undefined && !isNonNegativeMoney(payment.remainingCapitalAfter)) {
+      errors.push(`Pago ${payment?.id || `#${index + 1}`} con saldo posterior invalido.`);
+    }
+  });
+
+  capitalMovements.forEach((movement, index) => {
+    if (!movement?.id) errors.push(`Movimiento de capital #${index + 1} sin ID.`);
+    if (movement?.id && capitalMovementIds.has(movement.id)) errors.push(`Movimiento de capital duplicado: ${movement.id}.`);
+    if (movement?.id) capitalMovementIds.add(movement.id);
+    if (!["deposit", "withdrawal"].includes(movement?.type)) errors.push(`Movimiento de capital ${movement?.id || `#${index + 1}`} con tipo invalido.`);
+    if (!isPositiveMoney(movement?.amount)) errors.push(`Movimiento de capital ${movement?.id || `#${index + 1}`} con monto invalido.`);
+    if (!isBusinessDate(movement?.date)) errors.push(`Movimiento de capital ${movement?.id || `#${index + 1}`} con fecha invalida.`);
+  });
+
+  return errors;
 }
 
 function normalizeInterestMode(mode) {
@@ -502,12 +620,15 @@ async function loadCloudState() {
     return loadCloudState();
   }
 
+  const capitalMovementsResult = await loadCloudCapitalMovements(userId);
+
   state = {
     user: profileFromRow(profileResult.data, saas.session.user.email),
     subscription: subscriptionFromRow(subscriptionResult.data || createFreeSubscription(userId)),
     clients: (clientsResult.data || []).map(clientFromRow),
     loans: (loansResult.data || []).map(loanFromRow),
     payments: (paymentsResult.data || []).map(paymentFromRow),
+    capitalMovements: (capitalMovementsResult.data || []).map(capitalMovementFromRow),
   };
 
   if (state.user?.isAdmin) {
@@ -517,6 +638,20 @@ async function loadCloudState() {
   }
 
   await ensureAutomaticBackup();
+}
+
+async function loadCloudCapitalMovements(userId) {
+  const result = await saas.client
+    .from("capital_movements")
+    .select("*")
+    .eq("user_id", userId)
+    .order("date", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (isCapitalMovementsTableError(result.error)) {
+    return { data: [] };
+  }
+  if (result.error) throw result.error;
+  return result;
 }
 
 async function loadAdminState() {
@@ -580,12 +715,28 @@ async function updateCloudClientAndLoan(client, loan) {
   await updateCloudLoanRow(loan, userId);
 }
 
-async function createCloudPaymentAndUpdateLoan(payment, loan) {
+async function createCloudPaymentAndUpdateLoan(payment) {
+  if (!isCloudMode()) return;
+  const { data, error } = await saas.client.rpc("register_payment", {
+    p_payment_id: payment.id,
+    p_loan_id: payment.loanId,
+    p_client_id: payment.clientId,
+    p_date: payment.date,
+    p_scheduled_due_date: payment.scheduledDueDate,
+    p_interest_paid: payment.interestPaid,
+    p_capital_paid: payment.capitalPaid,
+    p_note: payment.note,
+    p_created_at: payment.createdAt,
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function createCloudCapitalMovement(movement) {
   if (!isCloudMode()) return;
   const userId = saas.session.user.id;
-  await updateCloudLoanRow(loan, userId);
-  const { error: paymentError } = await saas.client.from("payments").insert(paymentToRow(payment, userId));
-  if (paymentError) throw paymentError;
+  const { error } = await saas.client.from("capital_movements").insert(capitalMovementToRow(movement, userId));
+  if (error) throw error;
 }
 
 async function insertCloudLoanRow(loan, userId) {
@@ -619,16 +770,13 @@ function isInterestModeColumnError(error) {
   return Boolean(error && /interest_mode|schema cache/i.test(error.message || ""));
 }
 
+function isCapitalMovementsTableError(error) {
+  return Boolean(error && /capital_movements|schema cache|relation .* does not exist/i.test(error.message || ""));
+}
+
 async function deleteCloudClient(clientId) {
   if (!isCloudMode()) return;
   const userId = saas.session.user.id;
-
-  const paymentsDelete = await saas.client.from("payments").delete().eq("user_id", userId).eq("client_id", clientId);
-  if (paymentsDelete.error) throw paymentsDelete.error;
-
-  const loansDelete = await saas.client.from("loans").delete().eq("user_id", userId).eq("client_id", clientId);
-  if (loansDelete.error) throw loansDelete.error;
-
   const clientDelete = await saas.client.from("clients").delete().eq("user_id", userId).eq("id", clientId);
   if (clientDelete.error) throw clientDelete.error;
 }
@@ -636,15 +784,6 @@ async function deleteCloudClient(clientId) {
 async function deleteCloudLoanExtension(clientId, loanId) {
   if (!isCloudMode()) return;
   const userId = saas.session.user.id;
-
-  const paymentsDelete = await saas.client
-    .from("payments")
-    .delete()
-    .eq("user_id", userId)
-    .eq("client_id", clientId)
-    .eq("loan_id", loanId);
-  if (paymentsDelete.error) throw paymentsDelete.error;
-
   const loanDelete = await saas.client
     .from("loans")
     .delete()
@@ -742,6 +881,17 @@ function paymentFromRow(row) {
   };
 }
 
+function capitalMovementFromRow(row) {
+  return {
+    id: row.id,
+    type: normalizeCapitalMovementType(row.type),
+    amount: Number(row.amount),
+    date: row.date,
+    note: row.note || "",
+    createdAt: row.created_at,
+  };
+}
+
 function clientToRow(client, userId) {
   return {
     id: client.id,
@@ -789,6 +939,18 @@ function paymentToRow(payment, userId) {
   };
 }
 
+function capitalMovementToRow(movement, userId) {
+  return {
+    id: movement.id,
+    user_id: userId,
+    type: normalizeCapitalMovementType(movement.type),
+    amount: movement.amount,
+    date: movement.date,
+    note: movement.note,
+    created_at: movement.createdAt,
+  };
+}
+
 function createBackupSnapshot() {
   return {
     version: 1,
@@ -796,6 +958,7 @@ function createBackupSnapshot() {
     clients: state.clients,
     loans: state.loans,
     payments: state.payments,
+    capitalMovements: state.capitalMovements || [],
   };
 }
 
@@ -805,11 +968,12 @@ function normalizeBackupSnapshot(snapshot) {
     clients: Array.isArray(data.clients) ? data.clients : [],
     loans: normalizeLoans(data.loans),
     payments: Array.isArray(data.payments) ? data.payments : [],
+    capitalMovements: normalizeCapitalMovements(data.capitalMovements || data.capital_movements),
   };
 }
 
 async function ensureAutomaticBackup(force = false) {
-  if (!state.user && !state.clients.length && !state.loans.length && !state.payments.length) return;
+  if (!state.user && !state.clients.length && !state.loans.length && !state.payments.length && !(state.capitalMovements || []).length) return;
 
   try {
     if (isCloudMode()) {
@@ -920,18 +1084,20 @@ async function restoreLatestBackup() {
     const snapshot = normalizeBackupSnapshot(backup.snapshot);
     if (isCloudMode()) {
       await restoreCloudSnapshot(snapshot);
+      await restoreCloudCapitalMovements(snapshot.capitalMovements);
     }
 
     state.clients = snapshot.clients;
     state.loans = snapshot.loans;
     state.payments = snapshot.payments;
+    state.capitalMovements = snapshot.capitalMovements;
     saveState();
     render();
     window.alert("Copia restaurada correctamente.");
   } catch (error) {
     const message = error.message || "";
-    if (/user_backups|schema cache|relation/i.test(message)) {
-      window.alert("Para restaurar copias automaticas en Supabase, primero ejecuta el SQL actualizado que crea la tabla user_backups.");
+    if (/user_backups|restore_user_snapshot|schema cache|relation|function/i.test(message)) {
+      window.alert("Para restaurar copias automaticas en Supabase, primero ejecuta el SQL actualizado que crea las funciones seguras de respaldo.");
       return;
     }
     window.alert(message || "No se pudo restaurar la copia automatica.");
@@ -939,33 +1105,20 @@ async function restoreLatestBackup() {
 }
 
 async function restoreCloudSnapshot(snapshot) {
-  const userId = saas.session?.user?.id;
-  if (!userId) return;
-
   const rpcRestore = await saas.client.rpc("restore_user_snapshot", { snapshot });
   if (!rpcRestore.error) return;
-  if (!/restore_user_snapshot|function|schema cache|not found/i.test(rpcRestore.error.message || "")) {
-    throw rpcRestore.error;
-  }
+  throw rpcRestore.error;
+}
 
-  const paymentsDelete = await saas.client.from("payments").delete().eq("user_id", userId);
-  if (paymentsDelete.error) throw paymentsDelete.error;
-  const loansDelete = await saas.client.from("loans").delete().eq("user_id", userId);
-  if (loansDelete.error) throw loansDelete.error;
-  const clientsDelete = await saas.client.from("clients").delete().eq("user_id", userId);
-  if (clientsDelete.error) throw clientsDelete.error;
-
-  if (snapshot.clients.length) {
-    const { error } = await saas.client.from("clients").insert(snapshot.clients.map((client) => clientToRow(client, userId)));
-    if (error) throw error;
-  }
-  if (snapshot.loans.length) {
-    await insertCloudLoanRows(snapshot.loans, userId);
-  }
-  if (snapshot.payments.length) {
-    const { error } = await saas.client.from("payments").insert(snapshot.payments.map((payment) => paymentToRow(payment, userId)));
-    if (error) throw error;
-  }
+async function restoreCloudCapitalMovements(movements) {
+  if (!isCloudMode()) return;
+  const userId = saas.session?.user?.id;
+  if (!userId) return;
+  const deleteResult = await saas.client.from("capital_movements").delete().eq("user_id", userId);
+  if (deleteResult.error) throw deleteResult.error;
+  if (!movements.length) return;
+  const { error } = await saas.client.from("capital_movements").insert(movements.map((movement) => capitalMovementToRow(movement, userId)));
+  if (error) throw error;
 }
 
 async function insertCloudLoanRows(loans, userId) {
@@ -1171,6 +1324,8 @@ function showAuthRedirectMessage() {
 
 async function handleClientSubmit(event) {
   event.preventDefault();
+  if (clientSubmissionInProgress) return;
+
   const formMode = elements.clientFormMode.value;
   const isExtension = formMode === "extension";
   const selectedClient = isExtension ? getClient(elements.clientNameSelect.value) : null;
@@ -1180,14 +1335,19 @@ async function handleClientSubmit(event) {
   const startDate = $("#clientLoanStartDate").value;
   const dueDate = $("#clientLoanDueDate").value;
   const rateValue = $("#clientLoanRate").value.trim();
+  const monthlyRate = toNumber(rateValue);
   const interestMode = normalizeInterestMode($("#clientLoanInterestMode").value);
-  if (!name || amount <= 0 || !startDate || !dueDate) return;
+  if (!name || !isPositiveMoney(amount) || !startDate || !dueDate) return;
   if (isExtension && !selectedClient) {
     window.alert("Selecciona el cliente que solicita la ampliacion.");
     return;
   }
   if (!rateValue) {
     window.alert("Ingresa el interes mensual antes de guardar.");
+    return;
+  }
+  if (!isNonNegativeMoney(monthlyRate)) {
+    window.alert("El interes mensual no puede ser negativo.");
     return;
   }
   if (startOfDay(dueDate) < startOfDay(startDate)) {
@@ -1223,7 +1383,7 @@ async function handleClientSubmit(event) {
     clientId,
     amount,
     remainingCapital: amount,
-    monthlyRate: toNumber(rateValue),
+    monthlyRate,
     interestMode,
     startDate,
     nextDueDate: dueDate,
@@ -1234,9 +1394,13 @@ async function handleClientSubmit(event) {
     closedAt: null,
   };
 
-  await ensureAutomaticBackup();
+  const submitButton = event.submitter || elements.clientForm.querySelector("button[type='submit']");
+  clientSubmissionInProgress = true;
+  if (submitButton) submitButton.disabled = true;
 
   try {
+    await ensureAutomaticBackup();
+
     if (isExtension) {
       await createCloudLoan(loan);
     } else {
@@ -1244,7 +1408,11 @@ async function handleClientSubmit(event) {
     }
   } catch (error) {
     window.alert(error.message || "No se pudo guardar la informacion en la nube.");
+    await reloadAfterCloudError();
     return;
+  } finally {
+    clientSubmissionInProgress = false;
+    if (submitButton) submitButton.disabled = false;
   }
 
   if (client) {
@@ -1262,6 +1430,8 @@ async function handleClientSubmit(event) {
 
 async function handleEditSubmit(event) {
   event.preventDefault();
+  if (editSubmissionInProgress) return;
+
   const client = getClient($("#editClientId").value);
   if (!client) return;
 
@@ -1269,12 +1439,21 @@ async function handleEditSubmit(event) {
   const startDate = $("#editLoanStartDate").value;
   const dueDate = $("#editLoanDueDate").value;
   const rateValue = $("#editLoanRate").value.trim();
+  const monthlyRate = toNumber(rateValue);
   const interestMode = normalizeInterestMode($("#editLoanInterestMode").value);
   const note = $("#editClientNote").value.trim();
   const phone = $("#editClientPhone").value.trim();
 
   if (!rateValue) {
     window.alert("Ingresa el interes mensual antes de guardar.");
+    return;
+  }
+  if (!isNonNegativeMoney(amount)) {
+    window.alert("El capital prestado no puede ser negativo.");
+    return;
+  }
+  if (!isNonNegativeMoney(monthlyRate)) {
+    window.alert("El interes mensual no puede ser negativo.");
     return;
   }
   if (startOfDay(dueDate) < startOfDay(startDate)) {
@@ -1286,7 +1465,14 @@ async function handleEditSubmit(event) {
     if (!confirmed) return;
   }
 
+  const submitButton = event.submitter || elements.editForm.querySelector("button[type='submit']");
+  editSubmissionInProgress = true;
+  if (submitButton) submitButton.disabled = true;
+
   await ensureAutomaticBackup();
+
+  const previousClient = { ...client };
+  const previousLoans = state.loans.map((loanItem) => ({ ...loanItem }));
 
   client.name = $("#editClientName").value.trim();
   client.phone = phone;
@@ -1299,7 +1485,7 @@ async function handleEditSubmit(event) {
       clientId: client.id,
       amount,
       remainingCapital: amount,
-      monthlyRate: toNumber(rateValue),
+      monthlyRate,
       interestMode,
       startDate,
       nextDueDate: dueDate,
@@ -1322,7 +1508,7 @@ async function handleEditSubmit(event) {
     }
     loan.amount = amount;
     loan.remainingCapital = Math.max(roundMoney(amount - alreadyPaidCapital), 0);
-    loan.monthlyRate = toNumber(rateValue);
+    loan.monthlyRate = monthlyRate;
     loan.interestMode = interestMode;
     loan.startDate = startDate;
     loan.nextDueDate = dueDate;
@@ -1335,9 +1521,14 @@ async function handleEditSubmit(event) {
   try {
     await updateCloudClientAndLoan(client, loan);
   } catch (error) {
+    Object.assign(client, previousClient);
+    state.loans = previousLoans;
     window.alert(error.message || "No se pudieron guardar los cambios en la nube.");
     await reloadAfterCloudError();
     return;
+  } finally {
+    editSubmissionInProgress = false;
+    if (submitButton) submitButton.disabled = false;
   }
 
   elements.editDialog.close();
@@ -1347,57 +1538,180 @@ async function handleEditSubmit(event) {
 
 async function handlePaymentSubmit(event) {
   event.preventDefault();
+  if (paymentSubmissionInProgress) return;
+
   const loan = getLoan($("#paymentLoanId").value);
   if (!loan || loan.status !== "active") return;
 
   const paymentDate = $("#paymentDate").value;
   const scheduledDueDate = loan.nextDueDate;
   const interestPaid = toNumber($("#paymentInterest").value);
-  const capitalPaid = Math.min(toNumber($("#paymentCapital").value), loan.remainingCapital);
+  const capitalPaid = toNumber($("#paymentCapital").value);
   if (!$("#paymentInterest").value.trim()) {
     window.alert("Ingresa el interes pagado antes de registrar el cobro.");
     return;
   }
-
-  await ensureAutomaticBackup();
-
-  loan.remainingCapital = roundMoney(loan.remainingCapital - capitalPaid);
-  loan.nextDueDate = getNextDueDateAfterPayment(loan);
-
-  if (loan.remainingCapital <= 0) {
-    loan.remainingCapital = 0;
-    loan.status = "closed";
-    loan.closedAt = new Date().toISOString();
+  if (!paymentDate) {
+    window.alert("Selecciona la fecha de pago.");
+    return;
+  }
+  if (!isNonNegativeMoney(interestPaid) || !isNonNegativeMoney(capitalPaid)) {
+    window.alert("Los montos del cobro no pueden ser negativos.");
+    return;
+  }
+  if (capitalPaid > Number(loan.remainingCapital || 0)) {
+    window.alert("El capital pagado no puede ser mayor que el capital pendiente.");
+    return;
+  }
+  if (interestPaid === 0 && capitalPaid === 0) {
+    window.alert("Registra interes o capital pagado para guardar el cobro.");
+    return;
   }
 
-  const payment = {
-    id: createId("payment"),
-    loanId: loan.id,
-    clientId: loan.clientId,
-    date: paymentDate,
+  const submitButton = event.submitter || elements.paymentForm.querySelector("button[type='submit']");
+  paymentSubmissionInProgress = true;
+  if (submitButton) submitButton.disabled = true;
+
+  const { payment, updatedLoan } = buildPaymentTransactionPreview(loan, {
+    paymentDate,
     scheduledDueDate,
     interestPaid,
     capitalPaid,
-    remainingCapitalAfter: loan.remainingCapital,
-    nextDueDateAfter: loan.status === "active" ? loan.nextDueDate : null,
     note: $("#paymentNote").value.trim(),
-    createdAt: new Date().toISOString(),
-  };
+  });
 
   try {
-    await createCloudPaymentAndUpdateLoan(payment, loan);
+    await ensureAutomaticBackup();
+
+    if (isCloudMode()) {
+      const result = await createCloudPaymentAndUpdateLoan(payment);
+      if (result?.loan) Object.assign(loan, loanFromRow(result.loan));
+      state.payments.push(result?.payment ? paymentFromRow(result.payment) : payment);
+    } else {
+      Object.assign(loan, updatedLoan);
+      state.payments.push(payment);
+    }
   } catch (error) {
     window.alert(error.message || "No se pudo registrar el cobro en la nube.");
     await reloadAfterCloudError();
     return;
+  } finally {
+    paymentSubmissionInProgress = false;
+    if (submitButton) submitButton.disabled = false;
   }
-
-  state.payments.push(payment);
 
   event.target.reset();
   elements.paymentDialog.close();
   saveState();
   render();
+}
+
+function openCapitalDialog(mode) {
+  const isWithdrawal = mode === "withdrawal";
+  elements.capitalForm.reset();
+  elements.capitalFormMode.value = isWithdrawal ? "withdrawal" : "deposit";
+  elements.capitalDate.value = todayISO();
+  elements.capitalDialogEyebrow.textContent = isWithdrawal ? "Retiro" : "Capital";
+  elements.capitalDialogTitle.textContent = isWithdrawal ? "Retirar capital" : "Agregar capital";
+  elements.capitalSubmitButton.textContent = isWithdrawal ? "Retirar capital" : "Agregar capital";
+  elements.capitalSubmitButton.classList.toggle("danger-button", isWithdrawal);
+  elements.capitalSubmitButton.classList.toggle("primary-button", !isWithdrawal);
+  const position = buildCapitalPositionAtDate(todayISO());
+  elements.capitalAvailableHint.textContent = isWithdrawal
+    ? `Disponible actual para retirar: ${money(position.availableCapital)}. El retiro no afecta prestamos ni pagos registrados.`
+    : `Registra aqui tu capital inicial o un aporte extra. Disponible actual: ${money(position.availableCapital)}.`;
+  elements.capitalDialog.showModal();
+}
+
+async function handleCapitalSubmit(event) {
+  event.preventDefault();
+  if (capitalSubmissionInProgress) return;
+
+  const type = normalizeCapitalMovementType(elements.capitalFormMode.value);
+  const amount = toNumber(elements.capitalAmount.value);
+  const date = elements.capitalDate.value;
+  const note = elements.capitalNote.value.trim();
+  if (!isPositiveMoney(amount)) {
+    window.alert("Ingresa un monto de capital mayor a cero.");
+    return;
+  }
+  if (!isBusinessDate(date)) {
+    window.alert("Selecciona una fecha valida para el movimiento de capital.");
+    return;
+  }
+
+  if (type === "withdrawal") {
+    const position = buildCapitalPositionAtDate(date);
+    if (amount > position.availableCapital) {
+      window.alert(`No puedes retirar ${money(amount)} porque solo hay ${money(position.availableCapital)} disponible en esa fecha.`);
+      return;
+    }
+    const confirmed = window.confirm(`Se retirara ${money(amount)} del capital disponible. Esta accion no modificara prestamos ni pagos. Deseas continuar?`);
+    if (!confirmed) return;
+  }
+
+  const movement = {
+    id: createId("capital"),
+    type,
+    amount,
+    date,
+    note,
+    createdAt: new Date().toISOString(),
+  };
+  const submitButton = event.submitter || elements.capitalSubmitButton;
+  capitalSubmissionInProgress = true;
+  if (submitButton) submitButton.disabled = true;
+
+  try {
+    await ensureAutomaticBackup();
+    if (isCloudMode()) {
+      await createCloudCapitalMovement(movement);
+    }
+    state.capitalMovements = state.capitalMovements || [];
+    state.capitalMovements.push(movement);
+  } catch (error) {
+    const message = error.message || "";
+    if (isCapitalMovementsTableError(error)) {
+      window.alert("Para usar agregar y retirar capital en Supabase, primero ejecuta el SQL actualizado que crea la tabla capital_movements.");
+    } else {
+      window.alert(message || "No se pudo guardar el movimiento de capital.");
+    }
+    await reloadAfterCloudError();
+    return;
+  } finally {
+    capitalSubmissionInProgress = false;
+    if (submitButton) submitButton.disabled = false;
+  }
+
+  elements.capitalDialog.close();
+  saveState();
+  render();
+}
+
+function buildPaymentTransactionPreview(loan, paymentData) {
+  const remainingCapitalAfter = roundMoney(Number(loan.remainingCapital || 0) - Number(paymentData.capitalPaid || 0));
+  const nextDueDateAfter = getNextDueDateAfterPayment(loan);
+  const updatedLoan = {
+    ...loan,
+    remainingCapital: remainingCapitalAfter,
+    nextDueDate: nextDueDateAfter,
+    status: remainingCapitalAfter <= 0 ? "closed" : "active",
+    closedAt: remainingCapitalAfter <= 0 ? paymentData.paymentDate : null,
+  };
+  const payment = {
+    id: createId("payment"),
+    loanId: loan.id,
+    clientId: loan.clientId,
+    date: paymentData.paymentDate,
+    scheduledDueDate: paymentData.scheduledDueDate || loan.nextDueDate,
+    interestPaid: Number(paymentData.interestPaid || 0),
+    capitalPaid: Number(paymentData.capitalPaid || 0),
+    remainingCapitalAfter: updatedLoan.remainingCapital,
+    nextDueDateAfter: updatedLoan.status === "active" ? updatedLoan.nextDueDate : null,
+    note: paymentData.note || "",
+    createdAt: new Date().toISOString(),
+  };
+  return { payment, updatedLoan };
 }
 
 function render() {
@@ -1471,10 +1785,13 @@ function buildDashboardData(options = {}) {
   const filters = options.filters || getDashboardFilters();
   const range = options.range || getDashboardDateRange(filters);
   const scopeLoans = state.loans.filter((loan) => loanMatchesDashboardScope(loan, filters));
-  const loans = scopeLoans.filter((loan) => loanTouchesRange(loan, range));
-  const payments = state.payments.filter((payment) => paymentMatchesDashboardFilters(payment, scopeLoans, filters, range));
-  const activeLoans = loans.filter((loan) => loan.status === "active");
-  const overdueLoans = activeLoans.filter(isOverdue);
+  const scopePayments = state.payments.filter((payment) => paymentMatchesDashboardScope(payment, scopeLoans));
+  const loans = scopeLoans.filter((loan) => loanWasInPortfolioDuringRange(loan, range));
+  const payments = scopePayments.filter((payment) => dateInRange(payment.date, range));
+  const activeLoans = scopeLoans
+    .filter((loan) => loanWasActiveOnDate(loan, range.end))
+    .map((loan) => loanSnapshotAtDate(loan, range.end, scopePayments));
+  const overdueLoans = activeLoans.filter((loan) => isOverdueAt(loan, range.end));
   const todayLoans = scopeLoans.filter((loan) => loan.status === "active" && loan.nextDueDate === todayISO()).sort(sortLoansByDueDate);
   const soonLoans = scopeLoans
     .filter((loan) => loan.status === "active" && !isOverdue(loan) && daysBetween(todayISO(), loan.nextDueDate) > 0 && daysBetween(todayISO(), loan.nextDueDate) <= 7)
@@ -1488,39 +1805,44 @@ function buildDashboardData(options = {}) {
   const previousMonthRange = getShiftedMonthRange(range, -1, "Mes anterior");
   const nextMonthRange = getShiftedMonthRange(range, 1, "Proximo mes");
   const currentMonthPayments = payments;
-  const previousMonthPayments = state.payments.filter((payment) => paymentMatchesDashboardFilters(payment, scopeLoans, filters, previousMonthRange));
-  const nextMonthLoans = scopeLoans.filter((loan) => loan.status === "active" && dateInRange(loan.nextDueDate, nextMonthRange));
+  const previousMonthPayments = scopePayments.filter((payment) => dateInRange(payment.date, previousMonthRange));
+  const nextMonthLoans = activeLoans.filter((loan) => dateInRange(loan.nextDueDate, nextMonthRange));
   const capitalPending = sum(activeLoans, "remainingCapital");
   const capitalRecovered = sum(payments, "capitalPaid");
   const realProfit = sum(payments, "interestPaid");
   const projectedProfit = activeLoans.reduce((total, loan) => total + expectedInterest(loan), 0);
   const capitalPlaced = sum(activeLoans, "remainingCapital");
-  const capitalTotal = capitalPending + capitalRecovered;
+  const capitalPosition = buildCapitalPositionAtDate(range.end, state.loans, state.payments, state.capitalMovements || []);
+  const capitalTotal = capitalPosition.capitalTotal;
+  const availableCapital = capitalPosition.availableCapital;
   const periodLoanAmount = sum(loansStartedInPeriod, "amount");
   const firstPaymentDate = payments.slice().sort((a, b) => new Date(a.date) - new Date(b.date))[0]?.date || null;
   const reinvested = firstPaymentDate
     ? Math.min(capitalRecovered, loansStartedInPeriod.filter((loan) => loan.startDate >= firstPaymentDate).reduce((total, loan) => total + loan.amount, 0))
     : 0;
-  const availableCapital = Math.max(capitalRecovered - reinvested, 0);
   const newMoney = Math.max(periodLoanAmount - capitalRecovered, 0);
   const overdueAmount = overdueLoans.reduce((total, loan) => total + loan.remainingCapital + expectedInterest(loan), 0);
   const todayAmount = todayLoans.reduce((total, loan) => total + loan.remainingCapital + expectedInterest(loan), 0);
   const nextMonthInterest = nextMonthLoans.reduce((total, loan) => total + expectedInterest(loan), 0);
   const nextMonthCapital = sum(nextMonthLoans, "remainingCapital");
   const averageLateDays = overdueLoans.length
-    ? overdueLoans.reduce((total, loan) => total + Math.max(daysBetween(loan.nextDueDate, todayISO()), 0), 0) / overdueLoans.length
+    ? overdueLoans.reduce((total, loan) => total + Math.max(daysBetween(loan.nextDueDate, range.end), 0), 0) / overdueLoans.length
     : 0;
   const recoveryRate = periodLoanAmount ? (capitalRecovered / periodLoanAmount) * 100 : 0;
   const delinquencyRate = capitalPending ? (sum(overdueLoans, "remainingCapital") / capitalPending) * 100 : 0;
   const activeClientCount = new Set(activeLoans.map((loan) => loan.clientId)).size;
   const modeSegments = Object.keys(INTEREST_MODES).map((mode) => ({
     label: INTEREST_MODES[mode].label,
-    value: loans.filter((loan) => normalizeInterestMode(loan.interestMode) === mode).length,
+    value: activeLoans.filter((loan) => normalizeInterestMode(loan.interestMode) === mode).length,
   }));
+  const closedLoansInPeriod = scopeLoans.filter((loan) => {
+    const closedDate = getLoanClosedDate(loan);
+    return closedDate && dateInRange(closedDate, range);
+  });
   const statusSegments = [
-    { label: "Activos", value: activeLoans.filter((loan) => !isOverdue(loan)).length, color: "#00a76f" },
+    { label: "Activos", value: activeLoans.filter((loan) => !isOverdueAt(loan, range.end)).length, color: "#00a76f" },
     { label: "Vencidos", value: overdueLoans.length, color: "#061826" },
-    { label: "Cerrados", value: loans.filter((loan) => loan.status === "closed").length, color: "#ffb000" },
+    { label: "Cerrados", value: closedLoansInPeriod.length, color: "#ffb000" },
   ];
 
   const dashboard = {
@@ -1537,6 +1859,9 @@ function buildDashboardData(options = {}) {
     metrics: {
       capitalTotal,
       availableCapital,
+      capitalDeposited: capitalPosition.capitalDeposited,
+      capitalWithdrawn: capitalPosition.capitalWithdrawn,
+      compoundedProfit: capitalPosition.compoundedProfit,
       capitalPlaced,
       capitalPending,
       capitalRecovered,
@@ -1548,7 +1873,7 @@ function buildDashboardData(options = {}) {
       activeLoans: activeLoans.length,
       overdueLoans: overdueLoans.length,
       overdueAmount,
-      closedLoans: loans.filter((loan) => loan.status === "closed").length,
+      closedLoans: closedLoansInPeriod.length,
       activeClientCount,
       activeExtensions: activeExtensions.length,
       activeExtensionsAmount: sum(activeExtensions, "remainingCapital"),
@@ -1568,7 +1893,7 @@ function buildDashboardData(options = {}) {
       averageLateDays,
       capitalRisk: sum(overdueLoans, "remainingCapital"),
       pendingInterest: projectedProfit,
-      averageLoan: loans.length ? periodLoanAmount / loans.length : 0,
+      averageLoan: loansStartedInPeriod.length ? periodLoanAmount / loansStartedInPeriod.length : 0,
       averageInterestPaid: payments.length ? realProfit / payments.length : 0,
       cashflow: payments.reduce((total, payment) => total + payment.capitalPaid + payment.interestPaid, 0) - periodLoanAmount,
       availableAfterProjected: availableCapital + nextMonthCapital + nextMonthInterest,
@@ -1578,8 +1903,8 @@ function buildDashboardData(options = {}) {
       recoveryRate,
     },
     charts: {
-      months: buildMonthSeries(6, loans, payments),
-      loansByMonth: buildLoanMonthSeries(6, loans),
+      months: buildMonthSeries(6, scopePayments),
+      loansByMonth: buildLoanMonthSeries(6, scopeLoans),
       statusSegments,
       modeSegments,
       projections: [
@@ -1592,10 +1917,9 @@ function buildDashboardData(options = {}) {
       cashflow: [
         { label: "Ingresos", value: payments.reduce((total, payment) => total + payment.capitalPaid + payment.interestPaid, 0), color: "#00a76f" },
         { label: "Egresos", value: periodLoanAmount, color: "#ffb000" },
-        { label: "Reinversion", value: reinvested, color: "#2f6fed" },
       ],
     },
-    lists: buildDashboardLists(loans, payments, scopeLoans),
+    lists: buildDashboardLists(activeLoans, payments, scopeLoans, loansStartedInPeriod, range),
   };
   dashboard.comparison = options.skipComparison ? null : buildDashboardComparison(dashboard);
   return dashboard;
@@ -1714,24 +2038,60 @@ function loanMatchesDashboardScope(loan, filters) {
   return true;
 }
 
-function paymentMatchesDashboardFilters(payment, scopeLoans, filters, range) {
-  if (!dateInRange(payment.date, range)) return false;
-  const loan = scopeLoans.find((item) => item.id === payment.loanId);
-  if (!loan) return false;
-  return true;
+function paymentMatchesDashboardScope(payment, scopeLoans) {
+  return scopeLoans.some((loan) => loan.id === payment.loanId);
 }
 
-function loanTouchesRange(loan, range) {
-  return (
-    dateInRange(loan.startDate, range) ||
-    dateInRange(loan.nextDueDate, range) ||
-    (loan.closedAt && dateInRange(String(loan.closedAt).slice(0, 10), range))
-  );
+function loanWasInPortfolioDuringRange(loan, range) {
+  if (!loan?.startDate || startOfDay(loan.startDate) > startOfDay(range.end)) return false;
+  const closedDate = getLoanClosedDate(loan);
+  return !closedDate || startOfDay(closedDate) >= startOfDay(range.start);
+}
+
+function loanWasActiveOnDate(loan, dateString) {
+  if (!loan?.startDate || startOfDay(loan.startDate) > startOfDay(dateString)) return false;
+  const closedDate = getLoanClosedDate(loan);
+  if (closedDate && startOfDay(closedDate) <= startOfDay(dateString)) return false;
+  return getLoanBalanceAtDate(loan, dateString) > 0;
+}
+
+function loanSnapshotAtDate(loan, dateString, payments = state.payments) {
+  return {
+    ...loan,
+    remainingCapital: getLoanBalanceAtDate(loan, dateString, payments),
+    status: "active",
+    closedAt: null,
+  };
+}
+
+function getLoanBalanceAtDate(loan, dateString, payments = state.payments) {
+  if (!loan?.startDate || startOfDay(loan.startDate) > startOfDay(dateString)) return 0;
+  const closedDate = getLoanClosedDate(loan);
+  if (closedDate && startOfDay(closedDate) <= startOfDay(dateString)) return 0;
+  const capitalPaidAfterDate = payments
+    .filter((payment) => payment.loanId === loan.id && startOfDay(payment.date) > startOfDay(dateString))
+    .reduce((total, payment) => total + Number(payment.capitalPaid || 0), 0);
+  const reconstructedBalance = Number(loan.remainingCapital || 0) + capitalPaidAfterDate;
+  return Math.min(Math.max(roundMoney(reconstructedBalance), 0), Number(loan.amount || 0));
+}
+
+function getLoanClosedDate(loan) {
+  return loan?.closedAt ? String(loan.closedAt).slice(0, 10) : null;
+}
+
+function isOverdueAt(loan, dateString) {
+  return startOfDay(loan.nextDueDate) < startOfDay(dateString);
 }
 
 function dateInRange(dateString, range) {
   if (!dateString) return false;
   return startOfDay(dateString) >= startOfDay(range.start) && startOfDay(dateString) <= startOfDay(range.end);
+}
+
+function isBusinessDate(dateString) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateString || ""))) return false;
+  const date = parseLocalDate(dateString);
+  return toISODate(date) === String(dateString).slice(0, 10);
 }
 
 function isPrimaryLoan(loan) {
@@ -1747,6 +2107,29 @@ function normalizeText(value) {
 
 function sum(items, key) {
   return items.reduce((total, item) => total + Number(item[key] || 0), 0);
+}
+
+function buildCapitalPositionAtDate(dateString, loans = state.loans, payments = state.payments, capitalMovements = state.capitalMovements || []) {
+  const end = startOfDay(dateString || todayISO());
+  const movementsToDate = (capitalMovements || []).filter((movement) => startOfDay(movement.date) <= end);
+  const paymentsToDate = (payments || []).filter((payment) => startOfDay(payment.date) <= end);
+  const activeLoansAtDate = (loans || [])
+    .filter((loan) => loanWasActiveOnDate(loan, dateString || todayISO()))
+    .map((loan) => loanSnapshotAtDate(loan, dateString || todayISO(), payments || []));
+  const capitalDeposited = sum(movementsToDate.filter((movement) => movement.type === "deposit"), "amount");
+  const capitalWithdrawn = sum(movementsToDate.filter((movement) => movement.type === "withdrawal"), "amount");
+  const compoundedProfit = sum(paymentsToDate, "interestPaid");
+  const capitalPlacedAtDate = sum(activeLoansAtDate, "remainingCapital");
+  const capitalTotal = roundMoney(capitalDeposited + compoundedProfit - capitalWithdrawn);
+
+  return {
+    capitalDeposited,
+    capitalWithdrawn,
+    compoundedProfit,
+    capitalPlaced: capitalPlacedAtDate,
+    capitalTotal,
+    availableCapital: roundMoney(capitalTotal - capitalPlacedAtDate),
+  };
 }
 
 function renderDashboardHeader(dashboard) {
@@ -1768,12 +2151,12 @@ function renderDashboardKpis(dashboard) {
 function getDashboardKpiItems(dashboard) {
   const m = dashboard.metrics;
   return [
-    ["Capital total", money(m.capitalTotal), "", "Ejemplo: Si has destinado S/10,000 al negocio de prestamos, ese monto representa tu capital total, aunque una parte este disponible y otra este prestada.", "capitalTotal"],
-    ["Capital disponible", money(m.availableCapital), "", "Ejemplo: Si tienes S/10,000 de capital total y S/7,000 estan prestados, tienes S/3,000 disponibles para nuevos prestamos.", "availableCapital"],
+    ["Capital total", money(m.capitalTotal), "", "Capital real acumulado: capital agregado mas intereses cobrados, menos retiros registrados.", "capitalTotal"],
+    ["Capital disponible", money(m.availableCapital), "", "Dinero disponible para prestar: capital total menos el capital pendiente colocado en prestamos activos.", "availableCapital"],
     ["Capital prestado", money(m.capitalPlaced), "", "Ejemplo: Si tienes prestamos activos con S/1,000, S/2,000 y S/500 pendientes, tienes S/3,500 actualmente prestados.", "capitalPlaced"],
     ["Capital pendiente", money(m.capitalPending), "", "Ejemplo: Si prestaste S/1,000 y el cliente ya devolvio S/400 de capital, todavia tienes S/600 pendientes por recuperar.", "capitalPending"],
-    ["Capital recuperado", money(m.capitalRecovered), "", "Ejemplo: Si prestaste S/1,000 y el cliente ya devolvio S/400 de capital, esos S/400 forman parte del capital recuperado.", "capitalRecovered"],
-    ["Ganancia real", money(m.realProfit), "", "Ejemplo: Si este mes ya recibiste S/650 solo en intereses, tu ganancia real es S/650; el capital devuelto no cuenta como ganancia.", "realProfit"],
+    ["Capital recuperado", money(m.capitalRecovered), "", "Ejemplo: Si en el periodo seleccionado tus clientes devolvieron S/400 de capital, esos S/400 forman parte del capital recuperado del periodo.", "capitalRecovered"],
+    ["Ganancia real", money(m.realProfit), "", "Ejemplo: Si en el periodo seleccionado recibiste S/650 solo en intereses, tu ganancia real es S/650; el capital devuelto no cuenta como ganancia.", "realProfit"],
     ["Ganancia proyectada", money(m.projectedProfit), "", "Ejemplo: Si tus prestamos activos deberian generar S/900 en intereses futuros, esa es tu ganancia proyectada hasta que se cobre.", "projectedProfit"],
     ["Total por cobrar", money(m.totalToCollect), "", "Ejemplo: Si tienes S/5,000 de capital pendiente y S/600 de intereses pendientes, el total por cobrar es S/5,600.", "totalToCollect"],
     ["Cobros de hoy", m.todayCount, "", "Ejemplo: Si hoy tienen fecha de cobro 3 prestamos diferentes, este indicador mostrara 3 cobros de hoy.", "todayCount"],
@@ -1805,7 +2188,11 @@ function renderInfoDot(text) {
 }
 
 const DASHBOARD_TREND_RULES = {
+  capitalTotal: "up",
   availableCapital: "up",
+  capitalDeposited: "up",
+  capitalWithdrawn: "down",
+  compoundedProfit: "up",
   capitalRecovered: "up",
   realProfit: "up",
   projectedProfit: "up",
@@ -1912,20 +2299,6 @@ function formatSignedNumber(value) {
 }
 
 const INDICATOR_MESSAGES = {
-  "Capital total": [
-    "😊 Buena base para seguir creciendo.",
-    "💰 Tu capital es el motor del negocio.",
-    "🚀 Cada sol bien usado abre oportunidades.",
-    "😉 Haz que tu dinero trabaje a tu favor.",
-    "✨ La constancia hace crecer el capital.",
-  ],
-  "Capital disponible": [
-    "💸 Capital listo para nuevos prestamos.",
-    "😊 Tener liquidez te da control.",
-    "🚀 Puede ser tu proximo crecimiento.",
-    "👏 Buen margen para decidir mejor.",
-    "😉 Liquidez sana, negocio mas flexible.",
-  ],
   "Capital prestado": [
     "🎉 Tu dinero ya esta trabajando.",
     "💰 Capital colocado genera movimiento.",
@@ -2024,63 +2397,49 @@ const INDICATOR_MESSAGES = {
     "👏 Reflejan continuidad en operaciones.",
     "🚀 Bien gestionadas son oportunidad.",
   ],
-  "Capital reinvertido": [
-    "🔄 Tu dinero vuelve a trabajar.",
-    "💰 Reinvertir acelera crecimiento.",
-    "🚀 Capital recuperado crea oportunidades.",
-    "😉 Recuperar y prestar mantiene ritmo.",
-    "📈 La reinversion puede potenciarte.",
-  ],
-  "Dinero nuevo aportado": [
-    "💪 Fortaleces tu negocio con mas capital.",
-    "🚀 Nuevo aporte, mas oportunidades.",
-    "💰 Mayor capacidad para prestar.",
-    "😊 Tu base financiera crece.",
-    "🌱 Cada aporte puede dar frutos.",
-  ],
-  "Ganancia del mes actual": [
-    "🎉 Esto ya va ganado este mes.",
+  "Ganancia del periodo": [
+    "🎉 Esto ya va ganado en el periodo.",
     "💰 Tus intereses estan dando resultado.",
     "📈 Cada cobro aumenta la cifra.",
-    "😊 El mes ya esta produciendo.",
+    "😊 El periodo ya esta produciendo.",
     "🚀 Aun puedes subir este monto.",
   ],
-  "Ganancia del mes anterior": [
+  "Ganancia del periodo anterior": [
     "📊 Buen punto para comparar.",
     "😉 Superarlo seria gran senal.",
     "💰 Mira tu resultado anterior.",
     "📈 Usalo como referencia.",
-    "🎯 Apunta a mejorar este mes.",
+    "🎯 Apunta a mejorar este periodo.",
   ],
-  "Ganancia esperada proximo mes": [
-    "🔮 Utilidad posible para el proximo mes.",
+  "Ganancia esperada siguiente periodo": [
+    "🔮 Utilidad posible para el siguiente periodo.",
     "💰 Hay intereses en camino.",
     "🚀 Cobrar bien la vuelve real.",
     "📈 Ingresos potenciales por venir.",
     "😊 Mantente al dia para acercarte.",
   ],
-  "Capital que regresara proximo mes": [
+  "Capital que regresara siguiente periodo": [
     "🔄 Capital que podria volver pronto.",
     "💰 Mas dinero disponible en camino.",
     "🚀 Puede convertirse en nuevos prestamos.",
     "😊 Planifica desde ahora.",
     "📈 Recuperar capital aumenta capacidad.",
   ],
-  "Total estimado proximo mes": [
+  "Total estimado siguiente periodo": [
     "💰 Monto aproximado por recibir.",
-    "🚀 Nuevo mes con dinero por recuperar.",
+    "🚀 Nuevo periodo con dinero por recuperar.",
     "😊 Capital e intereses fortaleceran caja.",
     "📊 Te ayuda a planificar.",
     "🔮 Si cumplen, tendras mas liquidez.",
   ],
-  "Cobrado este mes": [
+  "Cobrado en el periodo": [
     "🎉 Buen trabajo, dinero ya ingresado.",
     "💰 Cada cobro mejora tu flujo.",
     "😊 Vas recuperando tu cartera.",
     "📈 Cobrar a tiempo sube la cifra.",
     "🚀 Buena cobranza mantiene salud.",
   ],
-  "Prestado este mes": [
+  "Prestado en el periodo": [
     "💸 Capital puesto a trabajar.",
     "🚀 Dinero saliendo a producir.",
     "😊 Tu negocio sigue activo.",
@@ -2164,27 +2523,6 @@ const INDICATOR_MESSAGES = {
     "💰 Buen flujo permite prestar tranquilo.",
     "🚀 Mantenerlo sano ayuda a crecer.",
   ],
-  "Disponible despues de cobros previstos": [
-    "🔮 Capital posible tras proximos cobros.",
-    "💰 Pagos futuros aumentan capacidad.",
-    "🚀 Planifica nuevas oportunidades.",
-    "😊 Si cobran, tendras mas disponible.",
-    "📈 Anticipa tu liquidez futura.",
-  ],
-  "Rentabilidad sobre capital": [
-    "📈 Mide que tanto rinde tu capital.",
-    "💰 Mas intereses, mejor rentabilidad.",
-    "😊 Buen indicador para crecer con orden.",
-    "🚀 Una cartera sana mejora este valor.",
-    "🎯 Vigilarlo ayuda a decidir mejor.",
-  ],
-  "ROI mensual": [
-    "📊 Resultado mensual frente al capital.",
-    "💰 Te muestra eficiencia del mes.",
-    "🚀 ROI sano impulsa crecimiento.",
-    "😊 Buen dato para comparar meses.",
-    "🎯 Busca mejorarlo sin subir riesgo.",
-  ],
   "Cliente mas rentable": [
     "🏆 Cliente que mas ganancia genera.",
     "💰 Buen historial puede valer mucho.",
@@ -2234,13 +2572,6 @@ const INDICATOR_MESSAGES = {
     "🚀 Recuperar rapido ayuda a crecer.",
     "👏 Senal de cartera bien gestionada.",
   ],
-  "Ganancia por modalidad": [
-    "📊 Compara que modalidad rinde mas.",
-    "💰 Detecta donde ganas mejor.",
-    "😊 Te ayuda a ajustar estrategia.",
-    "🔍 Observa patrones de interes.",
-    "📈 Buen dato para planificar.",
-  ],
   "Proyeccion a 3 meses": [
     "🔮 Vista corta de ganancias futuras.",
     "💰 Ayuda a planificar proximos cobros.",
@@ -2262,27 +2593,6 @@ const INDICATOR_MESSAGES = {
     "😊 Plan anual con mas claridad.",
     "🎯 Buen dato para metas futuras.",
   ],
-  "Meta mensual de ganancia": [
-    "🎯 Define una meta clara para el mes.",
-    "💰 Una meta ayuda a medir avance.",
-    "😊 Planificar mejora tus resultados.",
-    "📈 Buen objetivo ordena la cobranza.",
-    "🚀 Apunta alto, con control.",
-  ],
-  "Progreso hacia la meta": [
-    "📈 Mira cuanto llevas avanzado.",
-    "🎯 Cada cobro acerca la meta.",
-    "😊 El avance motiva a seguir.",
-    "💰 Intereses cobrados suman progreso.",
-    "🚀 Paso a paso se alcanza.",
-  ],
-  "Ranking de clientes": [
-    "🏆 Ubica clientes destacados.",
-    "😊 Buen historial merece atencion.",
-    "📊 Ranking ayuda a priorizar.",
-    "💰 Mejores clientes impulsan utilidad.",
-    "👏 Usa este dato para decidir.",
-  ],
   "Nivel de riesgo del cliente": [
     "⚠️ Ayuda a detectar cuidado especial.",
     "👀 Riesgo controlado protege capital.",
@@ -2290,14 +2600,7 @@ const INDICATOR_MESSAGES = {
     "💪 Buen seguimiento reduce riesgo.",
     "🚨 Alto riesgo pide accion.",
   ],
-  "Crecimiento del capital": [
-    "📈 Mira si tu base va creciendo.",
-    "💰 Capital mayor abre oportunidades.",
-    "😊 Crecer con orden es clave.",
-    "🚀 Cada recuperacion puede impulsarlo.",
-    "🎯 Buen control mejora crecimiento.",
-  ],
-  "Crecimiento de la ganancia": [
+  "Variacion de ganancia vs periodo anterior": [
     "📈 Compara si ganas mas que antes.",
     "💰 Ganancia creciente es buena senal.",
     "😊 Cada interes suma al avance.",
@@ -2418,17 +2721,18 @@ function getDashboardManagementItems(dashboard) {
   const m = dashboard.metrics;
   const modeText = dashboard.charts.modeSegments.map((item) => `${item.label}: ${item.value}`).join(" · ");
   return [
-    ["Capital reinvertido", money(m.reinvested), "Ejemplo: Si recuperaste S/1,000 de capital y luego usaste S/700 para prestar nuevamente, tienes S/700 de capital reinvertido.", "reinvested"],
-    ["Dinero nuevo aportado", money(m.newMoney), "Ejemplo: Si tu negocio tenia S/10,000 y agregas S/2,000 de tu propio dinero, esos S/2,000 son dinero nuevo aportado.", "newMoney"],
-    ["Ganancia del mes actual", money(m.currentMonthProfit), "Ejemplo: Si durante este mes ya cobraste S/850 en intereses, tu ganancia del mes actual es S/850.", "currentMonthProfit"],
-    ["Ganancia del mes anterior", money(m.previousMonthProfit), "Ejemplo: Si el mes pasado cobraste S/700 en intereses, ese monto corresponde a la ganancia del mes anterior.", "previousMonthProfit"],
-    ["Ganancia esperada proximo mes", money(m.nextMonthProfit), "Ejemplo: Si los prestamos del proximo mes deberian generar S/1,200 en intereses, esa es la ganancia esperada.", "nextMonthProfit"],
-    ["Capital que regresara proximo mes", money(m.nextMonthCapital), "Ejemplo: Si el proximo mes tus clientes deben devolver S/3,000 de capital, ese sera el capital estimado que regresara.", "nextMonthCapital"],
-    ["Total estimado proximo mes", money(m.nextMonthTotal), "Ejemplo: Si esperas recuperar S/3,000 de capital y S/800 de intereses, el total estimado sera S/3,800.", "nextMonthTotal"],
-    ["Cobrado este mes", money(m.chargedThisMonth), "Ejemplo: Si este mes recibiste S/2,000 de capital y S/500 de intereses, el total cobrado este mes es S/2,500.", "chargedThisMonth"],
-    ["Prestado este mes", money(m.lentThisMonth), "Ejemplo: Si este mes otorgaste prestamos de S/500, S/1,000 y S/700, has prestado S/2,200.", "lentThisMonth"],
+    ["Capital agregado", money(m.capitalDeposited), "Suma de capital inicial y aportes extra registrados hasta la fecha final del resumen.", "capitalDeposited"],
+    ["Capital retirado", money(m.capitalWithdrawn), "Suma de retiros registrados hasta la fecha final del resumen.", "capitalWithdrawn"],
+    ["Ganancia reinvertida", money(m.compoundedProfit), "Intereses cobrados acumulados que ya forman parte del capital total.", "compoundedProfit"],
+    ["Ganancia del periodo", money(m.currentMonthProfit), "Ejemplo: Si durante el periodo seleccionado cobraste S/850 en intereses, tu ganancia del periodo es S/850.", "currentMonthProfit"],
+    ["Ganancia del periodo anterior", money(m.previousMonthProfit), "Ejemplo: Si en el periodo anterior comparable cobraste S/700 en intereses, ese monto corresponde a la ganancia anterior.", "previousMonthProfit"],
+    ["Ganancia esperada siguiente periodo", money(m.nextMonthProfit), "Ejemplo: Si los prestamos del siguiente periodo comparable deberian generar S/1,200 en intereses, esa es la ganancia esperada.", "nextMonthProfit"],
+    ["Capital que regresara siguiente periodo", money(m.nextMonthCapital), "Ejemplo: Si en el siguiente periodo comparable tus clientes deben devolver S/3,000 de capital, ese sera el capital estimado que regresara.", "nextMonthCapital"],
+    ["Total estimado siguiente periodo", money(m.nextMonthTotal), "Ejemplo: Si esperas recuperar S/3,000 de capital y S/800 de intereses, el total estimado sera S/3,800.", "nextMonthTotal"],
+    ["Cobrado en el periodo", money(m.chargedThisMonth), "Ejemplo: Si en el periodo seleccionado recibiste S/2,000 de capital y S/500 de intereses, el total cobrado es S/2,500.", "chargedThisMonth"],
+    ["Prestado en el periodo", money(m.lentThisMonth), "Ejemplo: Si en el periodo seleccionado otorgaste prestamos de S/500, S/1,000 y S/700, has prestado S/2,200.", "lentThisMonth"],
     ["Nuevos prestamos del periodo", m.newLoansPeriod, "Ejemplo: Si en el periodo seleccionado registraste 4 prestamos principales nuevos, este indicador mostrara 4.", "newLoansPeriod"],
-    ["Ampliaciones del periodo", m.extensionsPeriod, "Ejemplo: Si durante este mes registraste 5 ampliaciones de prestamo, este indicador mostrara 5 ampliaciones.", "extensionsPeriod"],
+    ["Ampliaciones del periodo", m.extensionsPeriod, "Ejemplo: Si durante el periodo seleccionado registraste 5 ampliaciones de prestamo, este indicador mostrara 5 ampliaciones.", "extensionsPeriod"],
     ["Monto total en ampliaciones", money(m.extensionAmount), "Ejemplo: Si otorgaste ampliaciones de S/200, S/300 y S/500, el monto total en ampliaciones es S/1,000.", "extensionAmount"],
     ["Clientes atrasados", m.lateClients, "Ejemplo: Si Pepe tiene un prestamo vencido y Ana una ampliacion vencida, tienes 2 clientes atrasados.", "lateClients"],
     ["Dias promedio de atraso", `${roundMoney(m.averageLateDays)} dias`, "Ejemplo: Si un prestamo debia pagarse el 10 de agosto y hoy es 15 de agosto, tiene 5 dias de atraso.", "averageLateDays"],
@@ -2438,7 +2742,6 @@ function getDashboardManagementItems(dashboard) {
     ["Promedio de interes cobrado", money(m.averageInterestPaid), "Ejemplo: Si cobraste S/50, S/100 y S/150 de interes en tres pagos, el promedio de interes cobrado es S/100.", "averageInterestPaid"],
     ["Distribucion por modalidad", modeText || "Sin datos", "Ejemplo: Si tienes 5 prestamos mensuales, 3 quincenales, 2 semanales y 1 diario, aqui ves esa distribucion."],
     ["Flujo de caja", money(m.cashflow), "Ejemplo: Si ingresaron S/5,000 por pagos y salieron S/3,000 en nuevos prestamos, tu flujo neto fue S/2,000 positivo.", "cashflow"],
-    ["Disponible despues de cobros previstos", money(m.availableAfterProjected), "Ejemplo: Si hoy tienes S/1,000 disponibles y esperas recuperar S/2,500, podrias tener cerca de S/3,500 disponibles.", "availableAfterProjected"],
   ].map(([title, value, tip, metricKey]) => ({ title, value, tip, metricKey }));
 }
 
@@ -2473,7 +2776,7 @@ function renderDashboardCharts(dashboard) {
   renderHorizontalChart(elements.summaryCashflowChart, dashboard.charts.cashflow);
 }
 
-function buildMonthSeries(count, loans, payments) {
+function buildMonthSeries(count, payments) {
   return getLastMonthKeys(count).map((month) => {
     const monthPayments = payments.filter((payment) => getMonthKey(payment.date) === month.key);
     return {
@@ -2577,17 +2880,17 @@ function renderProjectionChart(container, projections) {
     .join("");
 }
 
-function buildDashboardLists(loans, payments, scopeLoans) {
+function buildDashboardLists(activeLoans, payments, scopeLoans, periodLoans, range) {
   const clients = state.clients.map((client) => {
-    const clientLoans = loans.filter((loan) => loan.clientId === client.id);
-    const allClientLoans = scopeLoans.filter((loan) => loan.clientId === client.id);
+    const clientLoans = activeLoans.filter((loan) => loan.clientId === client.id);
+    const clientScopeLoans = scopeLoans.filter((loan) => loan.clientId === client.id);
     const clientPayments = payments.filter((payment) => payment.clientId === client.id);
     return {
       client,
       debt: clientLoans.filter((loan) => loan.status === "active").reduce((total, loan) => total + loan.remainingCapital, 0),
       profit: clientPayments.reduce((total, payment) => total + payment.interestPaid, 0),
-      extensions: Math.max(allClientLoans.length - 1, 0),
-      overdue: allClientLoans.filter((loan) => loan.status === "active" && isOverdue(loan)).length,
+      extensions: clientScopeLoans.filter((loan) => !isPrimaryLoan(loan)).length,
+      overdue: clientLoans.filter((loan) => isOverdueAt(loan, range.end)).length,
       punctual: clientPayments.filter((payment) => payment.scheduledDueDate && startOfDay(payment.date) <= startOfDay(payment.scheduledDueDate)).length,
     };
   });
@@ -2599,8 +2902,8 @@ function buildDashboardLists(loans, payments, scopeLoans) {
     punctual: clients.filter((item) => item.punctual > 0).sort((a, b) => b.punctual - a.punctual).slice(0, 5),
     late: clients.filter((item) => item.overdue > 0).sort((a, b) => b.overdue - a.overdue).slice(0, 5),
     payments: payments.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5),
-    loans: loans.filter(isPrimaryLoan).slice().sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate)).slice(0, 5),
-    recentExtensions: loans.filter((loan) => !isPrimaryLoan(loan)).slice().sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate)).slice(0, 5),
+    loans: periodLoans.filter(isPrimaryLoan).slice().sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate)).slice(0, 5),
+    recentExtensions: periodLoans.filter((loan) => !isPrimaryLoan(loan)).slice().sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate)).slice(0, 5),
   };
 }
 
@@ -2664,25 +2967,17 @@ function getDashboardAdvancedItems(dashboard) {
   const highestDebt = dashboard.lists.debt[0]?.client.name || "Sin datos";
   const mostExtensions = dashboard.lists.extensions[0]?.client.name || "Sin datos";
   return [
-    ["Rentabilidad sobre capital", `${roundMoney(m.profitability)}%`, "Ejemplo: Si tienes S/10,000 de capital invertido y ganaste S/1,000 en intereses, tu rentabilidad aproximada es 10%.", "profitability"],
-    ["ROI mensual", `${roundMoney(m.monthlyRoi)}%`, "Ejemplo: Si durante el mes usaste S/10,000 de capital y generaste S/500 de ganancia, tu ROI mensual es 5%.", "monthlyRoi"],
+    ["Rendimiento proyectado de cartera", `${roundMoney(m.monthlyRoi)}%`, "Ejemplo: Si tienes S/10,000 de capital pendiente y S/500 de interes proyectado, el rendimiento estimado es 5%.", "monthlyRoi"],
     ["Cliente mas rentable", mostProfitable, "Ejemplo: Si Pepe genero S/800 en intereses y los demas clientes menos que eso, Pepe sera el cliente mas rentable."],
     ["Cliente con mayor deuda", highestDebt, "Ejemplo: Si Ana debe S/3,000 y ningun otro cliente supera ese saldo, Ana aparecera como cliente con mayor deuda."],
     ["Cliente con mas ampliaciones", mostExtensions, "Ejemplo: Si Lole tiene 4 ampliaciones y ningun otro cliente tiene mas, Lole sera el cliente con mas ampliaciones."],
-    ["Clientes puntuales", dashboard.lists.punctual.length, "Ejemplo: Si un cliente hizo 10 pagos y todos fueron antes o en su fecha de cobro, se considera puntual."],
-    ["Clientes con historial de atraso", dashboard.lists.late.length, "Ejemplo: Si un cliente tuvo varios prestamos vencidos en el pasado, aparecera con historial de atraso."],
     ["Porcentaje de morosidad", `${roundMoney(m.delinquencyRate)}%`, "Ejemplo: Si tienes S/10,000 pendientes y S/2,000 estan vencidos, tu morosidad aproximada es 20%.", "delinquencyRate"],
     ["Tasa de recuperacion", `${roundMoney(m.recoveryRate)}%`, "Ejemplo: Si prestaste S/10,000 y ya recuperaste S/7,000 de capital, tu tasa de recuperacion es 70%.", "recoveryRate"],
-    ["Ganancia por modalidad", dashboard.charts.modeSegments.map((item) => `${item.label}: ${item.value}`).join(" · ") || "Sin datos", "Ejemplo: Si mensual genero S/500, quincenal S/300 y semanal S/200, puedes comparar que modalidad produce mas."],
     ["Proyeccion a 3 meses", money(m.projectedProfit * 3), "Ejemplo: Si esperas recibir S/1,000 de intereses por mes, la proyeccion simple a 3 meses seria S/3,000.", "projectedProfit", 3],
     ["Proyeccion a 6 meses", money(m.projectedProfit * 6), "Ejemplo: Si tus prestamos actuales proyectan S/1,000 mensuales en intereses, a 6 meses serian S/6,000.", "projectedProfit", 6],
     ["Proyeccion a 12 meses", money(m.projectedProfit * 12), "Ejemplo: Si el sistema estima S/1,000 mensuales en intereses, la proyeccion anual seria cerca de S/12,000.", "projectedProfit", 12],
-    ["Meta mensual de ganancia", "Configurable", "Ejemplo: Si tu meta del mes es S/3,000 y ya cobraste S/2,100 en intereses, te faltan S/900."],
-    ["Progreso hacia la meta", m.currentMonthProfit ? "En movimiento" : "Sin avance", "Ejemplo: Si tu meta es S/3,000 y llevas S/1,500 cobrados, tu avance va por la mitad."],
-    ["Ranking de clientes", `${dashboard.lists.debt.length + dashboard.lists.profit.length} destacados`, "Ejemplo: Si Ana paga puntual, tuvo varios prestamos y no presenta atrasos, puede aparecer destacada en el ranking."],
     ["Nivel de riesgo del cliente", m.overdueLoans ? "Riesgo activo" : "Controlado", "Ejemplo: Si un cliente acumula atrasos o tiene deuda vencida, el sistema lo puede marcar con mayor riesgo."],
-    ["Crecimiento del capital", money(m.lentThisMonth - m.nextMonthCapital), "Ejemplo: Si comenzaste con S/10,000 y luego tu capital subio a S/12,500, aqui ves ese crecimiento."],
-    ["Crecimiento de la ganancia", money(m.currentMonthProfit - m.previousMonthProfit), "Ejemplo: Si ganaste S/700 el mes pasado y S/900 este mes, tu ganancia crecio S/200."],
+    ["Variacion de ganancia vs periodo anterior", money(m.currentMonthProfit - m.previousMonthProfit), "Ejemplo: Si en el periodo anterior ganaste S/700 y en este S/900, la ganancia aumento S/200."],
     ["Comparativo capital vs interes", `${money(m.capitalPending)} / ${money(m.projectedProfit)}`, "Ejemplo: Si tienes S/3,000 de capital pendiente y S/700 de intereses, aqui comparas deuda contra ganancia."],
   ].map(([title, value, tip, metricKey, compareFactor]) => ({ title, value, tip, metricKey, compareFactor }));
 }
@@ -3032,6 +3327,8 @@ function renderClients() {
 }
 
 async function deleteClient(clientId) {
+  if (clientDeletionInProgress) return;
+
   const client = state.clients.find((item) => item.id === clientId);
   if (!client) return;
 
@@ -3042,6 +3339,7 @@ async function deleteClient(clientId) {
   );
   if (!confirmed) return;
 
+  clientDeletionInProgress = true;
   try {
     await ensureAutomaticBackup(true);
     await deleteCloudClient(clientId);
@@ -3059,6 +3357,8 @@ async function deleteClient(clientId) {
       await reloadAfterCloudError();
     }
     window.alert(error.message || "No se pudo eliminar el cliente.");
+  } finally {
+    clientDeletionInProgress = false;
   }
 }
 
@@ -3133,9 +3433,13 @@ function openLoanDeleteDialog(clientId, loanId) {
 
 async function handleLoanDeleteSubmit(event) {
   event.preventDefault();
-  if (!pendingLoanDelete) return;
+  if (!pendingLoanDelete || loanDeletionInProgress) return;
 
   const { clientId, loanId } = pendingLoanDelete;
+  const submitButton = event.submitter || elements.loanDeleteForm.querySelector("button[type='submit']");
+  loanDeletionInProgress = true;
+  if (submitButton) submitButton.disabled = true;
+
   try {
     await ensureAutomaticBackup(true);
     await deleteCloudLoanExtension(clientId, loanId);
@@ -3152,6 +3456,9 @@ async function handleLoanDeleteSubmit(event) {
       await reloadAfterCloudError();
     }
     window.alert(error.message || "No se pudo eliminar la ampliacion.");
+  } finally {
+    loanDeletionInProgress = false;
+    if (submitButton) submitButton.disabled = false;
   }
 }
 
@@ -3680,11 +3987,18 @@ function exportClientsExcel() {
   );
 
   const paymentRows = buildPaymentHistoryRows();
+  const capitalPosition = buildCapitalPositionAtDate(todayISO());
+  const capitalMovementRows = buildCapitalMovementRows();
   const summaryRows = [
     ["Clientes", state.clients.length],
     ["Prestamos registrados", state.loans.length],
     ["Ampliaciones registradas", Math.max(state.loans.length - state.clients.filter((client) => getPrimaryLoanForClient(client.id)).length, 0)],
     ["Cobros registrados", state.payments.length],
+    ["Capital total", capitalPosition.capitalTotal],
+    ["Capital disponible", capitalPosition.availableCapital],
+    ["Capital agregado", capitalPosition.capitalDeposited],
+    ["Capital retirado", capitalPosition.capitalWithdrawn],
+    ["Ganancia reinvertida", capitalPosition.compoundedProfit],
     ["Capital pendiente", state.loans.filter((loan) => loan.status !== "closed").reduce((sum, loan) => sum + Number(loan.remainingCapital || 0), 0)],
     ["Interes cobrado", state.payments.reduce((sum, payment) => sum + Number(payment.interestPaid || 0), 0)],
     ["Capital recuperado", state.payments.reduce((sum, payment) => sum + Number(payment.capitalPaid || 0), 0)],
@@ -3730,6 +4044,10 @@ function exportClientsExcel() {
         ...paymentRows,
       ],
     },
+    {
+      name: "Capital",
+      rows: [["Fecha", "Tipo", "Monto", "Nota"], ...capitalMovementRows],
+    },
   ]);
 
   downloadBlob(workbook, "application/vnd.ms-excel;charset=utf-8", `clientes-prestamos-${todayISO()}.xls`);
@@ -3748,6 +4066,18 @@ function loanExcelRow(client, loan) {
     status,
     loan.note || "",
   ];
+}
+
+function buildCapitalMovementRows() {
+  return (state.capitalMovements || [])
+    .slice()
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .map((movement) => [
+      formatDate(movement.date),
+      movement.type === "withdrawal" ? "Retiro" : "Aporte",
+      Number(movement.amount || 0),
+      movement.note || "",
+    ]);
 }
 
 function buildPaymentHistoryRows() {
@@ -3925,6 +4255,10 @@ function importData(event) {
   reader.addEventListener("load", async () => {
     try {
       const imported = normalizeState(JSON.parse(reader.result));
+      const integrityErrors = validateStateIntegrity(imported);
+      if (integrityErrors.length) {
+        throw new Error(`La copia tiene datos inconsistentes:\n- ${integrityErrors.slice(0, 8).join("\n- ")}`);
+      }
       const confirmed = window.confirm("Esta copia reemplazara los datos actuales de esta plataforma. Deseas continuar?");
       if (!confirmed) return;
 
@@ -3933,8 +4267,8 @@ function importData(event) {
       saveState();
       render();
       window.alert("Copia importada correctamente.");
-    } catch {
-      window.alert("No se pudo importar la copia. Revisa que sea un archivo JSON valido.");
+    } catch (error) {
+      window.alert(error.message || "No se pudo importar la copia. Revisa que sea un archivo JSON valido.");
     } finally {
       event.target.value = "";
     }
@@ -4170,6 +4504,18 @@ function formatDate(dateString) {
 
 function toNumber(value) {
   return Number.parseFloat(value) || 0;
+}
+
+function isFiniteNumber(value) {
+  return Number.isFinite(Number(value));
+}
+
+function isNonNegativeMoney(value) {
+  return isFiniteNumber(value) && Number(value) >= 0;
+}
+
+function isPositiveMoney(value) {
+  return isFiniteNumber(value) && Number(value) > 0;
 }
 
 function roundMoney(value) {
