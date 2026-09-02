@@ -384,6 +384,9 @@ assertFileIncludes(sqlCode, "payments_has_amount", "Invariantes: falta constrain
 assertCondition(!appCode.includes(".slice(0, 4)"), "Cobranza rapida no debe cortar registros; debe usar scroll interno.");
 assertFileIncludes(appCode, "summary-scroll-count", "Cobranza rapida debe mostrar contador cuando hay mas de 3 registros.");
 assertFileIncludes(appCode, "scrollQuickCollection", "Cobranza rapida debe permitir avanzar con chevron.");
+assertFileIncludes(appCode, "renderScrollableSummaryList", "Listas del resumen deben reutilizar el componente scrollable.");
+assertFileIncludes(appCode, 'renderScrollableSummaryList(container, items.length, cards, emptyMessage, "Listado de clientes y metricas"', "Clientes y movimientos clave deben usar scroll interno en rankings.");
+assertFileIncludes(appCode, 'renderScrollableSummaryList(container, items.length, cards, emptyMessage, "Listado de movimientos"', "Clientes y movimientos clave deben usar scroll interno en movimientos.");
 assertFileIncludes(stylesCode, "overscroll-behavior: contain", "Cobranza rapida debe mantener scroll interno independiente.");
 assertFileIncludes(stylesCode, "scrollbar-width: thin", "Cobranza rapida debe usar scrollbar discreta.");
 assertFileIncludes(appCode, 'class="kpi-value"', "Resumen: los valores principales deben usar una clase visual compartida.");

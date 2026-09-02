@@ -3059,17 +3059,6 @@ function renderDashboardCollections(dashboard) {
 }
 
 function renderLoanMiniList(container, loans, emptyMessage) {
-  const key = container.id || createId("quick-list");
-  const previousScroller = container.querySelector(".summary-mini-scroll");
-  if (previousScroller) quickCollectionScrollPositions.set(key, previousScroller.scrollTop);
-
-  if (!loans.length) {
-    container.classList.remove("is-scrollable");
-    container.innerHTML = "";
-    renderEmpty(container, emptyMessage);
-    return;
-  }
-
   const items = loans
     .map((loan) => {
       const client = getClient(loan.clientId);
@@ -3087,22 +3076,36 @@ function renderLoanMiniList(container, loans, emptyMessage) {
       `;
     })
     .join("");
-  const hasOverflow = loans.length > 3;
+  renderScrollableSummaryList(container, loans.length, items, emptyMessage, "Listado de cobros", "Ver siguiente cobro");
+}
 
+function renderScrollableSummaryList(container, itemCount, itemsHtml, emptyMessage, ariaLabel, nextLabel) {
+  const key = container.id || createId("summary-list");
+  const previousScroller = container.querySelector(".summary-mini-scroll");
+  if (previousScroller) quickCollectionScrollPositions.set(key, previousScroller.scrollTop);
+
+  if (!itemCount) {
+    container.classList.remove("is-scrollable");
+    container.innerHTML = "";
+    renderEmpty(container, emptyMessage);
+    return;
+  }
+
+  const hasOverflow = itemCount > 3;
   container.classList.toggle("is-scrollable", hasOverflow);
   container.dataset.quickListKey = key;
   container.innerHTML = `
-    <div class="summary-mini-scroll" tabindex="0" role="list" aria-label="Listado de cobros">
-      ${items}
+    <div class="summary-mini-scroll" tabindex="0" role="list" aria-label="${escapeHTML(ariaLabel)}">
+      ${itemsHtml}
     </div>
     ${
       hasOverflow
         ? `
           <div class="summary-mini-scroll-footer">
-            <button class="summary-scroll-next" type="button" data-scroll-quick-list="${escapeHTML(key)}" aria-label="Ver siguiente cobro">
+            <button class="summary-scroll-next" type="button" data-scroll-quick-list="${escapeHTML(key)}" aria-label="${escapeHTML(nextLabel)}">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
             </button>
-            <span class="summary-scroll-count" aria-live="polite">3 de ${loans.length}</span>
+            <span class="summary-scroll-count" aria-live="polite">3 de ${itemCount}</span>
           </div>
         `
         : ""
@@ -3389,7 +3392,7 @@ function renderDashboardLists(dashboard) {
 }
 
 function renderClientMetricList(container, items, emptyMessage, getValue) {
-  container.innerHTML = items
+  const cards = items
     .map((item) => {
       const [value, label] = getValue(item);
       return `
@@ -3403,11 +3406,11 @@ function renderClientMetricList(container, items, emptyMessage, getValue) {
       `;
     })
     .join("");
-  renderEmpty(container, emptyMessage);
+  renderScrollableSummaryList(container, items.length, cards, emptyMessage, "Listado de clientes y metricas", "Ver siguiente cliente");
 }
 
 function renderMovementList(container, items, emptyMessage, type) {
-  container.innerHTML = items
+  const cards = items
     .map((item) => {
       const client = getClient(item.clientId);
       const value = type === "payment" ? money(Number(item.interestPaid || 0) + Number(item.capitalPaid || 0)) : money(item.amount);
@@ -3423,7 +3426,7 @@ function renderMovementList(container, items, emptyMessage, type) {
       `;
     })
     .join("");
-  renderEmpty(container, emptyMessage);
+  renderScrollableSummaryList(container, items.length, cards, emptyMessage, "Listado de movimientos", "Ver siguiente movimiento");
 }
 
 function renderDashboardAdvanced(dashboard) {
