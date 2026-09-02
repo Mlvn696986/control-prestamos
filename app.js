@@ -2252,7 +2252,7 @@ function renderDashboardIndicatorCard(item, dashboard) {
   return `
     <article class="${className} dashboard-indicator-card" draggable="true" data-indicator-id="${escapeHTML(item.indicatorId)}">
       <span>${escapeHTML(item.title)} ${renderInfoDot(tooltipText)}</span>
-      <strong>${escapeHTML(item.value)}</strong>
+      <strong class="kpi-value">${escapeHTML(item.value)}</strong>
       ${renderComparisonBadge(item, dashboard)}
       ${renderIndicatorMessage(messages, item.title)}
     </article>
@@ -2293,7 +2293,7 @@ function renderKpiCard({ title, value, note, tip, metricKey, compareFactor }, da
   return `
     <article class="summary-kpi-card">
       <span>${escapeHTML(title)} ${renderInfoDot(tooltipText)}</span>
-      <strong>${escapeHTML(value)}</strong>
+      <strong class="kpi-value">${escapeHTML(value)}</strong>
       ${renderComparisonBadge({ title, metricKey, compareFactor }, dashboard)}
       ${renderIndicatorMessage(messages, title)}
     </article>
@@ -3221,7 +3221,7 @@ function renderCompactMetric({ title, value, tip, metricKey, compareFactor }, da
   return `
     <article class="summary-compact-card">
       <span>${escapeHTML(title)} ${renderInfoDot(tip)}</span>
-      <strong>${escapeHTML(value)}</strong>
+      <strong class="kpi-value">${escapeHTML(value)}</strong>
       ${renderComparisonBadge({ title, metricKey, compareFactor }, dashboard)}
       ${renderIndicatorMessage(messages, title)}
     </article>

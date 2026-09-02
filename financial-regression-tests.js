@@ -385,5 +385,8 @@ assertFileIncludes(appCode, "summary-scroll-count", "Cobranza rapida debe mostra
 assertFileIncludes(appCode, "scrollQuickCollection", "Cobranza rapida debe permitir avanzar con chevron.");
 assertFileIncludes(stylesCode, "overscroll-behavior: contain", "Cobranza rapida debe mantener scroll interno independiente.");
 assertFileIncludes(stylesCode, "scrollbar-width: thin", "Cobranza rapida debe usar scrollbar discreta.");
+assertFileIncludes(appCode, 'class="kpi-value"', "Resumen: los valores principales deben usar una clase visual compartida.");
+assertFileIncludes(stylesCode, ".kpi-value", "Resumen: falta la regla CSS centralizada para valores principales.");
+assertCondition(!stylesCode.includes(".summary-compact-card strong"), "Resumen: los indicadores compactos no deben tener un tamano de valor separado.");
 
 console.log("Pruebas financieras OK");
