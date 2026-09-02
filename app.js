@@ -2351,6 +2351,9 @@ function formatSignedNumber(value) {
 }
 
 const INDICATOR_MESSAGES = {
+  "Capital agregado": [
+    "Aqui te figura solo los aportes que realizas. NO cuenta los intereses.",
+  ],
   "Capital prestado": [
     "🎉 Tu dinero ya esta trabajando.",
     "💰 Capital colocado genera movimiento.",
