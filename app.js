@@ -2351,9 +2351,6 @@ function formatSignedNumber(value) {
 }
 
 const INDICATOR_MESSAGES = {
-  "Capital agregado": [
-    "Aqui te figura solo los aportes que realizas. NO cuenta los intereses.",
-  ],
   "Capital prestado": [
     "🎉 Tu dinero ya esta trabajando.",
     "💰 Capital colocado genera movimiento.",
@@ -2877,7 +2874,7 @@ function getDashboardManagementItems(dashboard) {
   const m = dashboard.metrics;
   const modeText = dashboard.charts.modeSegments.map((item) => `${item.label}: ${item.value}`).join(" · ");
   return [
-    ["Capital agregado", money(m.capitalDeposited), "Suma de capital inicial y aportes extra registrados hasta la fecha final del resumen.", "capitalDeposited"],
+    ["Capital agregado", money(m.capitalDeposited), "Aqui te figura solo los aportes que realizas. NO cuenta los intereses.", "capitalDeposited"],
     ["Capital retirado", money(m.capitalWithdrawn), "Suma de retiros registrados hasta la fecha final del resumen.", "capitalWithdrawn"],
     ["Ganancia reinvertida", money(m.compoundedProfit), "Intereses cobrados acumulados que ya forman parte del capital total.", "compoundedProfit"],
     ["Ganancia del periodo", money(m.currentMonthProfit), "Ejemplo: Si durante el periodo seleccionado cobraste S/850 en intereses, tu ganancia del periodo es S/850.", "currentMonthProfit"],
