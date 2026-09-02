@@ -2,6 +2,7 @@ const fs = require("fs");
 const vm = require("vm");
 
 const appCode = fs.readFileSync("app.js", "utf8");
+const htmlCode = fs.readFileSync("index.html", "utf8");
 const sqlCode = fs.readFileSync("supabase-financial-integrity.sql", "utf8");
 const stylesCode = fs.readFileSync("styles.css", "utf8");
 
@@ -388,5 +389,9 @@ assertFileIncludes(stylesCode, "scrollbar-width: thin", "Cobranza rapida debe us
 assertFileIncludes(appCode, 'class="kpi-value"', "Resumen: los valores principales deben usar una clase visual compartida.");
 assertFileIncludes(stylesCode, ".kpi-value", "Resumen: falta la regla CSS centralizada para valores principales.");
 assertCondition(!stylesCode.includes(".summary-compact-card strong"), "Resumen: los indicadores compactos no deben tener un tamano de valor separado.");
+assertFileIncludes(htmlCode, "Periodo de fechas", "Resumen: las fechas deben estar agrupadas bajo Periodo de fechas.");
+assertFileIncludes(htmlCode, "summary-date-group", "Resumen: falta el contenedor visual del periodo de fechas.");
+assertCondition(!htmlCode.includes("summaryOperation"), "Resumen: el filtro visual Tipo de operacion no debe seguir en el HTML.");
+assertFileIncludes(appCode, 'operation: "all"', "Resumen: al retirar el filtro visual, la operacion interna debe quedar en Todos.");
 
 console.log("Pruebas financieras OK");

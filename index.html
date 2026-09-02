@@ -188,29 +188,26 @@
             </section>
 
             <section class="summary-filters panel" aria-label="Filtros generales del resumen">
-              <label>
-                Desde
-                <input id="summaryCustomStart" data-dashboard-filter type="date" />
-              </label>
-              <label>
-                Hasta
-                <input id="summaryCustomEnd" data-dashboard-filter type="date" />
-              </label>
-              <label>
+              <fieldset class="summary-date-group">
+                <legend>Periodo de fechas</legend>
+                <div class="summary-date-fields">
+                  <label>
+                    Desde
+                    <input id="summaryCustomStart" data-dashboard-filter type="date" />
+                  </label>
+                  <label>
+                    Hasta
+                    <input id="summaryCustomEnd" data-dashboard-filter type="date" />
+                  </label>
+                </div>
+              </fieldset>
+              <label class="summary-compare-field">
                 Comparar con
                 <select id="summaryCompare" data-dashboard-filter>
                   <option value="none" selected>Sin comparacion</option>
                   <option value="previousPeriod">Periodo anterior</option>
                   <option value="previousMonth">Mes anterior</option>
                   <option value="previousYear">Ano anterior</option>
-                </select>
-              </label>
-              <label>
-                Tipo de operacion
-                <select id="summaryOperation" data-dashboard-filter>
-                  <option value="all" selected>Todos</option>
-                  <option value="primary">Prestamos principales</option>
-                  <option value="extensions">Ampliaciones</option>
                 </select>
               </label>
               <div class="summary-filter-actions">

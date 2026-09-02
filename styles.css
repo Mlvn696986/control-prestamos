@@ -940,10 +940,41 @@ textarea:focus {
 
 .summary-filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(140px, 1fr)) auto;
-  gap: 12px;
+  grid-template-columns: minmax(360px, 1.45fr) minmax(180px, 0.75fr) auto;
+  gap: 14px;
   align-items: end;
-  padding: 28px 16px 16px;
+  padding: 24px 16px 16px;
+}
+
+.summary-date-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.summary-date-group legend {
+  margin: 0 0 8px;
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.summary-date-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 10px;
+  background: rgba(0, 167, 111, 0.045);
+  border: 1px solid rgba(0, 167, 111, 0.14);
+  border-radius: 8px;
+}
+
+.summary-date-fields label,
+.summary-compare-field {
+  min-width: 0;
 }
 
 .summary-filter-actions {
@@ -2357,8 +2388,15 @@ textarea:focus {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .summary-filter-actions {
+  .summary-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .summary-date-group {
     grid-column: 1 / -1;
+  }
+
+  .summary-filter-actions {
     justify-content: stretch;
   }
 
@@ -2446,6 +2484,10 @@ textarea:focus {
   .summary-charts-grid,
   .summary-donut-layout,
   .summary-projection-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-date-fields {
     grid-template-columns: 1fr;
   }
 

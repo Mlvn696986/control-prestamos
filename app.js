@@ -159,7 +159,6 @@ const elements = {
   summaryCustomStart: $("#summaryCustomStart"),
   summaryCustomEnd: $("#summaryCustomEnd"),
   summaryCompare: $("#summaryCompare"),
-  summaryOperation: $("#summaryOperation"),
   summaryExport: $("#summaryExport"),
   summaryCriticalGrid: $("#summaryCriticalGrid"),
   summaryIndicatorsGrid: $("#summaryIndicatorsGrid"),
@@ -1998,7 +1997,7 @@ function getDashboardFilters() {
     customStart: elements.summaryCustomStart?.value || "",
     customEnd: elements.summaryCustomEnd?.value || "",
     compare: elements.summaryCompare?.value || "none",
-    operation: elements.summaryOperation?.value || "all",
+    operation: "all",
   };
 }
 
