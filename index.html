@@ -218,7 +218,16 @@
               </div>
             </section>
 
-            <div id="summaryCriticalGrid" class="summary-kpi-grid"></div>
+            <section class="summary-indicators panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Indicadores</p>
+                  <h3>Indicadores</h3>
+                </div>
+                <button id="resetIndicatorOrder" class="ghost-button small-button" type="button">Restablecer orden</button>
+              </div>
+              <div id="summaryIndicatorsGrid" class="summary-indicators-grid"></div>
+            </section>
 
             <section class="summary-collections panel">
               <div class="section-heading">
@@ -247,7 +256,7 @@
               </div>
             </section>
 
-            <section class="summary-section panel">
+            <section class="summary-section panel is-hidden">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Analisis operativo</p>
@@ -256,41 +265,6 @@
               </div>
               <div id="summaryManagementGrid" class="summary-compact-grid"></div>
             </section>
-
-            <div class="summary-charts-grid">
-              <section class="panel summary-chart-panel">
-                <h3>Cobros reales por mes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en enero cobraste S/1,000 de capital y S/300 de intereses, el grafico muestra ambos montos para comparar cada mes.">i</span></h3>
-                <div id="summaryMonthlyChart" class="summary-bar-chart"></div>
-              </section>
-              <section class="panel summary-chart-panel">
-                <h3>Prestamos otorgados por mes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en marzo registraste 3 prestamos y 2 ampliaciones, el grafico mostrara 5 operaciones creadas ese mes.">i</span></h3>
-                <div id="summaryLoansChart" class="summary-bar-chart"></div>
-              </section>
-              <section class="panel summary-chart-panel">
-                <h3>Cartera por estado <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si tienes 8 prestamos activos, 3 vencidos y 4 cerrados, el grafico reparte la cartera segun esos estados.">i</span></h3>
-                <div id="summaryStatusChart" class="summary-donut-layout"></div>
-              </section>
-              <section class="panel summary-chart-panel">
-                <h3>Capital vs intereses <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si recibiste S/3,000 de capital y S/700 de intereses, el grafico separa que parte es capital y que parte es ganancia.">i</span></h3>
-                <div id="summaryCapitalChart" class="summary-horizontal-chart"></div>
-              </section>
-              <section class="panel summary-chart-panel">
-                <h3>Modalidad de interes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si tienes 5 prestamos mensuales, 2 quincenales y 1 semanal, el grafico muestra como estan distribuidos.">i</span></h3>
-                <div id="summaryModeChart" class="summary-donut-layout"></div>
-              </section>
-              <section class="panel summary-chart-panel">
-                <h3>Proyeccion de ganancias <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si tus prestamos actuales proyectan S/1,000 por mes, el grafico estima cuanto podrias ganar en 3, 6 o 12 meses.">i</span></h3>
-                <div id="summaryProjectionChart" class="summary-projection-grid"></div>
-              </section>
-              <section class="panel summary-chart-panel">
-                <h3>Tendencia de morosidad <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en abril hubo 1 vencido y en mayo hubo 4, el grafico muestra si los atrasos estan subiendo o bajando.">i</span></h3>
-                <div id="summaryDelinquencyChart" class="summary-bar-chart"></div>
-              </section>
-              <section class="panel summary-chart-panel">
-                <h3>Flujo de caja <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si entraron S/5,000 por pagos y salieron S/3,000 en nuevos prestamos, el flujo queda positivo en S/2,000.">i</span></h3>
-                <div id="summaryCashflowChart" class="summary-horizontal-chart"></div>
-              </section>
-            </div>
 
             <section class="summary-lists panel">
               <div class="section-heading">
@@ -311,7 +285,7 @@
               </div>
             </section>
 
-            <details class="summary-advanced panel" open>
+            <details class="summary-advanced panel is-hidden" open>
               <summary>
                 <span>Indicadores avanzados</span>
                 <small>Analisis adicional de rentabilidad, riesgo y crecimiento</small>
@@ -327,6 +301,49 @@
                 </div>
               </div>
               <div id="summaryAlerts" class="summary-alert-list"></div>
+            </section>
+
+            <section class="summary-graphs panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Graficos y analisis</p>
+                  <h3>Graficos y analisis</h3>
+                </div>
+              </div>
+              <div class="summary-charts-grid">
+                <section class="summary-chart-panel">
+                  <h3>Cobros reales por mes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en enero cobraste S/1,000 de capital y S/300 de intereses, el grafico muestra ambos montos para comparar cada mes.">i</span></h3>
+                  <div id="summaryMonthlyChart" class="summary-bar-chart"></div>
+                </section>
+                <section class="summary-chart-panel">
+                  <h3>Prestamos otorgados por mes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en marzo registraste 3 prestamos y 2 ampliaciones, el grafico mostrara 5 operaciones creadas ese mes.">i</span></h3>
+                  <div id="summaryLoansChart" class="summary-bar-chart"></div>
+                </section>
+                <section class="summary-chart-panel">
+                  <h3>Cartera por estado <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si tienes 8 prestamos activos, 3 vencidos y 4 cerrados, el grafico reparte la cartera segun esos estados.">i</span></h3>
+                  <div id="summaryStatusChart" class="summary-donut-layout"></div>
+                </section>
+                <section class="summary-chart-panel">
+                  <h3>Capital vs intereses <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si recibiste S/3,000 de capital y S/700 de intereses, el grafico separa que parte es capital y que parte es ganancia.">i</span></h3>
+                  <div id="summaryCapitalChart" class="summary-horizontal-chart"></div>
+                </section>
+                <section class="summary-chart-panel">
+                  <h3>Modalidad de interes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si tienes 5 prestamos mensuales, 2 quincenales y 1 semanal, el grafico muestra como estan distribuidos.">i</span></h3>
+                  <div id="summaryModeChart" class="summary-donut-layout"></div>
+                </section>
+                <section class="summary-chart-panel">
+                  <h3>Proyeccion de ganancias <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si tus prestamos actuales proyectan S/1,000 por mes, el grafico estima cuanto podrias ganar en 3, 6 o 12 meses.">i</span></h3>
+                  <div id="summaryProjectionChart" class="summary-projection-grid"></div>
+                </section>
+                <section class="summary-chart-panel">
+                  <h3>Tendencia de morosidad <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en abril hubo 1 vencido y en mayo hubo 4, el grafico muestra si los atrasos estan subiendo o bajando.">i</span></h3>
+                  <div id="summaryDelinquencyChart" class="summary-bar-chart"></div>
+                </section>
+                <section class="summary-chart-panel">
+                  <h3>Flujo de caja <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si entraron S/5,000 por pagos y salieron S/3,000 en nuevos prestamos, el flujo queda positivo en S/2,000.">i</span></h3>
+                  <div id="summaryCashflowChart" class="summary-horizontal-chart"></div>
+                </section>
+              </div>
             </section>
           </div>
         </section>

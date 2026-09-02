@@ -952,7 +952,8 @@ textarea:focus {
   gap: 8px;
 }
 
-.summary-kpi-grid {
+.summary-kpi-grid,
+.summary-indicators-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(190px, 1fr));
   gap: 14px;
@@ -969,6 +970,27 @@ textarea:focus {
   border-top: 4px solid var(--accent);
   border-radius: 8px;
   box-shadow: 0 12px 28px rgba(6, 24, 38, 0.07);
+}
+
+.dashboard-indicator-card {
+  cursor: grab;
+  transition: opacity 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  user-select: none;
+}
+
+.dashboard-indicator-card:active {
+  cursor: grabbing;
+}
+
+.dashboard-indicator-card.is-dragging {
+  opacity: 0.72;
+  transform: scale(0.985);
+  border-color: rgba(0, 167, 111, 0.5);
+  box-shadow: 0 18px 36px rgba(6, 24, 38, 0.16);
+}
+
+.dashboard-indicator-card.is-touch-dragging {
+  touch-action: none;
 }
 
 .summary-kpi-card {
@@ -1087,36 +1109,37 @@ textarea:focus {
 }
 
 .info-dot::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  z-index: 15;
-  width: min(340px, 82vw);
+  display: none;
+}
+
+.smart-info-tooltip {
+  position: fixed;
+  z-index: 10000;
+  width: max-content;
+  max-width: min(340px, calc(100vw - 24px));
   padding: 12px 14px;
   color: #fff;
   background: #061826;
   border-radius: 8px;
-  box-shadow: 0 16px 30px rgba(6, 24, 38, 0.22);
+  box-shadow: 0 18px 34px rgba(6, 24, 38, 0.26);
   font-size: 0.78rem;
   font-weight: 700;
   line-height: 1.45;
   overflow-wrap: break-word;
-  text-align: left;
-  text-transform: none;
-  opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, 4px);
+  opacity: 0;
+  transform: translateY(4px);
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-.info-dot:hover::after,
-.info-dot:focus-visible::after {
+.smart-info-tooltip.is-visible {
   opacity: 1;
-  transform: translate(-50%, 0);
+  transform: translateY(0);
 }
 
 .summary-collections,
+.summary-indicators,
+.summary-graphs,
 .summary-section,
 .summary-lists,
 .summary-alerts {
@@ -1319,7 +1342,12 @@ textarea:focus {
 
 .summary-chart-panel {
   min-height: 300px;
+  padding: 16px;
   padding-top: 28px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(6, 24, 38, 0.06);
 }
 
 .summary-chart-panel h3 {
@@ -2322,6 +2350,7 @@ textarea:focus {
 
   .summary-filters,
   .summary-kpi-grid,
+  .summary-indicators-grid,
   .summary-collection-grid,
   .summary-lists-grid,
   .summary-compact-grid,
@@ -2411,6 +2440,7 @@ textarea:focus {
 
   .summary-filters,
   .summary-kpi-grid,
+  .summary-indicators-grid,
   .summary-collection-grid,
   .summary-lists-grid,
   .summary-compact-grid,

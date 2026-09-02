@@ -223,6 +223,14 @@ resetTestState({
 dashboard = buildTestDashboard();
 assertMoney(dashboard.metrics.capitalTotal, 1300, "Capital compuesto: aporte + interes cobrado - retiro.");
 assertMoney(dashboard.metrics.availableCapital, 500, "Capital compuesto: disponible = capital total - capital pendiente activo.");
+const indicatorItems = getDashboardIndicatorItems(dashboard);
+const expectedIndicatorCount =
+  getDashboardKpiItems(dashboard).length + getDashboardManagementItems(dashboard).length + getDashboardAdvancedItems(dashboard).length;
+assertEqual(indicatorItems.length, expectedIndicatorCount, "Resumen: la seccion Indicadores debe conservar todos los indicadores.");
+assertEqual(new Set(indicatorItems.map((item) => item.indicatorId)).size, indicatorItems.length, "Resumen: cada indicador debe tener un ID unico para ordenar.");
+const capitalAddedIndicator = indicatorItems.find((item) => item.title === "Capital agregado");
+assert(capitalAddedIndicator?.tip === "Aquí te figura solo los aportes que realizas. NO cuenta los intereses.", "Capital agregado: el texto explicativo debe estar en el tooltip.");
+assert(!getIndicatorMessages("Capital agregado").includes(capitalAddedIndicator.tip), "Capital agregado: la frase del tooltip no debe reemplazar los mensajes dinamicos inferiores.");
 
 resetTestState({
   clients: [testClient("p1"), testClient("p2"), testClient("p3")],

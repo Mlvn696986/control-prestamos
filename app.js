@@ -3,6 +3,7 @@ const BACKUP_STORAGE_KEY = "prestamos-control-backups-v1";
 const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const MAX_BACKUPS = 7;
 const FREE_CLIENT_LIMIT = 10;
+const INDICATOR_ORDER_STORAGE_KEY = "prestamos-dashboard-indicator-order-v1";
 const INTEREST_MODES = {
   monthly: { label: "Mensual", shortLabel: "mensual", days: null, rateFactor: 1 },
   biweekly: { label: "Quincenal", shortLabel: "quincenal", days: 15, rateFactor: 1 / 2 },
@@ -43,6 +44,9 @@ let signupSuccessTimer = null;
 let pendingLoanDelete = null;
 let dashboardMessageTimers = [];
 let quickCollectionScrollPositions = new Map();
+let activeInfoTooltipTarget = null;
+let indicatorDragState = null;
+let indicatorTouchDragState = null;
 let clientSubmissionInProgress = false;
 let editSubmissionInProgress = false;
 let paymentSubmissionInProgress = false;
@@ -158,6 +162,8 @@ const elements = {
   summaryOperation: $("#summaryOperation"),
   summaryExport: $("#summaryExport"),
   summaryCriticalGrid: $("#summaryCriticalGrid"),
+  summaryIndicatorsGrid: $("#summaryIndicatorsGrid"),
+  resetIndicatorOrder: $("#resetIndicatorOrder"),
   summaryTodayList: $("#summaryTodayList"),
   summaryOverdueList: $("#summaryOverdueList"),
   summarySoonList: $("#summarySoonList"),
@@ -279,9 +285,21 @@ function bindEvents() {
   });
   window.addEventListener("resize", () => {
     scheduleQuickCollectionSetup();
+    positionActiveInfoTooltip();
   });
+  window.addEventListener("scroll", positionActiveInfoTooltip, true);
+  initInfoTooltipEvents();
+  initIndicatorOrderEvents();
 
   document.addEventListener("click", (event) => {
+    const infoDot = event.target.closest(".info-dot");
+    if (infoDot) {
+      event.preventDefault();
+      toggleInfoTooltip(infoDot);
+      return;
+    }
+    hideInfoTooltip();
+
     const editButton = event.target.closest("[data-edit-client]");
     const editLoanButton = event.target.closest("[data-edit-loan]");
     const paymentButton = event.target.closest("[data-pay-loan]");
@@ -1823,12 +1841,10 @@ function setView(view) {
 function renderDashboard() {
   const dashboard = buildDashboardData();
   renderDashboardHeader(dashboard);
-  renderDashboardKpis(dashboard);
+  renderDashboardIndicators(dashboard);
   renderDashboardCollections(dashboard);
-  renderDashboardManagement(dashboard);
   renderDashboardCharts(dashboard);
   renderDashboardLists(dashboard);
-  renderDashboardAdvanced(dashboard);
   renderDashboardAlerts(dashboard);
   initDashboardMessageRotators();
 }
@@ -2195,8 +2211,57 @@ function renderDashboardHeader(dashboard) {
   `;
 }
 
+function renderDashboardIndicators(dashboard) {
+  if (!elements.summaryIndicatorsGrid) return;
+  const cards = getOrderedDashboardIndicatorItems(dashboard);
+  elements.summaryIndicatorsGrid.innerHTML = cards.map((item) => renderDashboardIndicatorCard(item, dashboard)).join("");
+}
+
+function getDashboardIndicatorItems(dashboard) {
+  return [
+    ...getDashboardKpiItems(dashboard).map((item) => ({ ...item, cardType: "kpi" })),
+    ...getDashboardManagementItems(dashboard).map((item) => ({ ...item, cardType: "compact" })),
+    ...getDashboardAdvancedItems(dashboard).map((item) => ({ ...item, cardType: "compact" })),
+  ].map((item) => ({ ...item, indicatorId: getIndicatorId(item) }));
+}
+
+function getOrderedDashboardIndicatorItems(dashboard) {
+  const items = getDashboardIndicatorItems(dashboard);
+  const order = getSavedIndicatorOrder();
+  if (!order.length) return items;
+
+  const byId = new Map(items.map((item) => [item.indicatorId, item]));
+  const ordered = order.map((id) => byId.get(id)).filter(Boolean);
+  const missing = items.filter((item) => !order.includes(item.indicatorId));
+  return [...ordered, ...missing];
+}
+
+function getIndicatorId(item) {
+  return String(item.title)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+}
+
+function renderDashboardIndicatorCard(item, dashboard) {
+  const className = item.cardType === "kpi" ? "summary-kpi-card" : "summary-compact-card";
+  const tooltipText = item.tip || item.note || "Indicador del resumen.";
+  const messages = getIndicatorMessages(item.title);
+  return `
+    <article class="${className} dashboard-indicator-card" draggable="true" data-indicator-id="${escapeHTML(item.indicatorId)}">
+      <span>${escapeHTML(item.title)} ${renderInfoDot(tooltipText)}</span>
+      <strong>${escapeHTML(item.value)}</strong>
+      ${renderComparisonBadge(item, dashboard)}
+      ${renderIndicatorMessage(messages, item.title)}
+    </article>
+  `;
+}
+
 function renderDashboardKpis(dashboard) {
   const cards = getDashboardKpiItems(dashboard);
+  if (!elements.summaryCriticalGrid) return;
   elements.summaryCriticalGrid.innerHTML = cards.map((item) => renderKpiCard(item, dashboard)).join("");
 }
 
@@ -2237,6 +2302,253 @@ function renderKpiCard({ title, value, note, tip, metricKey, compareFactor }, da
 
 function renderInfoDot(text) {
   return `<i class="info-dot" tabindex="0" data-tip="${escapeHTML(text)}">i</i>`;
+}
+
+function initInfoTooltipEvents() {
+  document.addEventListener("pointerover", (event) => {
+    if (event.pointerType === "touch") return;
+    const dot = event.target.closest(".info-dot");
+    if (dot) showInfoTooltip(dot);
+  });
+  document.addEventListener("pointerout", (event) => {
+    const dot = event.target.closest(".info-dot");
+    if (!dot) return;
+    const nextTarget = event.relatedTarget;
+    if (nextTarget && dot.contains(nextTarget)) return;
+    hideInfoTooltip();
+  });
+  document.addEventListener("focusin", (event) => {
+    const dot = event.target.closest(".info-dot");
+    if (dot) showInfoTooltip(dot);
+  });
+  document.addEventListener("focusout", (event) => {
+    if (event.target.closest(".info-dot")) hideInfoTooltip();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") hideInfoTooltip();
+  });
+}
+
+function toggleInfoTooltip(target) {
+  if (activeInfoTooltipTarget === target) {
+    hideInfoTooltip();
+    return;
+  }
+  showInfoTooltip(target);
+}
+
+function showInfoTooltip(target) {
+  const text = target?.dataset?.tip;
+  if (!text) return;
+  const tooltip = getInfoTooltipElement();
+  tooltip.textContent = text;
+  tooltip.classList.add("is-visible");
+  activeInfoTooltipTarget = target;
+  positionActiveInfoTooltip();
+}
+
+function hideInfoTooltip() {
+  const tooltip = document.querySelector(".smart-info-tooltip");
+  if (tooltip) tooltip.classList.remove("is-visible");
+  activeInfoTooltipTarget = null;
+}
+
+function getInfoTooltipElement() {
+  let tooltip = document.querySelector(".smart-info-tooltip");
+  if (!tooltip) {
+    tooltip = document.createElement("div");
+    tooltip.className = "smart-info-tooltip";
+    tooltip.setAttribute("role", "tooltip");
+    document.body.appendChild(tooltip);
+  }
+  return tooltip;
+}
+
+function positionActiveInfoTooltip() {
+  if (!activeInfoTooltipTarget) return;
+  const tooltip = document.querySelector(".smart-info-tooltip");
+  if (!tooltip?.classList.contains("is-visible")) return;
+  const rect = activeInfoTooltipTarget.getBoundingClientRect();
+  if (!rect.width && !rect.height) {
+    hideInfoTooltip();
+    return;
+  }
+
+  const margin = 12;
+  const tooltipWidth = tooltip.offsetWidth || 280;
+  const tooltipHeight = tooltip.offsetHeight || 80;
+  const x = clamp(rect.left + rect.width / 2 - tooltipWidth / 2, margin, window.innerWidth - tooltipWidth - margin);
+  const hasRoomAbove = rect.top >= tooltipHeight + margin * 2;
+  const preferredY = hasRoomAbove ? rect.top - tooltipHeight - 8 : rect.bottom + 8;
+  const y = clamp(preferredY, margin, window.innerHeight - tooltipHeight - margin);
+  tooltip.style.left = `${x}px`;
+  tooltip.style.top = `${y}px`;
+}
+
+function initIndicatorOrderEvents() {
+  const grid = elements.summaryIndicatorsGrid;
+  if (!grid || grid.dataset.dragBound) return;
+  grid.dataset.dragBound = "true";
+  grid.addEventListener("dragstart", handleIndicatorDragStart);
+  grid.addEventListener("dragover", handleIndicatorDragOver);
+  grid.addEventListener("drop", handleIndicatorDrop);
+  grid.addEventListener("dragend", clearIndicatorDragState);
+  grid.addEventListener("pointerdown", handleIndicatorPointerDown);
+  grid.addEventListener("pointermove", handleIndicatorPointerMove);
+  grid.addEventListener("pointerup", handleIndicatorPointerEnd);
+  grid.addEventListener("pointercancel", handleIndicatorPointerEnd);
+
+  if (elements.resetIndicatorOrder) {
+    elements.resetIndicatorOrder.addEventListener("click", resetDashboardIndicatorOrder);
+  }
+}
+
+function handleIndicatorDragStart(event) {
+  const card = event.target.closest(".dashboard-indicator-card");
+  if (!card || isIndicatorDragBlockedTarget(event.target)) {
+    event.preventDefault();
+    return;
+  }
+  indicatorDragState = { id: card.dataset.indicatorId };
+  card.classList.add("is-dragging");
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", card.dataset.indicatorId || "");
+}
+
+function handleIndicatorDragOver(event) {
+  const grid = elements.summaryIndicatorsGrid;
+  const dragging = grid?.querySelector(".dashboard-indicator-card.is-dragging");
+  if (!grid || !dragging || !indicatorDragState) return;
+  event.preventDefault();
+  moveIndicatorCardAtPoint(grid, dragging, event.clientX, event.clientY, event.target);
+}
+
+function handleIndicatorDrop(event) {
+  if (!indicatorDragState) return;
+  event.preventDefault();
+  saveCurrentIndicatorOrder();
+  clearIndicatorDragState();
+}
+
+function handleIndicatorPointerDown(event) {
+  if (event.pointerType === "mouse") return;
+  const card = event.target.closest(".dashboard-indicator-card");
+  if (!card || isIndicatorDragBlockedTarget(event.target)) return;
+  const timer = window.setTimeout(() => {
+    if (!indicatorTouchDragState || indicatorTouchDragState.card !== card) return;
+    indicatorTouchDragState.active = true;
+    indicatorDragState = { id: card.dataset.indicatorId, touch: true };
+    card.classList.add("is-dragging", "is-touch-dragging");
+    card.setPointerCapture?.(event.pointerId);
+  }, 420);
+  indicatorTouchDragState = {
+    active: false,
+    card,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    timer,
+  };
+}
+
+function handleIndicatorPointerMove(event) {
+  if (!indicatorTouchDragState) return;
+  const movement = Math.hypot(event.clientX - indicatorTouchDragState.startX, event.clientY - indicatorTouchDragState.startY);
+  if (!indicatorTouchDragState.active && movement > 10) {
+    clearIndicatorTouchDragState(false);
+    return;
+  }
+  if (!indicatorTouchDragState.active) return;
+  event.preventDefault();
+  moveIndicatorCardAtPoint(elements.summaryIndicatorsGrid, indicatorTouchDragState.card, event.clientX, event.clientY);
+}
+
+function handleIndicatorPointerEnd() {
+  if (!indicatorTouchDragState) return;
+  const shouldSave = indicatorTouchDragState.active;
+  clearIndicatorTouchDragState(shouldSave);
+}
+
+function moveIndicatorCardAtPoint(grid, dragging, clientX, clientY, eventTarget = null) {
+  const hovered = (eventTarget || document.elementFromPoint(clientX, clientY))?.closest?.(".dashboard-indicator-card");
+  if (hovered && hovered !== dragging && grid.contains(hovered)) {
+    const rect = hovered.getBoundingClientRect();
+    const before = clientY < rect.top + rect.height / 2;
+    grid.insertBefore(dragging, before ? hovered : hovered.nextSibling);
+    return;
+  }
+
+  const afterElement = getIndicatorInsertBeforeCard(grid, dragging, clientY);
+  if (afterElement) {
+    grid.insertBefore(dragging, afterElement);
+  } else {
+    grid.appendChild(dragging);
+  }
+}
+
+function getIndicatorInsertBeforeCard(grid, dragging, clientY) {
+  return Array.from(grid.querySelectorAll(".dashboard-indicator-card:not(.is-dragging)")).reduce(
+    (closest, card) => {
+      const rect = card.getBoundingClientRect();
+      const offset = clientY - rect.top - rect.height / 2;
+      if (offset < 0 && offset > closest.offset) return { offset, card };
+      return closest;
+    },
+    { offset: Number.NEGATIVE_INFINITY, card: null }
+  ).card;
+}
+
+function isIndicatorDragBlockedTarget(target) {
+  return Boolean(
+    target.closest(
+      ".info-dot, button, a, input, select, textarea, label, .comparison-badge, .dashboard-indicator-card > span, .dashboard-indicator-card > strong, .indicator-message"
+    )
+  );
+}
+
+function saveCurrentIndicatorOrder() {
+  const order = Array.from(elements.summaryIndicatorsGrid?.querySelectorAll(".dashboard-indicator-card") || [])
+    .map((card) => card.dataset.indicatorId)
+    .filter(Boolean);
+  saveIndicatorOrder(order);
+}
+
+function clearIndicatorDragState() {
+  document.querySelectorAll(".dashboard-indicator-card.is-dragging").forEach((card) => card.classList.remove("is-dragging", "is-touch-dragging"));
+  indicatorDragState = null;
+}
+
+function clearIndicatorTouchDragState(shouldSave) {
+  if (indicatorTouchDragState?.timer) window.clearTimeout(indicatorTouchDragState.timer);
+  if (shouldSave) saveCurrentIndicatorOrder();
+  clearIndicatorDragState();
+  indicatorTouchDragState = null;
+}
+
+function getIndicatorOrderStorageKey() {
+  return `${INDICATOR_ORDER_STORAGE_KEY}:${state.user?.id || "local-user"}`;
+}
+
+function getSavedIndicatorOrder() {
+  try {
+    const saved = localStorage.getItem(getIndicatorOrderStorageKey());
+    const order = JSON.parse(saved || "[]");
+    return Array.isArray(order) ? order.filter((id) => typeof id === "string") : [];
+  } catch {
+    localStorage.removeItem(getIndicatorOrderStorageKey());
+    return [];
+  }
+}
+
+function saveIndicatorOrder(order) {
+  localStorage.setItem(getIndicatorOrderStorageKey(), JSON.stringify(order));
+}
+
+function resetDashboardIndicatorOrder() {
+  const confirmed = window.confirm("¿Deseas volver al orden predeterminado de los indicadores?");
+  if (!confirmed) return;
+  localStorage.removeItem(getIndicatorOrderStorageKey());
+  renderDashboard();
 }
 
 const DASHBOARD_TREND_RULES = {
@@ -2735,6 +3047,11 @@ function hashText(value) {
   return String(value).split("").reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) | 0, 0);
 }
 
+function clamp(value, min, max) {
+  if (max < min) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
 function renderDashboardCollections(dashboard) {
   renderLoanMiniList(elements.summaryTodayList, dashboard.todayLoans, "No hay cobros para hoy.");
   renderLoanMiniList(elements.summaryOverdueList, dashboard.overdueLoans.sort(sortLoansByDueDate), "No hay cobros vencidos.");
@@ -2867,6 +3184,7 @@ function scrollQuickCollection(key) {
 
 function renderDashboardManagement(dashboard) {
   const cards = getDashboardManagementItems(dashboard);
+  if (!elements.summaryManagementGrid) return;
   elements.summaryManagementGrid.innerHTML = cards.map((item) => renderCompactMetric(item, dashboard)).join("");
 }
 
@@ -2874,7 +3192,7 @@ function getDashboardManagementItems(dashboard) {
   const m = dashboard.metrics;
   const modeText = dashboard.charts.modeSegments.map((item) => `${item.label}: ${item.value}`).join(" · ");
   return [
-    ["Capital agregado", money(m.capitalDeposited), "Aqui te figura solo los aportes que realizas. NO cuenta los intereses.", "capitalDeposited"],
+    ["Capital agregado", money(m.capitalDeposited), "Aquí te figura solo los aportes que realizas. NO cuenta los intereses.", "capitalDeposited"],
     ["Capital retirado", money(m.capitalWithdrawn), "Suma de retiros registrados hasta la fecha final del resumen.", "capitalWithdrawn"],
     ["Ganancia reinvertida", money(m.compoundedProfit), "Intereses cobrados acumulados que ya forman parte del capital total.", "compoundedProfit"],
     ["Ganancia del periodo", money(m.currentMonthProfit), "Ejemplo: Si durante el periodo seleccionado cobraste S/850 en intereses, tu ganancia del periodo es S/850.", "currentMonthProfit"],
@@ -3111,6 +3429,7 @@ function renderMovementList(container, items, emptyMessage, type) {
 
 function renderDashboardAdvanced(dashboard) {
   const cards = getDashboardAdvancedItems(dashboard);
+  if (!elements.summaryAdvancedGrid) return;
   elements.summaryAdvancedGrid.innerHTML = cards.map((item) => renderCompactMetric(item, dashboard)).join("");
 }
 
