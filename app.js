@@ -1851,6 +1851,9 @@ function renderDashboard() {
 function buildDashboardData(options = {}) {
   const filters = options.filters || getDashboardFilters();
   const range = options.range || getDashboardDateRange(filters);
+  if (range.invalid) {
+    return buildInvalidDashboardData(filters, range);
+  }
   const scopeLoans = state.loans.filter((loan) => loanMatchesDashboardScope(loan, filters));
   const scopePayments = state.payments.filter((payment) => paymentMatchesDashboardScope(payment, scopeLoans));
   const loans = scopeLoans.filter((loan) => loanWasInPortfolioDuringRange(loan, range));
@@ -1970,8 +1973,8 @@ function buildDashboardData(options = {}) {
       recoveryRate,
     },
     charts: {
-      months: buildMonthSeries(6, scopePayments),
-      loansByMonth: buildLoanMonthSeries(6, scopeLoans),
+      months: buildMonthSeries(6, payments),
+      loansByMonth: buildLoanMonthSeries(6, loansStartedInPeriod),
       statusSegments,
       modeSegments,
       projections: [
@@ -1980,7 +1983,7 @@ function buildDashboardData(options = {}) {
         { label: "6 meses", value: projectedProfit * 6 },
         { label: "12 meses", value: projectedProfit * 12 },
       ],
-      delinquency: buildDelinquencySeries(6, scopeLoans),
+      delinquency: buildDelinquencySeries(6, activeLoans, range.end),
       cashflow: [
         { label: "Ingresos", value: payments.reduce((total, payment) => total + payment.capitalPaid + payment.interestPaid, 0), color: "#00a76f" },
         { label: "Egresos", value: periodLoanAmount, color: "#ffb000" },
@@ -1992,22 +1995,175 @@ function buildDashboardData(options = {}) {
   return dashboard;
 }
 
-function getDashboardFilters() {
+function buildInvalidDashboardData(filters, range) {
   return {
-    customStart: elements.summaryCustomStart?.value || "",
-    customEnd: elements.summaryCustomEnd?.value || "",
-    compare: elements.summaryCompare?.value || "none",
+    filters: { ...filters, compare: "none" },
+    range,
+    loans: [],
+    scopeLoans: [],
+    payments: [],
+    activeLoans: [],
+    overdueLoans: [],
+    todayLoans: [],
+    soonLoans: [],
+    monthLoans: [],
+    metrics: createEmptyDashboardMetrics(),
+    charts: createEmptyDashboardCharts(),
+    lists: createEmptyDashboardLists(),
+    comparison: null,
+  };
+}
+
+function createEmptyDashboardMetrics() {
+  return {
+    capitalTotal: 0,
+    availableCapital: 0,
+    capitalDeposited: 0,
+    capitalWithdrawn: 0,
+    compoundedProfit: 0,
+    capitalPlaced: 0,
+    capitalPending: 0,
+    capitalRecovered: 0,
+    realProfit: 0,
+    projectedProfit: 0,
+    totalToCollect: 0,
+    todayCount: 0,
+    todayAmount: 0,
+    activeLoans: 0,
+    overdueLoans: 0,
+    overdueAmount: 0,
+    closedLoans: 0,
+    activeClientCount: 0,
+    activeExtensions: 0,
+    activeExtensionsAmount: 0,
+    reinvested: 0,
+    newMoney: 0,
+    currentMonthProfit: 0,
+    previousMonthProfit: 0,
+    nextMonthProfit: 0,
+    nextMonthCapital: 0,
+    nextMonthTotal: 0,
+    chargedThisMonth: 0,
+    lentThisMonth: 0,
+    newLoansPeriod: 0,
+    extensionsPeriod: 0,
+    extensionAmount: 0,
+    lateClients: 0,
+    averageLateDays: 0,
+    capitalRisk: 0,
+    pendingInterest: 0,
+    averageLoan: 0,
+    averageInterestPaid: 0,
+    cashflow: 0,
+    availableAfterProjected: 0,
+    profitability: 0,
+    monthlyRoi: 0,
+    delinquencyRate: 0,
+    recoveryRate: 0,
+  };
+}
+
+function createEmptyDashboardCharts() {
+  return {
+    months: buildMonthSeries(6, []),
+    loansByMonth: buildLoanMonthSeries(6, []),
+    statusSegments: [
+      { label: "Activos", value: 0, color: "#00a76f" },
+      { label: "Vencidos", value: 0, color: "#061826" },
+      { label: "Cerrados", value: 0, color: "#ffb000" },
+    ],
+    modeSegments: Object.values(INTEREST_MODES).map((mode) => ({ label: mode.label, value: 0 })),
+    projections: [
+      { label: "Prox. mes", value: 0 },
+      { label: "3 meses", value: 0 },
+      { label: "6 meses", value: 0 },
+      { label: "12 meses", value: 0 },
+    ],
+    delinquency: buildDelinquencySeries(6, []),
+    cashflow: [
+      { label: "Ingresos", value: 0, color: "#00a76f" },
+      { label: "Egresos", value: 0, color: "#ffb000" },
+    ],
+  };
+}
+
+function createEmptyDashboardLists() {
+  return {
+    debt: [],
+    profit: [],
+    extensions: [],
+    punctual: [],
+    late: [],
+    payments: [],
+    loans: [],
+    recentExtensions: [],
+  };
+}
+
+function getDashboardFilters() {
+  const customStart = elements.summaryCustomStart?.value || "";
+  const customEnd = elements.summaryCustomEnd?.value || "";
+  const hasManualRange = Boolean(customStart || customEnd);
+  let compare = elements.summaryCompare?.value || "none";
+  if (!hasManualRange && compare !== "none") {
+    compare = "none";
+    if (elements.summaryCompare) elements.summaryCompare.value = "none";
+  }
+  syncDashboardCompareOptions(hasManualRange);
+  return {
+    customStart,
+    customEnd,
+    compare,
     operation: "all",
   };
 }
 
 function getDashboardDateRange(filters = {}) {
-  const today = parseLocalDate(todayISO());
-  const startOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const endOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const start = filters.customStart || toISODate(startOfCurrentMonth);
-  const end = filters.customEnd || toISODate(endOfCurrentMonth);
-  return normalizeDateRange(start, end, "Periodo seleccionado");
+  const start = filters.customStart || getDashboardHistoryStartDate();
+  const end = filters.customEnd || todayISO();
+  const isAllHistory = !filters.customStart && !filters.customEnd;
+  if (startOfDay(start) > startOfDay(end)) {
+    return {
+      start,
+      end,
+      label: "Rango invalido",
+      invalid: true,
+      isAllHistory: false,
+      error: "La fecha Desde no puede ser posterior a la fecha Hasta.",
+    };
+  }
+  return { start, end, label: isAllHistory ? "Todo el historial" : "Periodo seleccionado", isAllHistory };
+}
+
+function getDashboardHistoryStartDate() {
+  const dates = [];
+  addValidDashboardDate(dates, state.user?.createdAt);
+  state.clients.forEach((client) => addValidDashboardDate(dates, client.createdAt));
+  state.loans.forEach((loan) => {
+    addValidDashboardDate(dates, loan.startDate);
+    addValidDashboardDate(dates, loan.createdAt);
+  });
+  state.payments.forEach((payment) => {
+    addValidDashboardDate(dates, payment.date);
+    addValidDashboardDate(dates, payment.createdAt);
+  });
+  (state.capitalMovements || []).forEach((movement) => {
+    addValidDashboardDate(dates, movement.date);
+    addValidDashboardDate(dates, movement.createdAt);
+  });
+  return dates.sort((left, right) => startOfDay(left) - startOfDay(right))[0] || todayISO();
+}
+
+function addValidDashboardDate(dates, value) {
+  const date = String(value || "").slice(0, 10);
+  if (isBusinessDate(date)) dates.push(date);
+}
+
+function syncDashboardCompareOptions(hasManualRange) {
+  if (!elements.summaryCompare) return;
+  Array.from(elements.summaryCompare.options || []).forEach((option) => {
+    option.disabled = !hasManualRange && option.value !== "none";
+  });
 }
 
 function normalizeDateRange(start, end, label = "Periodo seleccionado") {
@@ -2059,7 +2215,7 @@ function getComparisonRange(range, compareType) {
 }
 
 function buildDashboardComparison(dashboard) {
-  if (dashboard.filters.compare === "none") return null;
+  if (dashboard.filters.compare === "none" || dashboard.range.isAllHistory || dashboard.range.invalid) return null;
   const range = getComparisonRange(dashboard.range, dashboard.filters.compare);
   if (!range) return null;
   const comparisonDashboard = buildDashboardData({
@@ -2200,9 +2356,20 @@ function buildCapitalPositionAtDate(dateString, loans = state.loans, payments = 
 }
 
 function renderDashboardHeader(dashboard) {
+  if (dashboard.range.invalid) {
+    elements.summaryHeroMeta.textContent = dashboard.range.error;
+    elements.summaryHealth.innerHTML = `
+      <span class="status-pill danger">Revisar fechas</span>
+      <strong>--</strong>
+      <small>Corrige el periodo para calcular</small>
+    `;
+    return;
+  }
   const health = dashboard.metrics.overdueLoans ? "Atencion" : dashboard.metrics.todayCount ? "Cobrar hoy" : "Saludable";
   const healthClass = dashboard.metrics.overdueLoans ? "danger" : dashboard.metrics.todayCount ? "warn" : "ok";
-  elements.summaryHeroMeta.textContent = `${dashboard.range.label}: ${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}. ${dashboard.loans.length} prestamo(s) analizados.`;
+  elements.summaryHeroMeta.textContent = dashboard.range.isAllHistory
+    ? `Todo el historial · ${dashboard.loans.length} prestamo(s) analizados.`
+    : `Periodo seleccionado: ${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)} · ${dashboard.loans.length} prestamo(s) analizados.`;
   elements.summaryHealth.innerHTML = `
     <span class="status-pill ${healthClass}">${health}</span>
     <strong>${money(dashboard.metrics.totalToCollect)}</strong>
@@ -3267,10 +3434,10 @@ function buildLoanMonthSeries(count, loans) {
   }));
 }
 
-function buildDelinquencySeries(count, loans) {
+function buildDelinquencySeries(count, loans, cutoffDate = todayISO()) {
   return getLastMonthKeys(count).map((month) => ({
     label: month.label,
-    value: loans.filter((loan) => loan.status === "active" && getMonthKey(loan.nextDueDate) === month.key && isOverdue(loan)).length,
+    value: loans.filter((loan) => loan.status === "active" && getMonthKey(loan.nextDueDate) === month.key && isOverdueAt(loan, cutoffDate)).length,
   }));
 }
 
@@ -3462,6 +3629,9 @@ function renderDashboardAlerts(dashboard) {
 }
 
 function buildDashboardAlertMessages(dashboard) {
+  if (dashboard.range?.invalid) {
+    return [dashboard.range.error];
+  }
   const alerts = [];
   if (dashboard.metrics.overdueLoans) {
     alerts.push(`Hay ${dashboard.metrics.overdueLoans} prestamo(s) vencido(s) por ${money(dashboard.metrics.overdueAmount)}.`);
@@ -3496,6 +3666,12 @@ function exportDashboardSummary() {
   downloadBlob(workbook, "application/vnd.ms-excel;charset=utf-8", `resumen-prestamos-${todayISO()}.xls`);
 }
 
+function dashboardRangeText(dashboard) {
+  if (dashboard.range.invalid) return dashboard.range.error;
+  if (dashboard.range.isAllHistory) return "Todo el historial";
+  return `${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}`;
+}
+
 function buildSummaryIndicatorsSheet(dashboard, criticalRows, managementRows, advancedRows) {
   const hasComparison = Boolean(dashboard.comparison);
   const columns = hasComparison ? [220, 135, 135, 135, 115, 390] : [230, 145, 420];
@@ -3511,7 +3687,7 @@ function buildSummaryIndicatorsSheet(dashboard, criticalRows, managementRows, ad
     columns,
     rows: [
       excelTitleRow("REPORTE DE RESUMEN FINANCIERO", mergeAcross),
-      excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", `${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}`),
+      excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", dashboardRangeText(dashboard)),
       excelMetaRow("Tipo de operacion", dashboardOperationLabel(dashboard.filters.operation), "Comparar con", hasComparison ? dashboard.comparison.label : "Sin comparacion"),
       excelMetaRow("Periodo comparado", comparisonPeriod, "", ""),
       excelSpacerRow(),
@@ -3536,7 +3712,7 @@ function buildSummaryCollectionsSheet(dashboard, alerts) {
     columns: [180, 120, 125, 110, 120, 120, 125, 120],
     rows: [
       excelTitleRow("COBRANZA RAPIDA", 7),
-      excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", `${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}`),
+      excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", dashboardRangeText(dashboard)),
       excelSpacerRow(),
       ...dashboardLoanSectionRows("COBRAR HOY", dashboard.todayLoans),
       excelSpacerRow(),
@@ -3559,7 +3735,7 @@ function buildSummaryChartsSheet(dashboard) {
     columns: [180, 140, 140, 140],
     rows: [
       excelTitleRow("DATOS PARA GRAFICOS DEL RESUMEN", 3),
-      excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", `${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}`),
+      excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", dashboardRangeText(dashboard)),
       excelSpacerRow(),
       excelSectionRow("COBROS REALES POR MES", 3),
       excelHeaderRow(["Mes", "Capital recuperado", "Interes cobrado", "Total"]),
@@ -3598,7 +3774,7 @@ function buildSummaryListsSheet(dashboard) {
     columns: [210, 130, 160, 140],
     rows: [
       excelTitleRow("LISTAS INTELIGENTES DEL RESUMEN", 3),
-      excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", `${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)}`),
+      excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", dashboardRangeText(dashboard)),
       excelSpacerRow(),
       ...dashboardClientSectionRows("CLIENTES CON MAYOR DEUDA", dashboard.lists.debt, (item) => [money(item.debt), "Capital pendiente"]),
       excelSpacerRow(),
@@ -4772,12 +4948,6 @@ function setDefaultDates() {
   const interestMode = normalizeInterestMode($("#clientLoanInterestMode")?.value);
   if ($("#clientLoanStartDate")) $("#clientLoanStartDate").value = today;
   if ($("#clientLoanDueDate")) $("#clientLoanDueDate").value = getSuggestedDueDate(today, interestMode);
-  if (elements.summaryCustomStart && !elements.summaryCustomStart.value) {
-    elements.summaryCustomStart.value = getCalendarMonthRange(0).start;
-  }
-  if (elements.summaryCustomEnd && !elements.summaryCustomEnd.value) {
-    elements.summaryCustomEnd.value = getCalendarMonthRange(0).end;
-  }
 }
 
 function expectedInterest(loan) {

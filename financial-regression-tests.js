@@ -234,6 +234,40 @@ assert(capitalAddedIndicator?.tip === "Aquí te figura solo los aportes que real
 assert(!getIndicatorMessages("Capital agregado").includes(capitalAddedIndicator.tip), "Capital agregado: la frase del tooltip no debe reemplazar los mensajes dinamicos inferiores.");
 
 resetTestState({
+  clients: [testClient("historial")],
+  loans: [
+    testLoan({ id: "historial-julio", clientId: "historial", amount: 700, remainingCapital: 400, startDate: "2026-07-10", nextDueDate: "2026-09-10" }),
+    testLoan({ id: "historial-agosto", clientId: "historial", amount: 300, remainingCapital: 300, startDate: "2026-08-05", nextDueDate: "2026-09-05" }),
+  ],
+  payments: [
+    testPayment({ id: "historial-payment-julio", loanId: "historial-julio", clientId: "historial", date: "2026-07-20", interestPaid: 70, capitalPaid: 300 }),
+    testPayment({ id: "historial-payment-agosto", loanId: "historial-agosto", clientId: "historial", date: "2026-08-20", interestPaid: 30 }),
+  ],
+  capitalMovements: [testCapitalMovement({ id: "historial-capital", type: "deposit", amount: 1000, date: "2026-07-01" })],
+});
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertEqual(dashboard.range.isAllHistory, true, "Fechas vacias deben activar Todo el historial.");
+assertEqual(dashboard.range.start, "2026-07-01", "Todo el historial debe iniciar en el primer dato real.");
+assertEqual(dashboard.range.end, todayISO(), "Todo el historial debe terminar hoy.");
+assertMoney(dashboard.metrics.realProfit, 100, "Todo el historial debe incluir todos los intereses cobrados.");
+assertMoney(dashboard.metrics.capitalRecovered, 300, "Todo el historial debe incluir todo el capital recuperado.");
+dashboard = buildDashboardData({ filters: { customStart: "2026-08-01", customEnd: "2026-08-31", compare: "none", operation: "all" }, skipComparison: true });
+assertEqual(dashboard.range.label, "Periodo seleccionado", "Rango manual debe mostrarse como periodo seleccionado.");
+assertMoney(dashboard.metrics.realProfit, 30, "Rango manual debe limitar movimientos al periodo elegido.");
+assertMoney(dashboard.metrics.capitalPending, 700, "Prestamo creado antes del rango pero activo al cierre debe contar en cartera.");
+dashboard = buildDashboardData({ filters: { customStart: "2026-08-01", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertEqual(dashboard.range.start, "2026-08-01", "Solo Desde debe iniciar en la fecha seleccionada.");
+assertEqual(dashboard.range.end, todayISO(), "Solo Desde debe terminar hoy.");
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "2026-07-31", compare: "none", operation: "all" }, skipComparison: true });
+assertEqual(dashboard.range.start, "2026-07-01", "Solo Hasta debe iniciar en el comienzo del historial.");
+assertEqual(dashboard.range.end, "2026-07-31", "Solo Hasta debe terminar en la fecha seleccionada.");
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "previousPeriod", operation: "all" } });
+assertEqual(dashboard.comparison, null, "Todo el historial no debe inventar comparacion anterior.");
+dashboard = buildDashboardData({ filters: { customStart: "2026-09-30", customEnd: "2026-09-01", compare: "none", operation: "all" } });
+assertEqual(dashboard.range.invalid, true, "Fecha Desde posterior a Hasta debe marcar rango invalido.");
+assertEqual(buildDashboardAlertMessages(dashboard)[0], "La fecha Desde no puede ser posterior a la fecha Hasta.", "Rango invalido debe mostrar mensaje claro.");
+
+resetTestState({
   clients: [testClient("p1"), testClient("p2"), testClient("p3")],
   loans: [
     testLoan({ id: "avg-1", clientId: "p1", amount: 500, startDate: "2026-08-05", nextDueDate: "2026-09-05" }),
@@ -396,5 +430,7 @@ assertFileIncludes(htmlCode, "Periodo de fechas", "Resumen: las fechas deben est
 assertFileIncludes(htmlCode, "summary-date-group", "Resumen: falta el contenedor visual del periodo de fechas.");
 assertCondition(!htmlCode.includes("summaryOperation"), "Resumen: el filtro visual Tipo de operacion no debe seguir en el HTML.");
 assertFileIncludes(appCode, 'operation: "all"', "Resumen: al retirar el filtro visual, la operacion interna debe quedar en Todos.");
+assertCondition(!appCode.includes("summaryCustomStart.value = getCalendarMonthRange"), "Resumen: Desde no debe llenarse automaticamente con el mes actual.");
+assertCondition(!appCode.includes("summaryCustomEnd.value = getCalendarMonthRange"), "Resumen: Hasta no debe llenarse automaticamente con el mes actual.");
 
 console.log("Pruebas financieras OK");
