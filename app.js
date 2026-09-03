@@ -2436,6 +2436,10 @@ function renderDashboardKpis(dashboard) {
 }
 
 function getDashboardKpiItems(dashboard) {
+  return getDashboardKpiReportItems(dashboard).filter((item) => item.title !== "Total por cobrar");
+}
+
+function getDashboardKpiReportItems(dashboard) {
   const m = dashboard.metrics;
   return [
     ["Capital total", money(m.capitalTotal), "", "Capital real acumulado: capital agregado mas intereses cobrados, menos retiros registrados.", "capitalTotal"],
@@ -2851,13 +2855,6 @@ const INDICATOR_MESSAGES = {
     "😊 Buena cobranza la vuelve real.",
     "📈 Te ayuda a mirar hacia adelante.",
     "😉 No cobrado aun, pero con potencial.",
-  ],
-  "Total por cobrar": [
-    "💰 Dinero que todavia debe regresar.",
-    "👀 Tenerlo claro ordena tus cobros.",
-    "📌 Aqui esta una parte clave de la cartera.",
-    "😊 Recuperarlo mejora tu liquidez.",
-    "🚀 Cada cobro abre nuevas oportunidades.",
   ],
   "Cobros de hoy": [
     "⏰ Hoy hay movimientos por atender.",
@@ -3641,7 +3638,7 @@ function buildDashboardAlertMessages(dashboard) {
 
 function exportDashboardSummary() {
   const dashboard = buildDashboardData();
-  const criticalRows = getDashboardKpiItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
+  const criticalRows = getDashboardKpiReportItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
   const managementRows = getDashboardManagementItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
   const advancedRows = getDashboardAdvancedItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
   const alerts = buildDashboardAlertMessages(dashboard);
