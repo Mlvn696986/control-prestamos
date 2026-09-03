@@ -255,7 +255,7 @@ hiddenManagementTitles.forEach((title) => {
   assert(!getDashboardManagementItems(dashboard).some((item) => item.title === title), "Resumen: " + title + " no debe mostrarse como indicador visual.");
   assert(getDashboardManagementReportItems(dashboard).some((item) => item.title === title), "Exportaciones: " + title + " debe seguir disponible en la lista interna de reporte.");
 });
-["Capital agregado", "Capital retirado", "Cobrado en el periodo", "Prestado en el periodo", "Nuevos prestamos del periodo"].forEach((title) => {
+["Capital agregado", "Capital retirado", "Cobrado en el periodo", "Total prestado acumulado", "Nuevos prestamos del periodo"].forEach((title) => {
   assert(getDashboardManagementItems(dashboard).some((item) => item.title === title), "Resumen: " + title + " debe seguir visible.");
 });
 saveIndicatorOrder(["ganancia-reinvertida", "ampliaciones-del-periodo", "capital-agregado"]);
@@ -263,9 +263,16 @@ const orderedItemsAfterHiddenRemoval = getOrderedDashboardIndicatorItems(dashboa
 assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Ganancia reinvertida"), "Orden guardado: debe ignorar Ganancia reinvertida eliminada visualmente.");
 assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Ampliaciones del periodo"), "Orden guardado: debe ignorar Ampliaciones del periodo eliminada visualmente.");
 assertEqual(orderedItemsAfterHiddenRemoval[0].title, "Capital agregado", "Orden guardado: debe conservar los indicadores visibles restantes.");
-const capitalPrestadoIndicator = getDashboardKpiItems(dashboard).find((item) => item.title === "Capital prestado");
-assert(capitalPrestadoIndicator?.tip.startsWith("Ejemplo:"), "Capital prestado: el tooltip debe comenzar con Ejemplo.");
-assert(capitalPrestadoIndicator?.tip.includes("Los préstamos vencidos también se incluyen"), "Capital prestado: el tooltip debe aclarar que vencidos siguen contando.");
+const capitalPrestadoIndicator = getDashboardKpiItems(dashboard).find((item) => item.title === "Capital actualmente prestado");
+assert(capitalPrestadoIndicator?.tip.startsWith("Ejemplo:"), "Capital actualmente prestado: el tooltip debe comenzar con Ejemplo.");
+assert(capitalPrestadoIndicator?.tip.includes("Los préstamos vencidos también cuentan"), "Capital actualmente prestado: el tooltip debe aclarar que vencidos siguen contando.");
+const totalPrestadoAcumuladoIndicator = getDashboardManagementItems(dashboard).find((item) => item.title === "Total prestado acumulado");
+assert(totalPrestadoAcumuladoIndicator?.tip.startsWith("Ejemplo:"), "Total prestado acumulado: el tooltip debe comenzar con Ejemplo.");
+assert(totalPrestadoAcumuladoIndicator?.tip.includes("no disminuye cuando devuelven capital"), "Total prestado acumulado: el tooltip debe aclarar que no baja por devoluciones.");
+saveIndicatorOrder(["prestado-en-el-periodo", "capital-prestado"]);
+const orderedRenamedItems = getOrderedDashboardIndicatorItems(dashboard);
+assertEqual(orderedRenamedItems[0].title, "Total prestado acumulado", "Orden guardado: debe migrar Prestado en el periodo al nuevo indicador acumulado.");
+assertEqual(orderedRenamedItems[1].title, "Capital actualmente prestado", "Orden guardado: debe migrar Capital prestado al nuevo nombre.");
 const capitalAddedIndicator = indicatorItems.find((item) => item.title === "Capital agregado");
 assert(capitalAddedIndicator?.tip === "Aquí te figura solo los aportes que realizas. NO cuenta los intereses.", "Capital agregado: el texto explicativo debe estar en el tooltip.");
 assert(!getIndicatorMessages("Capital agregado").includes(capitalAddedIndicator.tip), "Capital agregado: la frase del tooltip no debe reemplazar los mensajes dinamicos inferiores.");
@@ -303,6 +310,52 @@ state.loans.forEach((loan) => {
 });
 dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
 assertMoney(dashboard.metrics.capitalPlaced, 0, "Capital prestado prueba 7: operaciones cerradas no deben aportar al indicador.");
+
+resetTestState({
+  clients: [testClient("saldo-a"), testClient("saldo-b")],
+  loans: [
+    testLoan({ id: "saldo-a-main", clientId: "saldo-a", amount: 500, remainingCapital: 500, monthlyRate: 10, startDate: "2026-08-01", nextDueDate: "2026-09-01" }),
+  ],
+});
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 500, "Capital actualmente prestado: inicialmente cuenta el capital pendiente completo.");
+assertMoney(dashboard.metrics.totalLentAccumulated, 500, "Total prestado acumulado: inicialmente cuenta el monto original desembolsado.");
+let pendingCapitalHTML = renderLoanPendingCapital(state.loans[0]);
+assert(pendingCapitalHTML.includes(money(500)), "Tabla cliente: inicialmente debe mostrar el capital pendiente completo.");
+let preview = buildPaymentTransactionPreview(state.loans[0], {
+  paymentDate: "2026-09-01",
+  scheduledDueDate: "2026-09-01",
+  interestPaid: 50,
+  capitalPaid: 250,
+});
+state.loans[0] = preview.updatedLoan;
+state.payments.push(preview.payment);
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 250, "Capital actualmente prestado: amortizar capital debe bajar el saldo actual.");
+assertMoney(dashboard.metrics.totalLentAccumulated, 500, "Total prestado acumulado: amortizar capital no debe bajar el acumulado historico.");
+assertMoney(expectedInterest(state.loans[0]), 25, "Interes futuro: debe calcularse sobre los S/250 pendientes.");
+pendingCapitalHTML = renderLoanPendingCapital(state.loans[0]);
+assert(pendingCapitalHTML.includes(money(250)), "Tabla cliente: despues de amortizar debe mostrar S/250 pendientes, no S/500 original.");
+assert(!pendingCapitalHTML.includes(money(500)), "Tabla cliente: el valor principal no debe seguir mostrando el monto original amortizado.");
+state.loans[0].nextDueDate = addDays(todayISO(), -1);
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 250, "Capital actualmente prestado: un prestamo vencido sigue contando mientras deba capital.");
+state.loans.push(testLoan({ id: "saldo-b-main", clientId: "saldo-b", amount: 1000, remainingCapital: 1000, monthlyRate: 10, startDate: "2026-09-02", nextDueDate: "2026-10-02" }));
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 1250, "Capital actualmente prestado: debe sumar el saldo pendiente de todos los prestamos y ampliaciones.");
+assertMoney(dashboard.metrics.totalLentAccumulated, 1500, "Total prestado acumulado: debe sumar los montos originales desembolsados.");
+state.loans[0].remainingCapital = 0;
+state.loans[0].status = "closed";
+state.loans[0].closedAt = todayISO();
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 1000, "Capital actualmente prestado: cerrar el primer prestamo deja solo el capital pendiente restante.");
+assertMoney(dashboard.metrics.totalLentAccumulated, 1500, "Total prestado acumulado: cerrar un prestamo no debe borrar el monto original prestado.");
+state.loans[1].remainingCapital = 0;
+state.loans[1].status = "closed";
+state.loans[1].closedAt = todayISO();
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 0, "Capital actualmente prestado: todo cerrado deja saldo actual en cero.");
+assertMoney(dashboard.metrics.totalLentAccumulated, 1500, "Total prestado acumulado: todo cerrado mantiene el historico desembolsado.");
 
 resetTestState({
   clients: [testClient("cobro-hoy-1"), testClient("cobro-hoy-2"), testClient("cobro-hoy-3")],
@@ -405,7 +458,7 @@ assertEqual(addOneMonthKeepingDay("2026-12-31", 31), "2027-01-31", "31 de diciem
 assertEqual(toISODate(parseLocalDate("2026-08-31")), "2026-08-31", "Fecha local no debe retroceder por UTC.");
 
 const amortizationLoan = testLoan({ id: "amortiza", clientId: "pago", amount: 1000, remainingCapital: 1000, startDate: "2026-08-01", nextDueDate: "2026-09-01" });
-let preview = buildPaymentTransactionPreview(amortizationLoan, {
+preview = buildPaymentTransactionPreview(amortizationLoan, {
   paymentDate: "2026-09-01",
   scheduledDueDate: "2026-09-01",
   interestPaid: 100,

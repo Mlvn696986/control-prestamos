@@ -1882,6 +1882,7 @@ function buildDashboardData(options = {}) {
   const realProfit = sum(payments, "interestPaid");
   const projectedProfit = activeLoans.reduce((total, loan) => total + expectedInterest(loan), 0);
   const capitalPlaced = capitalPending;
+  const totalLentAccumulated = sum(scopeLoans, "amount");
   const capitalPosition = buildCapitalPositionAtDate(range.end, state.loans, state.payments, state.capitalMovements || []);
   const capitalTotal = capitalPosition.capitalTotal;
   const availableCapital = capitalPosition.availableCapital;
@@ -1934,6 +1935,7 @@ function buildDashboardData(options = {}) {
       compoundedProfit: capitalPosition.compoundedProfit,
       capitalPlaced,
       capitalPending,
+      totalLentAccumulated,
       capitalRecovered,
       realProfit,
       projectedProfit,
@@ -2023,6 +2025,7 @@ function createEmptyDashboardMetrics() {
     compoundedProfit: 0,
     capitalPlaced: 0,
     capitalPending: 0,
+    totalLentAccumulated: 0,
     capitalRecovered: 0,
     realProfit: 0,
     projectedProfit: 0,
@@ -2397,13 +2400,28 @@ function getDashboardIndicatorItems(dashboard) {
 
 function getOrderedDashboardIndicatorItems(dashboard) {
   const items = getDashboardIndicatorItems(dashboard);
-  const order = getSavedIndicatorOrder();
+  const savedIds = getSavedIndicatorOrder().map(normalizeIndicatorOrderId);
+  const seenIds = new Set();
+  const order = savedIds.filter((id) => {
+    if (seenIds.has(id)) return false;
+    seenIds.add(id);
+    return true;
+  });
   if (!order.length) return items;
 
   const byId = new Map(items.map((item) => [item.indicatorId, item]));
   const ordered = order.map((id) => byId.get(id)).filter(Boolean);
   const missing = items.filter((item) => !order.includes(item.indicatorId));
   return [...ordered, ...missing];
+}
+
+const INDICATOR_ORDER_ID_ALIASES = {
+  "capital-prestado": "capital-actualmente-prestado",
+  "prestado-en-el-periodo": "total-prestado-acumulado",
+};
+
+function normalizeIndicatorOrderId(id) {
+  return INDICATOR_ORDER_ID_ALIASES[id] || id;
 }
 
 function getIndicatorId(item) {
@@ -2446,7 +2464,7 @@ function getDashboardKpiReportItems(dashboard) {
   return [
     ["Capital total", money(m.capitalTotal), "", "Capital real acumulado: capital agregado mas intereses cobrados, menos retiros registrados.", "capitalTotal"],
     ["Capital disponible", money(m.availableCapital), "", "Dinero disponible para prestar: capital total menos el capital pendiente colocado en prestamos activos.", "availableCapital"],
-    ["Capital prestado", money(m.capitalPlaced), "", "Ejemplo: Si prestaste S/1,000 y el cliente ya devolvió S/200 de capital, quedan S/800 prestados. Si además otro cliente todavía debe S/500, tu capital prestado total es S/1,300. Los préstamos vencidos también se incluyen mientras el capital no haya sido devuelto.", "capitalPlaced"],
+    ["Capital actualmente prestado", money(m.capitalPlaced), "", "Ejemplo: Si prestaste S/500 y el cliente ya devolvió S/250 de capital, actualmente tienes S/250 prestados. Si otro cliente todavía debe S/1,000, tu capital actualmente prestado será S/1,250. Los préstamos vencidos también cuentan mientras el capital no haya sido devuelto.", "capitalPlaced"],
     ["Ganancia real", money(m.realProfit), "", "Ejemplo: Si en el periodo seleccionado recibiste S/650 solo en intereses, tu ganancia real es S/650; el capital devuelto no cuenta como ganancia.", "realProfit"],
     ["Ganancia proyectada", money(m.projectedProfit), "", "Ejemplo: Si tus prestamos activos deberian generar S/900 en intereses futuros, esa es tu ganancia proyectada hasta que se cobre.", "projectedProfit"],
     ["Total por cobrar", money(m.totalToCollect), "", "Ejemplo: Si tienes S/5,000 de capital pendiente y S/600 de intereses pendientes, el total por cobrar es S/5,600.", "totalToCollect"],
@@ -2731,6 +2749,8 @@ const DASHBOARD_TREND_RULES = {
   capitalDeposited: "up",
   capitalWithdrawn: "down",
   compoundedProfit: "up",
+  capitalPlaced: "up",
+  totalLentAccumulated: "up",
   capitalRecovered: "up",
   realProfit: "up",
   projectedProfit: "up",
@@ -2837,11 +2857,11 @@ function formatSignedNumber(value) {
 }
 
 const INDICATOR_MESSAGES = {
-  "Capital prestado": [
+  "Capital actualmente prestado": [
     "🎉 Tu dinero ya esta trabajando.",
-    "💰 Capital colocado genera movimiento.",
-    "🚀 Cada prestamo es una oportunidad.",
-    "👏 Buen trabajo poniendo capital a producir.",
+    "💰 Capital colocado que sigue en manos de clientes.",
+    "🚀 Los vencidos cuentan hasta que devuelvan capital.",
+    "🔄 Cada devolucion de capital reduce este monto.",
     "😊 Ahora toca seguirlo de cerca.",
   ],
   "Ganancia real": [
@@ -2914,12 +2934,12 @@ const INDICATOR_MESSAGES = {
     "📈 Cobrar a tiempo sube la cifra.",
     "🚀 Buena cobranza mantiene salud.",
   ],
-  "Prestado en el periodo": [
-    "💸 Capital puesto a trabajar.",
-    "🚀 Dinero saliendo a producir.",
-    "😊 Tu negocio sigue activo.",
-    "📈 Cada prestamo puede generar utilidad.",
-    "💰 Capital colocado trabaja por ti.",
+  "Total prestado acumulado": [
+    "💰 Todo lo que has prestado suma aqui.",
+    "📈 Capital colocado a lo largo del tiempo.",
+    "🚀 Cada nuevo prestamo hace crecer este acumulado.",
+    "📊 Mide cuanto movimiento has generado.",
+    "👏 Refleja todo el capital desembolsado.",
   ],
   "Nuevos prestamos del periodo": [
     "👏 Nuevas operaciones en este periodo.",
@@ -3322,7 +3342,7 @@ function getDashboardManagementReportItems(dashboard) {
     ["Capital que regresara siguiente periodo", money(m.nextMonthCapital), "Ejemplo: Si en el siguiente periodo comparable tus clientes deben devolver S/3,000 de capital, ese sera el capital estimado que regresara.", "nextMonthCapital"],
     ["Total estimado siguiente periodo", money(m.nextMonthTotal), "Ejemplo: Si esperas recuperar S/3,000 de capital y S/800 de intereses, el total estimado sera S/3,800.", "nextMonthTotal"],
     ["Cobrado en el periodo", money(m.chargedThisMonth), "Ejemplo: Si en el periodo seleccionado recibiste S/2,000 de capital y S/500 de intereses, el total cobrado es S/2,500.", "chargedThisMonth"],
-    ["Prestado en el periodo", money(m.lentThisMonth), "Ejemplo: Si en el periodo seleccionado otorgaste prestamos de S/500, S/1,000 y S/700, has prestado S/2,200.", "lentThisMonth"],
+    ["Total prestado acumulado", money(m.totalLentAccumulated), "Ejemplo: Si primero prestaste S/500 y luego otros S/1,000, tu total prestado acumulado es S/1,500. Este indicador no disminuye cuando devuelven capital, porque registra todo el dinero que has llegado a prestar históricamente.", "totalLentAccumulated"],
     ["Nuevos prestamos del periodo", m.newLoansPeriod, "Ejemplo: Si en el periodo seleccionado registraste 4 prestamos principales nuevos, este indicador mostrara 4.", "newLoansPeriod"],
     ["Ampliaciones del periodo", m.extensionsPeriod, "Ejemplo: Si durante el periodo seleccionado registraste 5 ampliaciones de prestamo, este indicador mostrara 5 ampliaciones.", "extensionsPeriod"],
     ["Monto total en ampliaciones", money(m.extensionAmount), "Ejemplo: Si otorgaste ampliaciones de S/200, S/300 y S/500, el monto total en ampliaciones es S/1,000.", "extensionAmount"],
@@ -3907,7 +3927,7 @@ function renderClients() {
             <span class="status-pill ${status.className}">${status.label}</span>
           </span>
           <span data-label="Telefono">${escapeHTML(client.phone || "Sin telefono")}</span>
-          <span data-label="Monto prestado">${renderLoanAmount(loan)}</span>
+          <span data-label="Capital pendiente">${renderLoanPendingCapital(loan)}</span>
           <span data-label="Fecha prestada">${loan ? formatDate(loan.startDate) : "-"}</span>
           <span data-label="Fecha de cobro">${loan && loan.status === "active" ? formatDate(loan.nextDueDate) : "Cerrado"}</span>
           <span class="row-actions" data-label="Acciones">
@@ -4001,7 +4021,7 @@ function renderClientExtensions(client, extensions) {
                   <i class="status-pill ${status.className}">${status.label}</i>
                 </span>
                 <span data-label="Telefono">${escapeHTML(client.phone || "Sin telefono")}</span>
-                <span data-label="Monto prestado">${renderLoanAmount(loan)}</span>
+                <span data-label="Capital pendiente">${renderLoanPendingCapital(loan)}</span>
                 <span data-label="Fecha prestada">${formatDate(loan.startDate)}</span>
                 <span data-label="Fecha de cobro">${loan.status === "active" ? formatDate(loan.nextDueDate) : "Cerrado"}</span>
                 <span class="row-actions" data-label="Acciones">
@@ -4064,12 +4084,12 @@ async function handleLoanDeleteSubmit(event) {
   }
 }
 
-function renderLoanAmount(loan) {
+function renderLoanPendingCapital(loan) {
   if (!loan) return "Sin prestamo";
 
   return `
     <span class="amount-stack">
-      <strong>${money(loan.amount)}</strong>
+      <strong>${money(loan.remainingCapital)}</strong>
       <small>Interes: ${roundMoney(loan.monthlyRate)}% ${getInterestModeShortLabel(loan.interestMode)}</small>
     </span>
   `;
@@ -4279,8 +4299,8 @@ function matchesClientFilters(client, loans, filters) {
   if (
     filters.amount &&
     !clientLoans.some((loan) => {
-      const amount = String(loan.amount);
-      const formattedAmount = money(loan.amount).toLowerCase();
+      const amount = String(loan.remainingCapital);
+      const formattedAmount = money(loan.remainingCapital).toLowerCase();
       return amount.includes(filters.amount) || formattedAmount.includes(filters.amount.toLowerCase());
     })
   ) {
