@@ -5,6 +5,7 @@ const appCode = fs.readFileSync("app.js", "utf8");
 const htmlCode = fs.readFileSync("index.html", "utf8");
 const sqlCode = fs.readFileSync("supabase-financial-integrity.sql", "utf8");
 const stylesCode = fs.readFileSync("styles.css", "utf8");
+const localStorageStore = new Map();
 
 function createElement() {
   return {
@@ -93,11 +94,15 @@ const context = {
     body: createElement(),
   },
   localStorage: {
-    getItem() {
-      return null;
+    getItem(key) {
+      return localStorageStore.has(key) ? localStorageStore.get(key) : null;
     },
-    setItem() {},
-    removeItem() {},
+    setItem(key, value) {
+      localStorageStore.set(key, String(value));
+    },
+    removeItem(key) {
+      localStorageStore.delete(key);
+    },
   },
   SUPABASE_CONFIG: {
     url: "",
@@ -237,6 +242,27 @@ assertMoney(dashboard.metrics.totalToCollect, 880, "Total por cobrar debe conser
 assert(getDashboardKpiReportItems(dashboard).some((item) => item.title === "Total por cobrar"), "Exportaciones: Total por cobrar debe seguir disponible en la lista interna de reporte.");
 assert(!getDashboardKpiItems(dashboard).some((item) => item.title === "Ampliaciones activas"), "Resumen: Ampliaciones activas no debe mostrarse como tarjeta KPI.");
 assert(getDashboardKpiReportItems(dashboard).some((item) => item.title === "Ampliaciones activas"), "Exportaciones: Ampliaciones activas debe seguir disponible en la lista interna de reporte.");
+const hiddenManagementTitles = [
+  "Ganancia reinvertida",
+  "Ganancia del periodo",
+  "Ganancia del periodo anterior",
+  "Ganancia esperada siguiente periodo",
+  "Capital que regresara siguiente periodo",
+  "Total estimado siguiente periodo",
+  "Ampliaciones del periodo",
+];
+hiddenManagementTitles.forEach((title) => {
+  assert(!getDashboardManagementItems(dashboard).some((item) => item.title === title), "Resumen: " + title + " no debe mostrarse como indicador visual.");
+  assert(getDashboardManagementReportItems(dashboard).some((item) => item.title === title), "Exportaciones: " + title + " debe seguir disponible en la lista interna de reporte.");
+});
+["Capital agregado", "Capital retirado", "Cobrado en el periodo", "Prestado en el periodo", "Nuevos prestamos del periodo"].forEach((title) => {
+  assert(getDashboardManagementItems(dashboard).some((item) => item.title === title), "Resumen: " + title + " debe seguir visible.");
+});
+saveIndicatorOrder(["ganancia-reinvertida", "ampliaciones-del-periodo", "capital-agregado"]);
+const orderedItemsAfterHiddenRemoval = getOrderedDashboardIndicatorItems(dashboard);
+assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Ganancia reinvertida"), "Orden guardado: debe ignorar Ganancia reinvertida eliminada visualmente.");
+assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Ampliaciones del periodo"), "Orden guardado: debe ignorar Ampliaciones del periodo eliminada visualmente.");
+assertEqual(orderedItemsAfterHiddenRemoval[0].title, "Capital agregado", "Orden guardado: debe conservar los indicadores visibles restantes.");
 const capitalPrestadoIndicator = getDashboardKpiItems(dashboard).find((item) => item.title === "Capital prestado");
 assert(capitalPrestadoIndicator?.tip.startsWith("Ejemplo:"), "Capital prestado: el tooltip debe comenzar con Ejemplo.");
 assert(capitalPrestadoIndicator?.tip.includes("Los préstamos vencidos también se incluyen"), "Capital prestado: el tooltip debe aclarar que vencidos siguen contando.");

@@ -2907,41 +2907,6 @@ const INDICATOR_MESSAGES = {
     "👏 Controlarlos mejora resultados.",
     "💡 Seguimiento bueno fortalece relaciones.",
   ],
-  "Ganancia del periodo": [
-    "🎉 Esto ya va ganado en el periodo.",
-    "💰 Tus intereses estan dando resultado.",
-    "📈 Cada cobro aumenta la cifra.",
-    "😊 El periodo ya esta produciendo.",
-    "🚀 Aun puedes subir este monto.",
-  ],
-  "Ganancia del periodo anterior": [
-    "📊 Buen punto para comparar.",
-    "😉 Superarlo seria gran senal.",
-    "💰 Mira tu resultado anterior.",
-    "📈 Usalo como referencia.",
-    "🎯 Apunta a mejorar este periodo.",
-  ],
-  "Ganancia esperada siguiente periodo": [
-    "🔮 Utilidad posible para el siguiente periodo.",
-    "💰 Hay intereses en camino.",
-    "🚀 Cobrar bien la vuelve real.",
-    "📈 Ingresos potenciales por venir.",
-    "😊 Mantente al dia para acercarte.",
-  ],
-  "Capital que regresara siguiente periodo": [
-    "🔄 Capital que podria volver pronto.",
-    "💰 Mas dinero disponible en camino.",
-    "🚀 Puede convertirse en nuevos prestamos.",
-    "😊 Planifica desde ahora.",
-    "📈 Recuperar capital aumenta capacidad.",
-  ],
-  "Total estimado siguiente periodo": [
-    "💰 Monto aproximado por recibir.",
-    "🚀 Nuevo periodo con dinero por recuperar.",
-    "😊 Capital e intereses fortaleceran caja.",
-    "📊 Te ayuda a planificar.",
-    "🔮 Si cumplen, tendras mas liquidez.",
-  ],
   "Cobrado en el periodo": [
     "🎉 Buen trabajo, dinero ya ingresado.",
     "💰 Cada cobro mejora tu flujo.",
@@ -2962,13 +2927,6 @@ const INDICATOR_MESSAGES = {
     "😊 Cada prestamo abre oportunidad.",
     "📈 Buen movimiento puede mejorar resultados.",
     "💰 El negocio mantiene actividad.",
-  ],
-  "Ampliaciones del periodo": [
-    "🔄 Clientes solicitando nuevos montos.",
-    "😊 Continuidad en tus operaciones.",
-    "💰 Mas capital con clientes actuales.",
-    "🚀 Bien gestionadas generan utilidad.",
-    "📈 Mantienen activa la cartera.",
   ],
   "Monto total en ampliaciones": [
     "💰 Capital adicional entregado.",
@@ -3338,6 +3296,20 @@ function renderDashboardManagement(dashboard) {
 }
 
 function getDashboardManagementItems(dashboard) {
+  return getDashboardManagementReportItems(dashboard).filter((item) => !HIDDEN_DASHBOARD_MANAGEMENT_TITLES.has(item.title));
+}
+
+const HIDDEN_DASHBOARD_MANAGEMENT_TITLES = new Set([
+  "Ganancia reinvertida",
+  "Ganancia del periodo",
+  "Ganancia del periodo anterior",
+  "Ganancia esperada siguiente periodo",
+  "Capital que regresara siguiente periodo",
+  "Total estimado siguiente periodo",
+  "Ampliaciones del periodo",
+]);
+
+function getDashboardManagementReportItems(dashboard) {
   const m = dashboard.metrics;
   const modeText = dashboard.charts.modeSegments.map((item) => `${item.label}: ${item.value}`).join(" · ");
   return [
@@ -3634,7 +3606,7 @@ function buildDashboardAlertMessages(dashboard) {
 function exportDashboardSummary() {
   const dashboard = buildDashboardData();
   const criticalRows = getDashboardKpiReportItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
-  const managementRows = getDashboardManagementItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
+  const managementRows = getDashboardManagementReportItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
   const advancedRows = getDashboardAdvancedItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
   const alerts = buildDashboardAlertMessages(dashboard);
   const workbook = buildExcelWorkbook([
