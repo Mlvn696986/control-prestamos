@@ -1,0 +1,9 @@
+{
+  "name": "control-prestamos",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-cloudflare.js",
+    "test": "node financial-regression-tests.js"
+  }
+}
