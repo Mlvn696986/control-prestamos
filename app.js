@@ -1877,11 +1877,11 @@ function buildDashboardData(options = {}) {
   const currentMonthPayments = payments;
   const previousMonthPayments = scopePayments.filter((payment) => dateInRange(payment.date, previousMonthRange));
   const nextMonthLoans = activeLoans.filter((loan) => dateInRange(loan.nextDueDate, nextMonthRange));
-  const capitalPending = sum(activeLoans, "remainingCapital");
+  const capitalPending = calculateCapitalPrestadoActual(activeLoans);
   const capitalRecovered = sum(payments, "capitalPaid");
   const realProfit = sum(payments, "interestPaid");
   const projectedProfit = activeLoans.reduce((total, loan) => total + expectedInterest(loan), 0);
-  const capitalPlaced = sum(activeLoans, "remainingCapital");
+  const capitalPlaced = capitalPending;
   const capitalPosition = buildCapitalPositionAtDate(range.end, state.loans, state.payments, state.capitalMovements || []);
   const capitalTotal = capitalPosition.capitalTotal;
   const availableCapital = capitalPosition.availableCapital;
@@ -2098,6 +2098,10 @@ function createEmptyDashboardLists() {
     loans: [],
     recentExtensions: [],
   };
+}
+
+function calculateCapitalPrestadoActual(loans) {
+  return roundMoney((loans || []).reduce((total, loan) => total + Math.max(Number(loan.remainingCapital || 0), 0), 0));
 }
 
 function getDashboardFilters() {
@@ -2436,8 +2440,7 @@ function getDashboardKpiItems(dashboard) {
   return [
     ["Capital total", money(m.capitalTotal), "", "Capital real acumulado: capital agregado mas intereses cobrados, menos retiros registrados.", "capitalTotal"],
     ["Capital disponible", money(m.availableCapital), "", "Dinero disponible para prestar: capital total menos el capital pendiente colocado en prestamos activos.", "availableCapital"],
-    ["Capital prestado", money(m.capitalPlaced), "", "Ejemplo: Si tienes prestamos activos con S/1,000, S/2,000 y S/500 pendientes, tienes S/3,500 actualmente prestados.", "capitalPlaced"],
-    ["Capital pendiente", money(m.capitalPending), "", "Ejemplo: Si prestaste S/1,000 y el cliente ya devolvio S/400 de capital, todavia tienes S/600 pendientes por recuperar.", "capitalPending"],
+    ["Capital prestado", money(m.capitalPlaced), "", "Ejemplo: Si prestaste S/1,000 y el cliente ya devolvió S/200 de capital, quedan S/800 prestados. Si además otro cliente todavía debe S/500, tu capital prestado total es S/1,300. Los préstamos vencidos también se incluyen mientras el capital no haya sido devuelto.", "capitalPlaced"],
     ["Capital recuperado", money(m.capitalRecovered), "", "Ejemplo: Si en el periodo seleccionado tus clientes devolvieron S/400 de capital, esos S/400 forman parte del capital recuperado del periodo.", "capitalRecovered"],
     ["Ganancia real", money(m.realProfit), "", "Ejemplo: Si en el periodo seleccionado recibiste S/650 solo en intereses, tu ganancia real es S/650; el capital devuelto no cuenta como ganancia.", "realProfit"],
     ["Ganancia proyectada", money(m.projectedProfit), "", "Ejemplo: Si tus prestamos activos deberian generar S/900 en intereses futuros, esa es tu ganancia proyectada hasta que se cobre.", "projectedProfit"],
@@ -2835,13 +2838,6 @@ const INDICATOR_MESSAGES = {
     "🚀 Cada prestamo es una oportunidad.",
     "👏 Buen trabajo poniendo capital a producir.",
     "😊 Ahora toca seguirlo de cerca.",
-  ],
-  "Capital pendiente": [
-    "💡 Este dinero debe volver a tus manos.",
-    "😉 Un buen seguimiento ayuda a recuperar.",
-    "📈 Recuperarlo aumenta tu capacidad.",
-    "💪 Controlarlo protege tu estabilidad.",
-    "😊 Cada retorno fortalece el negocio.",
   ],
   "Capital recuperado": [
     "👏 Dinero que ya regreso a tu cartera.",

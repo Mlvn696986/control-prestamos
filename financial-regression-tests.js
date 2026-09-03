@@ -229,9 +229,47 @@ const expectedIndicatorCount =
   getDashboardKpiItems(dashboard).length + getDashboardManagementItems(dashboard).length + getDashboardAdvancedItems(dashboard).length;
 assertEqual(indicatorItems.length, expectedIndicatorCount, "Resumen: la seccion Indicadores debe conservar todos los indicadores.");
 assertEqual(new Set(indicatorItems.map((item) => item.indicatorId)).size, indicatorItems.length, "Resumen: cada indicador debe tener un ID unico para ordenar.");
+assert(!getDashboardKpiItems(dashboard).some((item) => item.title === "Capital pendiente"), "Resumen: Capital pendiente no debe mostrarse como tarjeta KPI.");
+const capitalPrestadoIndicator = getDashboardKpiItems(dashboard).find((item) => item.title === "Capital prestado");
+assert(capitalPrestadoIndicator?.tip.startsWith("Ejemplo:"), "Capital prestado: el tooltip debe comenzar con Ejemplo.");
+assert(capitalPrestadoIndicator?.tip.includes("Los préstamos vencidos también se incluyen"), "Capital prestado: el tooltip debe aclarar que vencidos siguen contando.");
 const capitalAddedIndicator = indicatorItems.find((item) => item.title === "Capital agregado");
 assert(capitalAddedIndicator?.tip === "Aquí te figura solo los aportes que realizas. NO cuenta los intereses.", "Capital agregado: el texto explicativo debe estar en el tooltip.");
 assert(!getIndicatorMessages("Capital agregado").includes(capitalAddedIndicator.tip), "Capital agregado: la frase del tooltip no debe reemplazar los mensajes dinamicos inferiores.");
+
+const yesterday = addDays(todayISO(), -1);
+resetTestState({
+  clients: [testClient("capital-prestado")],
+  loans: [
+    testLoan({ id: "capital-prestado-main", clientId: "capital-prestado", amount: 1000, remainingCapital: 1000, startDate: "2026-08-01", nextDueDate: todayISO() }),
+  ],
+});
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 1000, "Capital prestado prueba 1: prestamo sin pagos debe contar completo.");
+state.payments = [testPayment({ id: "capital-prestado-interest", loanId: "capital-prestado-main", clientId: "capital-prestado", date: todayISO(), interestPaid: 100 })];
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 1000, "Capital prestado prueba 2: pago solo de interes no reduce capital prestado.");
+state.loans[0].remainingCapital = 800;
+state.payments.push(testPayment({ id: "capital-prestado-capital", loanId: "capital-prestado-main", clientId: "capital-prestado", date: todayISO(), capitalPaid: 200, remainingCapitalAfter: 800 }));
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 800, "Capital prestado prueba 3: amortizacion de capital debe reducir el indicador.");
+state.loans[0].nextDueDate = yesterday;
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 800, "Capital prestado prueba 4: prestamo vencido sigue contando mientras debe capital.");
+state.loans.push(testLoan({ id: "capital-prestado-extension", clientId: "capital-prestado", amount: 300, remainingCapital: 300, startDate: "2026-08-02", nextDueDate: todayISO() }));
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 1100, "Capital prestado prueba 5: ampliacion activa debe sumarse.");
+state.loans[1].remainingCapital = 200;
+state.payments.push(testPayment({ id: "capital-prestado-extension-capital", loanId: "capital-prestado-extension", clientId: "capital-prestado", date: todayISO(), capitalPaid: 100, remainingCapitalAfter: 200 }));
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 1000, "Capital prestado prueba 6: amortizacion de ampliacion debe reducir el indicador.");
+state.loans.forEach((loan) => {
+  loan.remainingCapital = 0;
+  loan.status = "closed";
+  loan.closedAt = todayISO();
+});
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 0, "Capital prestado prueba 7: operaciones cerradas no deben aportar al indicador.");
 
 resetTestState({
   clients: [testClient("cobro-hoy-1"), testClient("cobro-hoy-2"), testClient("cobro-hoy-3")],
