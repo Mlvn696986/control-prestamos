@@ -234,6 +234,21 @@ assert(capitalAddedIndicator?.tip === "Aquí te figura solo los aportes que real
 assert(!getIndicatorMessages("Capital agregado").includes(capitalAddedIndicator.tip), "Capital agregado: la frase del tooltip no debe reemplazar los mensajes dinamicos inferiores.");
 
 resetTestState({
+  clients: [testClient("cobro-hoy-1"), testClient("cobro-hoy-2"), testClient("cobro-hoy-3")],
+  loans: [
+    testLoan({ id: "today-1", clientId: "cobro-hoy-1", amount: 1000, remainingCapital: 1000, monthlyRate: 10, startDate: "2026-08-01", nextDueDate: todayISO() }),
+    testLoan({ id: "today-2", clientId: "cobro-hoy-2", amount: 2000, remainingCapital: 1500, monthlyRate: 10, startDate: "2026-08-01", nextDueDate: todayISO() }),
+    testLoan({ id: "today-3", clientId: "cobro-hoy-3", amount: 500, remainingCapital: 500, monthlyRate: 10, startDate: "2026-08-01", nextDueDate: addDays(todayISO(), 1) }),
+  ],
+});
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.todayAmount, 250, "Interes a cobrar hoy debe sumar solo intereses, no capital pendiente.");
+const todayInterestIndicator = getDashboardKpiItems(dashboard).find((item) => item.metricKey === "todayAmount");
+assertEqual(todayInterestIndicator.title, "Interés a cobrar hoy", "El indicador debe mostrar el nuevo titulo puntual.");
+assertEqual(todayInterestIndicator.tip, "Ejemplo: Si hoy debes cobrar S/100 de interés a un cliente, S/250 de interés a otro y S/150 de interés a otro, el monto de interés a cobrar hoy será S/500.", "El tooltip debe explicar solo intereses.");
+assert(getIndicatorMessages("Interés a cobrar hoy").includes("🚀 Cada sol recuperado fortalece capital."), "La frase inferior del indicador debe conservarse sin cambios.");
+
+resetTestState({
   clients: [testClient("historial")],
   loans: [
     testLoan({ id: "historial-julio", clientId: "historial", amount: 700, remainingCapital: 400, startDate: "2026-07-10", nextDueDate: "2026-09-10" }),

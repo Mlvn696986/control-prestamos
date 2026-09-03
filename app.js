@@ -1892,7 +1892,7 @@ function buildDashboardData(options = {}) {
     : 0;
   const newMoney = Math.max(periodLoanAmount - capitalRecovered, 0);
   const overdueAmount = overdueLoans.reduce((total, loan) => total + loan.remainingCapital + expectedInterest(loan), 0);
-  const todayAmount = todayLoans.reduce((total, loan) => total + loan.remainingCapital + expectedInterest(loan), 0);
+  const todayAmount = todayLoans.reduce((total, loan) => total + expectedInterest(loan), 0);
   const nextMonthInterest = nextMonthLoans.reduce((total, loan) => total + expectedInterest(loan), 0);
   const nextMonthCapital = sum(nextMonthLoans, "remainingCapital");
   const averageLateDays = overdueLoans.length
@@ -2443,7 +2443,7 @@ function getDashboardKpiItems(dashboard) {
     ["Ganancia proyectada", money(m.projectedProfit), "", "Ejemplo: Si tus prestamos activos deberian generar S/900 en intereses futuros, esa es tu ganancia proyectada hasta que se cobre.", "projectedProfit"],
     ["Total por cobrar", money(m.totalToCollect), "", "Ejemplo: Si tienes S/5,000 de capital pendiente y S/600 de intereses pendientes, el total por cobrar es S/5,600.", "totalToCollect"],
     ["Cobros de hoy", m.todayCount, "", "Ejemplo: Si hoy tienen fecha de cobro 3 prestamos diferentes, este indicador mostrara 3 cobros de hoy.", "todayCount"],
-    ["Monto a cobrar hoy", money(m.todayAmount), "", "Ejemplo: Si hoy debes cobrar S/100 a un cliente, S/250 a otro y S/150 a otro, el monto a cobrar hoy sera S/500.", "todayAmount"],
+    ["Interés a cobrar hoy", money(m.todayAmount), "", "Ejemplo: Si hoy debes cobrar S/100 de interés a un cliente, S/250 de interés a otro y S/150 de interés a otro, el monto de interés a cobrar hoy será S/500.", "todayAmount"],
     ["Prestamos activos", m.activeLoans, "", "Ejemplo: Si tienes 6 prestamos principales y 2 ampliaciones con saldo pendiente, tienes 8 prestamos activos.", "activeLoans"],
     ["Prestamos vencidos", m.overdueLoans, "", "Ejemplo: Si la fecha de cobro de 3 prestamos ya paso y todavia mantienen deuda, este indicador mostrara 3 prestamos vencidos.", "overdueLoans"],
     ["Monto vencido", money(m.overdueAmount), "", "Ejemplo: Si Pepe tiene S/500 vencidos y Ana S/300 vencidos, el monto vencido total es S/800.", "overdueAmount"],
@@ -2878,7 +2878,7 @@ const INDICATOR_MESSAGES = {
     "👏 Cada cobro de hoy suma.",
     "🚀 Convierte pendientes en dinero recuperado.",
   ],
-  "Monto a cobrar hoy": [
+  "Interés a cobrar hoy": [
     "💸 Dinero que puedes recuperar hoy.",
     "😊 Cobrar hoy mejora tu liquidez.",
     "📈 Recuperarlo da margen para prestar.",
