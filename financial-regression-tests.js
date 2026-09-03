@@ -235,6 +235,8 @@ assertMoney(dashboard.metrics.capitalRecovered, 200, "Capital recuperado debe co
 assert(!getDashboardKpiItems(dashboard).some((item) => item.title === "Total por cobrar"), "Resumen: Total por cobrar no debe mostrarse como tarjeta KPI.");
 assertMoney(dashboard.metrics.totalToCollect, 880, "Total por cobrar debe conservarse como metrica interna para calculos.");
 assert(getDashboardKpiReportItems(dashboard).some((item) => item.title === "Total por cobrar"), "Exportaciones: Total por cobrar debe seguir disponible en la lista interna de reporte.");
+assert(!getDashboardKpiItems(dashboard).some((item) => item.title === "Ampliaciones activas"), "Resumen: Ampliaciones activas no debe mostrarse como tarjeta KPI.");
+assert(getDashboardKpiReportItems(dashboard).some((item) => item.title === "Ampliaciones activas"), "Exportaciones: Ampliaciones activas debe seguir disponible en la lista interna de reporte.");
 const capitalPrestadoIndicator = getDashboardKpiItems(dashboard).find((item) => item.title === "Capital prestado");
 assert(capitalPrestadoIndicator?.tip.startsWith("Ejemplo:"), "Capital prestado: el tooltip debe comenzar con Ejemplo.");
 assert(capitalPrestadoIndicator?.tip.includes("Los préstamos vencidos también se incluyen"), "Capital prestado: el tooltip debe aclarar que vencidos siguen contando.");

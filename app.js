@@ -2436,8 +2436,10 @@ function renderDashboardKpis(dashboard) {
 }
 
 function getDashboardKpiItems(dashboard) {
-  return getDashboardKpiReportItems(dashboard).filter((item) => item.title !== "Total por cobrar");
+  return getDashboardKpiReportItems(dashboard).filter((item) => !HIDDEN_DASHBOARD_KPI_TITLES.has(item.title));
 }
+
+const HIDDEN_DASHBOARD_KPI_TITLES = new Set(["Total por cobrar", "Ampliaciones activas"]);
 
 function getDashboardKpiReportItems(dashboard) {
   const m = dashboard.metrics;
@@ -2904,13 +2906,6 @@ const INDICATOR_MESSAGES = {
     "📈 Bien gestionados impulsan ingresos.",
     "👏 Controlarlos mejora resultados.",
     "💡 Seguimiento bueno fortalece relaciones.",
-  ],
-  "Ampliaciones activas": [
-    "🔄 Clientes que siguen confiando.",
-    "😊 Una ampliacion bien llevada suma.",
-    "💰 Mas capital trabajando.",
-    "👏 Reflejan continuidad en operaciones.",
-    "🚀 Bien gestionadas son oportunidad.",
   ],
   "Ganancia del periodo": [
     "🎉 Esto ya va ganado en el periodo.",
