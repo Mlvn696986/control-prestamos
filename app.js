@@ -2441,7 +2441,6 @@ function getDashboardKpiItems(dashboard) {
     ["Capital total", money(m.capitalTotal), "", "Capital real acumulado: capital agregado mas intereses cobrados, menos retiros registrados.", "capitalTotal"],
     ["Capital disponible", money(m.availableCapital), "", "Dinero disponible para prestar: capital total menos el capital pendiente colocado en prestamos activos.", "availableCapital"],
     ["Capital prestado", money(m.capitalPlaced), "", "Ejemplo: Si prestaste S/1,000 y el cliente ya devolvió S/200 de capital, quedan S/800 prestados. Si además otro cliente todavía debe S/500, tu capital prestado total es S/1,300. Los préstamos vencidos también se incluyen mientras el capital no haya sido devuelto.", "capitalPlaced"],
-    ["Capital recuperado", money(m.capitalRecovered), "", "Ejemplo: Si en el periodo seleccionado tus clientes devolvieron S/400 de capital, esos S/400 forman parte del capital recuperado del periodo.", "capitalRecovered"],
     ["Ganancia real", money(m.realProfit), "", "Ejemplo: Si en el periodo seleccionado recibiste S/650 solo en intereses, tu ganancia real es S/650; el capital devuelto no cuenta como ganancia.", "realProfit"],
     ["Ganancia proyectada", money(m.projectedProfit), "", "Ejemplo: Si tus prestamos activos deberian generar S/900 en intereses futuros, esa es tu ganancia proyectada hasta que se cobre.", "projectedProfit"],
     ["Total por cobrar", money(m.totalToCollect), "", "Ejemplo: Si tienes S/5,000 de capital pendiente y S/600 de intereses pendientes, el total por cobrar es S/5,600.", "totalToCollect"],
@@ -2838,13 +2837,6 @@ const INDICATOR_MESSAGES = {
     "🚀 Cada prestamo es una oportunidad.",
     "👏 Buen trabajo poniendo capital a producir.",
     "😊 Ahora toca seguirlo de cerca.",
-  ],
-  "Capital recuperado": [
-    "👏 Dinero que ya regreso a tu cartera.",
-    "💰 Puede convertirse en nuevos prestamos.",
-    "😊 Cada recuperacion fortalece tu base.",
-    "🚀 Lo recuperado impulsa crecimiento.",
-    "🔄 Recuperar y reinvertir mantiene movimiento.",
   ],
   "Ganancia real": [
     "🎉 Esta ganancia ya esta en tus manos.",

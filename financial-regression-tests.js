@@ -230,6 +230,8 @@ const expectedIndicatorCount =
 assertEqual(indicatorItems.length, expectedIndicatorCount, "Resumen: la seccion Indicadores debe conservar todos los indicadores.");
 assertEqual(new Set(indicatorItems.map((item) => item.indicatorId)).size, indicatorItems.length, "Resumen: cada indicador debe tener un ID unico para ordenar.");
 assert(!getDashboardKpiItems(dashboard).some((item) => item.title === "Capital pendiente"), "Resumen: Capital pendiente no debe mostrarse como tarjeta KPI.");
+assert(!getDashboardKpiItems(dashboard).some((item) => item.title === "Capital recuperado"), "Resumen: Capital recuperado no debe mostrarse como tarjeta KPI.");
+assertMoney(dashboard.metrics.capitalRecovered, 200, "Capital recuperado debe conservarse como metrica interna para calculos.");
 const capitalPrestadoIndicator = getDashboardKpiItems(dashboard).find((item) => item.title === "Capital prestado");
 assert(capitalPrestadoIndicator?.tip.startsWith("Ejemplo:"), "Capital prestado: el tooltip debe comenzar con Ejemplo.");
 assert(capitalPrestadoIndicator?.tip.includes("Los préstamos vencidos también se incluyen"), "Capital prestado: el tooltip debe aclarar que vencidos siguen contando.");
