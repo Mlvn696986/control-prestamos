@@ -2463,7 +2463,7 @@ function getDashboardKpiReportItems(dashboard) {
   const m = dashboard.metrics;
   return [
     ["Capital total", money(m.capitalTotal), "", "Capital real acumulado: capital agregado mas intereses cobrados, menos retiros registrados.", "capitalTotal"],
-    ["Capital disponible", money(m.availableCapital), "", "Dinero disponible para prestar: capital total menos el capital pendiente colocado en prestamos activos.", "availableCapital"],
+    ["Capital disponible", money(m.availableCapital), "", "Ejemplo: Es el dinero libre que tienes para volver a prestar o retirar. Incluye tu capital agregado y los intereses ya cobrados, menos retiros y menos el capital que todavia esta en manos de clientes. Si cobras S/100 de interes y no lo prestas ni lo retiras, tu capital disponible sube S/100.", "availableCapital"],
     ["Capital actualmente prestado", money(m.capitalPlaced), "", "Ejemplo: Si prestaste S/500 y el cliente ya devolvió S/250 de capital, actualmente tienes S/250 prestados. Si otro cliente todavía debe S/1,000, tu capital actualmente prestado será S/1,250. Los préstamos vencidos también cuentan mientras el capital no haya sido devuelto.", "capitalPlaced"],
     ["Ganancia real", money(m.realProfit), "", "Ejemplo: Si en el periodo seleccionado recibiste S/650 solo en intereses, tu ganancia real es S/650; el capital devuelto no cuenta como ganancia.", "realProfit"],
     ["Ganancia proyectada", money(m.projectedProfit), "", "Ejemplo: Si tus prestamos activos deberian generar S/900 en intereses futuros, esa es tu ganancia proyectada hasta que se cobre.", "projectedProfit"],

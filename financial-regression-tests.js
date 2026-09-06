@@ -230,6 +230,10 @@ dashboard = buildTestDashboard();
 assertMoney(dashboard.metrics.capitalTotal, 1300, "Capital compuesto: aporte + interes cobrado - retiro.");
 assertMoney(dashboard.metrics.availableCapital, 500, "Capital compuesto: disponible = capital total - capital pendiente activo.");
 const indicatorItems = getDashboardIndicatorItems(dashboard);
+const availableCapitalIndicator = getDashboardKpiItems(dashboard).find((item) => item.title === "Capital disponible");
+assert(availableCapitalIndicator?.tip.startsWith("Ejemplo:"), "Capital disponible: el tooltip debe comenzar con Ejemplo.");
+assert(availableCapitalIndicator?.tip.includes("intereses ya cobrados"), "Capital disponible: el tooltip debe explicar que incluye intereses cobrados.");
+assert(availableCapitalIndicator?.tip.includes("no lo prestas ni lo retiras"), "Capital disponible: el tooltip debe explicar cuando aumenta por intereses.");
 const expectedIndicatorCount =
   getDashboardKpiItems(dashboard).length + getDashboardManagementItems(dashboard).length + getDashboardAdvancedItems(dashboard).length;
 assertEqual(indicatorItems.length, expectedIndicatorCount, "Resumen: la seccion Indicadores debe conservar todos los indicadores.");
