@@ -903,17 +903,28 @@ textarea:focus {
   gap: 18px;
 }
 
-.summary-hero {
+.summary-hero.panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 30px 18px 18px;
+  gap: 24px;
+  box-sizing: border-box;
+  padding: 20px 22px;
+  min-height: auto;
+  overflow: hidden;
+}
+
+.summary-hero > div:first-child {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  min-width: 0;
 }
 
 .summary-hero h3 {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: clamp(1.45rem, 2.2vw, 2.2rem);
+  line-height: 1.08;
 }
 
 .summary-hero span,
@@ -923,19 +934,27 @@ textarea:focus {
 }
 
 .summary-health {
-  min-width: min(260px, 100%);
+  flex: 0 0 min(245px, 34%);
   display: grid;
-  justify-items: end;
-  gap: 6px;
-  padding: 14px;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  min-width: 210px;
+  padding: 10px 16px;
   background: rgba(0, 167, 111, 0.07);
   border: 1px solid rgba(0, 167, 111, 0.16);
   border-radius: 8px;
+  text-align: center;
 }
 
 .summary-health strong {
   color: var(--ink);
   font-size: clamp(1.35rem, 2.1vw, 1.9rem);
+  line-height: 1.05;
+}
+
+.summary-health small {
+  line-height: 1.15;
 }
 
 .summary-filters {
@@ -2471,8 +2490,16 @@ textarea:focus {
     flex-direction: column;
   }
 
+  .summary-hero.panel {
+    padding: 16px;
+  }
+
   .summary-health {
+    flex-basis: auto;
+    min-width: 0;
+    width: 100%;
     justify-items: start;
+    text-align: left;
   }
 
   .summary-filters,
