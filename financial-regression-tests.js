@@ -573,6 +573,9 @@ assertFileIncludes(htmlCode, "Periodo de fechas", "Resumen: las fechas deben est
 assertFileIncludes(htmlCode, "summary-date-group", "Resumen: falta el contenedor visual del periodo de fechas.");
 assertFileIncludes(htmlCode, 'id="summaryComparePreviousMonth"', "Resumen: debe existir el boton para comparar con mes anterior.");
 assertFileIncludes(htmlCode, "Comparar con mes anterior", "Resumen: el boton de comparacion debe mostrar Mes anterior.");
+assertFileIncludes(htmlCode, "summary-compare-info", "Resumen: el boton Mes anterior debe tener icono de informacion.");
+assertFileIncludes(htmlCode, "compara el periodo seleccionado contra el mismo rango movido un mes atras", "Resumen: el tooltip debe explicar contra que compara.");
+assertFileIncludes(htmlCode, "06/08/2026 - 06/09/2026 contra 06/07/2026 - 06/08/2026", "Resumen: el tooltip debe incluir un ejemplo claro.");
 assertCondition(!htmlCode.includes('<select id="summaryCompare"'), "Resumen: el selector de comparacion debe ser reemplazado por un boton.");
 assertFileIncludes(appCode, "setDashboardPreviousMonthComparison", "Resumen: falta la funcion del boton Mes anterior.");
 assertFileIncludes(appCode, 'elements.summaryCompare.value = "previousMonth"', "Resumen: el boton debe activar previousMonth.");

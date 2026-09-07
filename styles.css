@@ -1007,11 +1007,19 @@ textarea:focus {
 .summary-compare-field {
   display: flex;
   align-items: end;
+  gap: 8px;
 }
 
 .summary-compare-button {
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   white-space: nowrap;
+}
+
+.summary-compare-info {
+  flex: 0 0 auto;
+  margin-left: 0;
+  margin-bottom: 8px;
 }
 
 .summary-compare-button.active {
