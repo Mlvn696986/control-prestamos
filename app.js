@@ -2389,15 +2389,13 @@ function renderDashboardHeader(dashboard) {
     `;
     return;
   }
-  const health = dashboard.metrics.overdueLoans ? "Atencion" : dashboard.metrics.todayCount ? "Cobrar hoy" : "Saludable";
-  const healthClass = dashboard.metrics.overdueLoans ? "danger" : dashboard.metrics.todayCount ? "warn" : "ok";
   elements.summaryHeroMeta.textContent = dashboard.range.isAllHistory
     ? `Todo el historial · ${dashboard.loans.length} prestamo(s) analizados.`
     : `Periodo seleccionado: ${formatDate(dashboard.range.start)} - ${formatDate(dashboard.range.end)} · ${dashboard.loans.length} prestamo(s) analizados.`;
   elements.summaryHealth.innerHTML = `
-    <span class="status-pill ${healthClass}">${health}</span>
-    <strong>${money(dashboard.metrics.totalToCollect)}</strong>
-    <small>Total por cobrar estimado</small>
+    <span class="status-pill ok">Capital disponible</span>
+    <strong>${money(dashboard.metrics.availableCapital)}</strong>
+    <small>Monto que debe figurar en tu tarjeta</small>
   `;
 }
 

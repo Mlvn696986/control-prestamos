@@ -569,6 +569,10 @@ assertFileIncludes(stylesCode, "scrollbar-width: thin", "Cobranza rapida debe us
 assertFileIncludes(appCode, 'class="kpi-value"', "Resumen: los valores principales deben usar una clase visual compartida.");
 assertFileIncludes(stylesCode, ".kpi-value", "Resumen: falta la regla CSS centralizada para valores principales.");
 assertCondition(!stylesCode.includes(".summary-compact-card strong"), "Resumen: los indicadores compactos no deben tener un tamano de valor separado.");
+assertFileIncludes(appCode, '<span class="status-pill ok">Capital disponible</span>', "Resumen superior: la tarjeta derecha debe mostrar Capital disponible.");
+assertFileIncludes(appCode, "<strong>${money(dashboard.metrics.availableCapital)}</strong>", "Resumen superior: la tarjeta derecha debe usar capital disponible.");
+assertFileIncludes(appCode, "<small>Monto que debe figurar en tu tarjeta</small>", "Resumen superior: el mensaje bajo el valor debe ser el texto solicitado.");
+assertCondition(!appCode.includes("<small>Total por cobrar estimado</small>"), "Resumen superior: no debe conservar el texto anterior de total por cobrar.");
 assertFileIncludes(htmlCode, "Periodo de fechas", "Resumen: las fechas deben estar agrupadas bajo Periodo de fechas.");
 assertFileIncludes(htmlCode, "summary-date-group", "Resumen: falta el contenedor visual del periodo de fechas.");
 assertFileIncludes(htmlCode, 'id="summaryComparePreviousMonth"', "Resumen: debe existir el boton para comparar con mes anterior.");
