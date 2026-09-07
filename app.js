@@ -159,6 +159,7 @@ const elements = {
   summaryCustomStart: $("#summaryCustomStart"),
   summaryCustomEnd: $("#summaryCustomEnd"),
   summaryCompare: $("#summaryCompare"),
+  summaryComparePreviousMonth: $("#summaryComparePreviousMonth"),
   summaryExport: $("#summaryExport"),
   summaryCriticalGrid: $("#summaryCriticalGrid"),
   summaryIndicatorsGrid: $("#summaryIndicatorsGrid"),
@@ -261,6 +262,7 @@ function bindEvents() {
     filter.addEventListener("input", renderDashboard);
     filter.addEventListener("change", renderDashboard);
   });
+  elements.summaryComparePreviousMonth.addEventListener("click", setDashboardPreviousMonthComparison);
   elements.summaryExport.addEventListener("click", exportDashboardSummary);
   $("#clientLoanStartDate").addEventListener("change", () => updateSuggestedDueDate("clientLoan"));
   $("#clientLoanInterestMode").addEventListener("change", () => updateSuggestedDueDate("clientLoan"));
@@ -2125,6 +2127,17 @@ function getDashboardFilters() {
   };
 }
 
+function setDashboardPreviousMonthComparison() {
+  if (!elements.summaryCompare) return;
+  const hasManualRange = Boolean(elements.summaryCustomStart?.value || elements.summaryCustomEnd?.value);
+  if (!hasManualRange) {
+    elements.summaryCustomStart.value = toISODate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    elements.summaryCustomEnd.value = todayISO();
+  }
+  elements.summaryCompare.value = "previousMonth";
+  renderDashboard();
+}
+
 function getDashboardDateRange(filters = {}) {
   const start = filters.customStart || getDashboardHistoryStartDate();
   const end = filters.customEnd || todayISO();
@@ -2167,7 +2180,10 @@ function addValidDashboardDate(dates, value) {
 }
 
 function syncDashboardCompareOptions(hasManualRange) {
-  if (!elements.summaryCompare) return;
+  if (elements.summaryComparePreviousMonth) {
+    elements.summaryComparePreviousMonth.classList.toggle("active", elements.summaryCompare?.value === "previousMonth" && hasManualRange);
+  }
+  if (!elements.summaryCompare?.options) return;
   Array.from(elements.summaryCompare.options || []).forEach((option) => {
     option.disabled = !hasManualRange && option.value !== "none";
   });

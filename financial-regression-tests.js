@@ -571,6 +571,13 @@ assertFileIncludes(stylesCode, ".kpi-value", "Resumen: falta la regla CSS centra
 assertCondition(!stylesCode.includes(".summary-compact-card strong"), "Resumen: los indicadores compactos no deben tener un tamano de valor separado.");
 assertFileIncludes(htmlCode, "Periodo de fechas", "Resumen: las fechas deben estar agrupadas bajo Periodo de fechas.");
 assertFileIncludes(htmlCode, "summary-date-group", "Resumen: falta el contenedor visual del periodo de fechas.");
+assertFileIncludes(htmlCode, 'id="summaryComparePreviousMonth"', "Resumen: debe existir el boton para comparar con mes anterior.");
+assertFileIncludes(htmlCode, "Comparar con mes anterior", "Resumen: el boton de comparacion debe mostrar Mes anterior.");
+assertCondition(!htmlCode.includes('<select id="summaryCompare"'), "Resumen: el selector de comparacion debe ser reemplazado por un boton.");
+assertFileIncludes(appCode, "setDashboardPreviousMonthComparison", "Resumen: falta la funcion del boton Mes anterior.");
+assertFileIncludes(appCode, 'elements.summaryCompare.value = "previousMonth"', "Resumen: el boton debe activar previousMonth.");
+assertFileIncludes(appCode, 'elements.summaryComparePreviousMonth.addEventListener("click"', "Resumen: el boton debe estar conectado al clic.");
+assertFileIncludes(appCode, "elements.summaryCustomStart.value = toISODate", "Resumen: el boton debe definir fecha Desde si estaba en todo el historial.");
 assertCondition(!htmlCode.includes("summaryOperation"), "Resumen: el filtro visual Tipo de operacion no debe seguir en el HTML.");
 assertFileIncludes(appCode, 'operation: "all"', "Resumen: al retirar el filtro visual, la operacion interna debe quedar en Todos.");
 assertCondition(!appCode.includes("summaryCustomStart.value = getCalendarMonthRange"), "Resumen: Desde no debe llenarse automaticamente con el mes actual.");

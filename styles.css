@@ -1004,6 +1004,22 @@ textarea:focus {
   gap: 3px;
 }
 
+.summary-compare-field {
+  display: flex;
+  align-items: end;
+}
+
+.summary-compare-button {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.summary-compare-button.active {
+  color: #ffffff;
+  background: var(--accent);
+  box-shadow: 0 10px 20px rgba(0, 167, 111, 0.18);
+}
+
 .summary-date-fields label {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -1142,6 +1158,7 @@ textarea:focus {
 
 .comparison-badge::after {
   content: attr(data-tip);
+  display: none;
   position: absolute;
   left: 0;
   bottom: calc(100% + 8px);
@@ -1163,6 +1180,7 @@ textarea:focus {
 
 .comparison-badge:hover::after,
 .comparison-badge:focus-visible::after {
+  display: block;
   opacity: 1;
   transform: translateY(0);
 }
