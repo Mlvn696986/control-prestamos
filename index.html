@@ -444,7 +444,13 @@
                 <p class="eyebrow">Administracion</p>
                 <h3>Solicitudes de planes</h3>
               </div>
-              <button id="adminRefresh" class="ghost-button small-button" type="button">Actualizar</button>
+              <div class="modal-heading-actions">
+                <button id="adminIntegrityCheck" class="ghost-button small-button" type="button">
+                  Verificar integridad
+                  <span class="info-dot" tabindex="0" data-tip="Audita datos financieros sin modificarlos: saldos, estados, pagos, ampliaciones, capital disponible y relaciones.">i</span>
+                </button>
+                <button id="adminRefresh" class="ghost-button small-button" type="button">Actualizar</button>
+              </div>
             </div>
             <div id="adminRequestsList" class="admin-list empty-target"></div>
           </section>
@@ -587,6 +593,7 @@
           Nota
           <textarea id="clientNote" rows="4" placeholder="Direccion, referencia o acuerdo especial"></textarea>
         </label>
+        <p id="loanLimitHint" class="capital-hint loan-limit-hint"></p>
         <button id="clientSubmitButton" class="primary-button" type="submit">Guardar cliente</button>
         <button id="interestInfoButton" class="info-button" type="button">
           Más información de la modalidad de intereses y del porcentaje de intereses
@@ -766,6 +773,23 @@
         </label>
         <button class="primary-button" type="submit">Enviar solicitud</button>
       </form>
+    </dialog>
+
+    <dialog id="integrityDialog" class="modal">
+      <section class="modal-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Auditoria</p>
+            <h3>Verificacion de integridad</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div id="integritySummary" class="payment-summary"></div>
+        <div id="integrityList" class="history-list"></div>
+        <button class="primary-button" type="button" data-close-dialog>Cerrar</button>
+      </section>
     </dialog>
 
     <dialog id="forgotPasswordDialog" class="modal">

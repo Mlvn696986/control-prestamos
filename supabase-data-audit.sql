@@ -13,14 +13,31 @@ select 'loans_status_inconsistent' as check_name, *
 from loans
 where (status = 'closed' and remaining_capital <> 0)
    or (status = 'active' and remaining_capital <= 0)
+   or (status = 'closed' and next_due_date is not null)
+   or (status = 'active' and next_due_date is null)
    or status not in ('active', 'closed');
 
 select 'loans_invalid_dates' as check_name, *
 from loans
-where next_due_date < start_date
+where (next_due_date is not null and next_due_date < start_date)
    or due_day < 1
    or due_day > 31
    or interest_mode not in ('monthly', 'biweekly', 'weekly', 'daily');
+
+select 'loans_missing_or_invalid_operation_type' as check_name, *
+from loans
+where operation_type is null
+   or operation_type not in ('principal', 'ampliacion');
+
+select 'extensions_without_valid_principal' as check_name, extensions.*
+from loans extensions
+left join loans principals
+  on principals.id = extensions.parent_loan_id
+ and principals.user_id = extensions.user_id
+ and principals.client_id = extensions.client_id
+ and principals.operation_type = 'principal'
+where extensions.operation_type = 'ampliacion'
+  and principals.id is null;
 
 select 'loans_without_same_user_client' as check_name, loans.*
 from loans
@@ -61,6 +78,22 @@ select 'capital_movements_invalid' as check_name, *
 from capital_movements
 where amount <= 0
    or type not in ('deposit', 'withdrawal');
+
+select 'records_without_user' as check_name, 'clients' as table_name, id
+from clients
+where user_id is null
+union all
+select 'records_without_user', 'loans', id
+from loans
+where user_id is null
+union all
+select 'records_without_user', 'payments', id
+from payments
+where user_id is null
+union all
+select 'records_without_user', 'capital_movements', id
+from capital_movements
+where user_id is null;
 
 select
   'capital_position_by_user' as check_name,

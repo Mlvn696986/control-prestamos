@@ -4,6 +4,10 @@ const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const MAX_BACKUPS = 7;
 const FREE_CLIENT_LIMIT = 10;
 const INDICATOR_ORDER_STORAGE_KEY = "prestamos-dashboard-indicator-order-v1";
+const OPERATION_TYPES = {
+  principal: "principal",
+  ampliacion: "ampliacion",
+};
 const INTEREST_MODES = {
   monthly: { label: "Mensual", shortLabel: "mensual", days: null, rateFactor: 1 },
   biweekly: { label: "Quincenal", shortLabel: "quincenal", days: 15, rateFactor: 1 / 2 },
@@ -124,6 +128,7 @@ const elements = {
   clientNameTextLabel: $("#clientNameTextLabel"),
   clientNameSelectLabel: $("#clientNameSelectLabel"),
   clientNameSelect: $("#clientNameSelect"),
+  loanLimitHint: $("#loanLimitHint"),
   clientSubmitButton: $("#clientSubmitButton"),
   interestInfoButton: $("#interestInfoButton"),
   interestInfoDialog: $("#interestInfoDialog"),
@@ -195,6 +200,10 @@ const elements = {
   adminMonthlyRevenue: $("#adminMonthlyRevenue"),
   adminRequestsList: $("#adminRequestsList"),
   adminUserList: $("#adminUserList"),
+  adminIntegrityCheck: $("#adminIntegrityCheck"),
+  integrityDialog: $("#integrityDialog"),
+  integritySummary: $("#integritySummary"),
+  integrityList: $("#integrityList"),
 };
 
 const icons = {
@@ -257,6 +266,7 @@ function bindEvents() {
   elements.forgotPasswordForm.addEventListener("submit", handleForgotPasswordSubmit);
   elements.passwordSuccessClose.addEventListener("click", () => elements.passwordSuccessDialog.close());
   elements.adminRefresh.addEventListener("click", refreshAdminPanel);
+  elements.adminIntegrityCheck.addEventListener("click", openIntegrityDialog);
   elements.interestInfoButton.addEventListener("click", () => elements.interestInfoDialog.showModal());
   $$("[data-dashboard-filter]").forEach((filter) => {
     filter.addEventListener("input", renderDashboard);
@@ -275,6 +285,8 @@ function bindEvents() {
   elements.chooseNewClient.addEventListener("click", () => openClientDialog("new"));
   elements.chooseLoanExtension.addEventListener("click", () => openClientDialog("extension"));
   elements.clientNameSelect.addEventListener("change", fillExtensionClientFields);
+  $("#clientLoanAmount").addEventListener("input", updateLoanLimitHint);
+  elements.clientNameSelect.addEventListener("change", updateLoanLimitHint);
   $("#resetDemo").addEventListener("click", handleSignOut);
 
   $$("[data-close-dialog]").forEach((button) => {
@@ -338,7 +350,7 @@ function bindEvents() {
     }
 
     if (deleteButton) {
-      deleteClient(deleteButton.dataset.deleteClient);
+      deleteClient(deleteButton.dataset.deleteClient, deleteButton);
     }
 
     if (planButton) {
@@ -417,15 +429,51 @@ function normalizeCapitalMovementType(type) {
 }
 
 function normalizeLoans(loans) {
-  return Array.isArray(loans)
+  const normalizedLoans = Array.isArray(loans)
     ? loans.map((loan) => ({
         ...loan,
         amount: Number(loan.amount || 0),
         remainingCapital: Number(loan.remainingCapital || loan.remaining_capital || 0),
         monthlyRate: Number(loan.monthlyRate || loan.monthly_rate || 0),
         interestMode: normalizeInterestMode(loan.interestMode || loan.interest_mode),
+        operationType: normalizeOperationType(loan.operationType || loan.operation_type),
+        parentLoanId: loan.parentLoanId || loan.parent_loan_id || null,
       }))
     : [];
+  return normalizeLoanOperationTypes(normalizedLoans);
+}
+
+function normalizeLoanOperationTypes(loans) {
+  const byClient = new Map();
+  loans.forEach((loan) => {
+    if (!byClient.has(loan.clientId)) byClient.set(loan.clientId, []);
+    byClient.get(loan.clientId).push(loan);
+  });
+
+  byClient.forEach((clientLoans) => {
+    clientLoans.sort(compareLoansForOperationOrder);
+    let principal = clientLoans.find((loan) => normalizeOperationType(loan.operationType) === OPERATION_TYPES.principal);
+    if (!principal) {
+      principal = clientLoans[0];
+      if (principal) principal.operationType = OPERATION_TYPES.principal;
+    }
+    clientLoans.forEach((loan) => {
+      loan.operationType = normalizeOperationType(loan.operationType) || (loan.id === principal?.id ? OPERATION_TYPES.principal : OPERATION_TYPES.ampliacion);
+      loan.parentLoanId = loan.operationType === OPERATION_TYPES.ampliacion ? loan.parentLoanId || principal?.id || null : null;
+    });
+  });
+
+  return loans;
+}
+
+function compareLoansForOperationOrder(left, right) {
+  const leftDate = new Date(left.createdAt || left.created_at || left.startDate || 0).getTime();
+  const rightDate = new Date(right.createdAt || right.created_at || right.startDate || 0).getTime();
+  return leftDate - rightDate || String(left.id || "").localeCompare(String(right.id || ""));
+}
+
+function normalizeOperationType(type) {
+  return Object.prototype.hasOwnProperty.call(OPERATION_TYPES, type) ? type : null;
 }
 
 function validateStateIntegrity(candidate) {
@@ -438,6 +486,7 @@ function validateStateIntegrity(candidate) {
   const loanIds = new Set();
   const paymentIds = new Set();
   const capitalMovementIds = new Set();
+  const loansByClient = new Map();
 
   clients.forEach((client, index) => {
     if (!client?.id) errors.push(`Cliente #${index + 1} sin ID.`);
@@ -457,7 +506,9 @@ function validateStateIntegrity(candidate) {
     if (!isNonNegativeMoney(loan?.monthlyRate)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con tasa invalida.`);
     if (!INTEREST_MODES[normalizeInterestMode(loan?.interestMode)]) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con modalidad invalida.`);
     if (!isBusinessDate(loan?.startDate)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con fecha prestada invalida.`);
-    if (!isBusinessDate(loan?.nextDueDate)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con fecha de cobro invalida.`);
+    if (loan?.nextDueDate && !isBusinessDate(loan.nextDueDate)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con fecha de cobro invalida.`);
+    if (loan?.status === "closed" && loan?.nextDueDate) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} cerrado con proxima fecha de cobro.`);
+    if (loan?.status === "active" && !isBusinessDate(loan?.nextDueDate)) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} activo sin fecha de cobro valida.`);
     if (isBusinessDate(loan?.startDate) && isBusinessDate(loan?.nextDueDate) && startOfDay(loan.nextDueDate) < startOfDay(loan.startDate)) {
       errors.push(`Prestamo ${loan?.id || `#${index + 1}`} con fecha de cobro antes de fecha prestada.`);
     }
@@ -471,6 +522,26 @@ function validateStateIntegrity(candidate) {
     if (loan?.status === "active" && Number(loan?.remainingCapital || 0) <= 0) {
       errors.push(`Prestamo ${loan?.id || `#${index + 1}`} activo sin capital pendiente.`);
     }
+    const operationType = normalizeOperationType(loan?.operationType || loan?.operation_type);
+    if (!operationType) errors.push(`Prestamo ${loan?.id || `#${index + 1}`} sin tipo de operacion valido.`);
+    if (loan?.clientId) {
+      if (!loansByClient.has(loan.clientId)) loansByClient.set(loan.clientId, []);
+      loansByClient.get(loan.clientId).push({ ...loan, operationType });
+    }
+  });
+
+  loansByClient.forEach((clientLoans, clientId) => {
+    const principals = clientLoans.filter((loan) => loan.operationType === OPERATION_TYPES.principal);
+    if (principals.length !== 1) errors.push(`Cliente ${clientId} debe tener un unico prestamo principal.`);
+    const principalId = principals[0]?.id;
+    clientLoans
+      .filter((loan) => loan.operationType === OPERATION_TYPES.ampliacion)
+      .forEach((loan) => {
+        if (!loan.parentLoanId && !loan.parent_loan_id) errors.push(`Ampliacion ${loan.id} sin prestamo principal vinculado.`);
+        if ((loan.parentLoanId || loan.parent_loan_id) && (loan.parentLoanId || loan.parent_loan_id) !== principalId) {
+          errors.push(`Ampliacion ${loan.id} vinculada a un principal invalido.`);
+        }
+      });
   });
 
   payments.forEach((payment, index) => {
@@ -661,7 +732,7 @@ async function loadCloudState() {
     user: profileFromRow(profileResult.data, saas.session.user.email),
     subscription: subscriptionFromRow(subscriptionResult.data || createFreeSubscription(userId)),
     clients: (clientsResult.data || []).map(clientFromRow),
-    loans: (loansResult.data || []).map(loanFromRow),
+    loans: normalizeLoanOperationTypes((loansResult.data || []).map(loanFromRow)),
     payments: (paymentsResult.data || []).map(paymentFromRow),
     capitalMovements: (capitalMovementsResult.data || []).map(capitalMovementFromRow),
   };
@@ -726,28 +797,63 @@ async function loadAdminState() {
 async function createCloudClientAndLoan(client, loan) {
   if (!isCloudMode()) return;
   const userId = saas.session.user.id;
-  const { error: clientError } = await saas.client.from("clients").insert(clientToRow(client, userId));
-  if (clientError) throw clientError;
-  await insertCloudLoanRow(loan, userId);
+  const { error } = await saas.client.rpc("create_client_with_loan", {
+    p_client_id: client.id,
+    p_name: client.name,
+    p_phone: client.phone || "",
+    p_client_note: client.note || "",
+    p_loan_id: loan.id,
+    p_amount: loan.amount,
+    p_monthly_rate: loan.monthlyRate,
+    p_interest_mode: normalizeInterestMode(loan.interestMode),
+    p_start_date: loan.startDate,
+    p_next_due_date: loan.nextDueDate,
+    p_due_day: loan.dueDay,
+    p_loan_note: loan.note || "",
+    p_created_at: loan.createdAt,
+  });
+  if (error) throw error;
 }
 
 async function createCloudLoan(loan) {
   if (!isCloudMode()) return;
-  const userId = saas.session.user.id;
-  await insertCloudLoanRow(loan, userId);
+  const { error } = await saas.client.rpc("create_loan_operation", {
+    p_loan_id: loan.id,
+    p_client_id: loan.clientId,
+    p_amount: loan.amount,
+    p_monthly_rate: loan.monthlyRate,
+    p_interest_mode: normalizeInterestMode(loan.interestMode),
+    p_operation_type: normalizeOperationType(loan.operationType) || OPERATION_TYPES.ampliacion,
+    p_parent_loan_id: loan.parentLoanId,
+    p_start_date: loan.startDate,
+    p_next_due_date: loan.nextDueDate,
+    p_due_day: loan.dueDay,
+    p_note: loan.note || "",
+    p_created_at: loan.createdAt,
+  });
+  if (error) throw error;
 }
 
 async function updateCloudClientAndLoan(client, loan) {
   if (!isCloudMode()) return;
-  const userId = saas.session.user.id;
-  const { error: clientError } = await saas.client
-    .from("clients")
-    .update(clientToRow(client, userId))
-    .eq("id", client.id)
-    .eq("user_id", userId);
-  if (clientError) throw clientError;
-  if (!loan) return;
-  await updateCloudLoanRow(loan, userId);
+  const { error } = await saas.client.rpc("update_client_with_loan", {
+    p_client_id: client.id,
+    p_name: client.name,
+    p_phone: client.phone || "",
+    p_client_note: client.note || "",
+    p_loan_id: loan?.id || null,
+    p_amount: loan ? loan.amount : null,
+    p_remaining_capital: loan ? loan.remainingCapital : null,
+    p_monthly_rate: loan ? loan.monthlyRate : null,
+    p_interest_mode: loan ? normalizeInterestMode(loan.interestMode) : null,
+    p_start_date: loan ? loan.startDate : null,
+    p_next_due_date: loan ? loan.nextDueDate : null,
+    p_due_day: loan ? loan.dueDay : null,
+    p_loan_note: loan ? loan.note || "" : "",
+    p_status: loan ? loan.status : null,
+    p_closed_at: loan ? loan.closedAt : null,
+  });
+  if (error) throw error;
 }
 
 async function createCloudPaymentAndUpdateLoan(payment) {
@@ -890,6 +996,8 @@ function loanFromRow(row) {
     remainingCapital: Number(row.remaining_capital),
     monthlyRate: Number(row.monthly_rate),
     interestMode: normalizeInterestMode(row.interest_mode),
+    operationType: normalizeOperationType(row.operation_type),
+    parentLoanId: row.parent_loan_id || null,
     startDate: row.start_date,
     nextDueDate: row.next_due_date,
     dueDay: Number(row.due_day),
@@ -947,6 +1055,8 @@ function loanToRow(loan, userId) {
     remaining_capital: loan.remainingCapital,
     monthly_rate: loan.monthlyRate,
     interest_mode: normalizeInterestMode(loan.interestMode),
+    operation_type: normalizeOperationType(loan.operationType) || OPERATION_TYPES.principal,
+    parent_loan_id: loan.parentLoanId || null,
     start_date: loan.startDate,
     next_due_date: loan.nextDueDate,
     due_day: loan.dueDay,
@@ -1098,6 +1208,7 @@ async function getLatestBackup() {
 }
 
 async function restoreLatestBackup() {
+  setButtonBusy(elements.restoreBackupButton, true, "Restaurando...");
   try {
     const backup = await getLatestBackup();
     if (!backup) {
@@ -1119,7 +1230,6 @@ async function restoreLatestBackup() {
     const snapshot = normalizeBackupSnapshot(backup.snapshot);
     if (isCloudMode()) {
       await restoreCloudSnapshot(snapshot);
-      await restoreCloudCapitalMovements(snapshot.capitalMovements);
     }
 
     state.clients = snapshot.clients;
@@ -1128,7 +1238,9 @@ async function restoreLatestBackup() {
     state.capitalMovements = snapshot.capitalMovements;
     saveState();
     render();
-    window.alert("Copia restaurada correctamente.");
+    window.alert(
+      `Restauracion completada correctamente.\n\nClientes restaurados: ${snapshot.clients.length}\nPrestamos: ${snapshot.loans.length}\nPagos: ${snapshot.payments.length}\nMovimientos de capital: ${snapshot.capitalMovements.length}`
+    );
   } catch (error) {
     const message = error.message || "";
     if (/user_backups|restore_user_snapshot|schema cache|relation|function/i.test(message)) {
@@ -1136,6 +1248,8 @@ async function restoreLatestBackup() {
       return;
     }
     window.alert(message || "No se pudo restaurar la copia automatica.");
+  } finally {
+    setButtonBusy(elements.restoreBackupButton, false);
   }
 }
 
@@ -1143,17 +1257,6 @@ async function restoreCloudSnapshot(snapshot) {
   const rpcRestore = await saas.client.rpc("restore_user_snapshot", { snapshot });
   if (!rpcRestore.error) return;
   throw rpcRestore.error;
-}
-
-async function restoreCloudCapitalMovements(movements) {
-  if (!isCloudMode()) return;
-  const userId = saas.session?.user?.id;
-  if (!userId) return;
-  const deleteResult = await saas.client.from("capital_movements").delete().eq("user_id", userId);
-  if (deleteResult.error) throw deleteResult.error;
-  if (!movements.length) return;
-  const { error } = await saas.client.from("capital_movements").insert(movements.map((movement) => capitalMovementToRow(movement, userId)));
-  if (error) throw error;
 }
 
 async function insertCloudLoanRows(loans, userId) {
@@ -1399,8 +1502,18 @@ async function handleClientSubmit(event) {
     setView("plans");
     return;
   }
-
   const clientId = isExtension ? selectedClient.id : createId("client");
+  const primaryLoan = isExtension ? getPrimaryLoanForClient(selectedClient.id) : null;
+  if (isExtension && !primaryLoan) {
+    window.alert("Este cliente no tiene un prestamo principal valido para vincular la ampliacion.");
+    return;
+  }
+  const limitCheck = validateLoanFinancialLimits(clientId, amount);
+  if (!limitCheck.ok) {
+    window.alert(limitCheck.message);
+    return;
+  }
+
   const note = $("#clientNote").value.trim();
 
   const client = isExtension
@@ -1420,6 +1533,8 @@ async function handleClientSubmit(event) {
     remainingCapital: amount,
     monthlyRate,
     interestMode,
+    operationType: isExtension ? OPERATION_TYPES.ampliacion : OPERATION_TYPES.principal,
+    parentLoanId: isExtension ? primaryLoan.id : null,
     startDate,
     nextDueDate: dueDate,
     dueDay: getDayOfMonth(dueDate),
@@ -1431,7 +1546,7 @@ async function handleClientSubmit(event) {
 
   const submitButton = event.submitter || elements.clientForm.querySelector("button[type='submit']");
   clientSubmissionInProgress = true;
-  if (submitButton) submitButton.disabled = true;
+  setButtonBusy(submitButton, true, isExtension ? "Guardando ampliacion..." : "Guardando cliente...");
 
   try {
     await ensureAutomaticBackup();
@@ -1447,7 +1562,7 @@ async function handleClientSubmit(event) {
     return;
   } finally {
     clientSubmissionInProgress = false;
-    if (submitButton) submitButton.disabled = false;
+    setButtonBusy(submitButton, false);
   }
 
   if (client) {
@@ -1502,9 +1617,16 @@ async function handleEditSubmit(event) {
 
   const submitButton = event.submitter || elements.editForm.querySelector("button[type='submit']");
   editSubmissionInProgress = true;
-  if (submitButton) submitButton.disabled = true;
+  setButtonBusy(submitButton, true, "Guardando...");
 
-  await ensureAutomaticBackup();
+  try {
+    await ensureAutomaticBackup();
+  } catch (error) {
+    editSubmissionInProgress = false;
+    setButtonBusy(submitButton, false);
+    window.alert(error.message || "No se pudo crear la copia de seguridad antes de editar.");
+    return;
+  }
 
   const previousClient = { ...client };
   const previousLoans = state.loans.map((loanItem) => ({ ...loanItem }));
@@ -1515,6 +1637,13 @@ async function handleEditSubmit(event) {
 
   let loan = getLoan($("#editLoanId").value);
   if (!loan && amount > 0) {
+    const limitCheck = validateLoanFinancialLimits(client.id, amount);
+    if (!limitCheck.ok) {
+      window.alert(limitCheck.message);
+      editSubmissionInProgress = false;
+      setButtonBusy(submitButton, false);
+      return;
+    }
     loan = {
       id: createId("loan"),
       clientId: client.id,
@@ -1522,6 +1651,8 @@ async function handleEditSubmit(event) {
       remainingCapital: amount,
       monthlyRate,
       interestMode,
+      operationType: OPERATION_TYPES.principal,
+      parentLoanId: null,
       startDate,
       nextDueDate: dueDate,
       dueDay: getDayOfMonth(dueDate),
@@ -1539,14 +1670,25 @@ async function handleEditSubmit(event) {
       const confirmed = window.confirm(
         `Este prestamo ya tiene ${money(alreadyPaidCapital)} de capital pagado. Si bajas el capital a ${money(amount)}, el prestamo quedara cerrado o ajustado. Deseas continuar?`
       );
-      if (!confirmed) return;
+      if (!confirmed) {
+        editSubmissionInProgress = false;
+        setButtonBusy(submitButton, false);
+        return;
+      }
+    }
+    const limitCheck = validateLoanFinancialLimits(client.id, amount, loan);
+    if (!limitCheck.ok) {
+      window.alert(limitCheck.message);
+      editSubmissionInProgress = false;
+      setButtonBusy(submitButton, false);
+      return;
     }
     loan.amount = amount;
     loan.remainingCapital = Math.max(roundMoney(amount - alreadyPaidCapital), 0);
     loan.monthlyRate = monthlyRate;
     loan.interestMode = interestMode;
     loan.startDate = startDate;
-    loan.nextDueDate = dueDate;
+    loan.nextDueDate = loan.remainingCapital > 0 ? dueDate : null;
     loan.dueDay = getDayOfMonth(dueDate);
     loan.note = note;
     loan.status = loan.remainingCapital > 0 ? "active" : "closed";
@@ -1563,7 +1705,7 @@ async function handleEditSubmit(event) {
     return;
   } finally {
     editSubmissionInProgress = false;
-    if (submitButton) submitButton.disabled = false;
+    setButtonBusy(submitButton, false);
   }
 
   elements.editDialog.close();
@@ -1605,7 +1747,7 @@ async function handlePaymentSubmit(event) {
 
   const submitButton = event.submitter || elements.paymentForm.querySelector("button[type='submit']");
   paymentSubmissionInProgress = true;
-  if (submitButton) submitButton.disabled = true;
+  setButtonBusy(submitButton, true, "Registrando...");
 
   const { payment, updatedLoan } = buildPaymentTransactionPreview(loan, {
     paymentDate,
@@ -1632,7 +1774,7 @@ async function handlePaymentSubmit(event) {
     return;
   } finally {
     paymentSubmissionInProgress = false;
-    if (submitButton) submitButton.disabled = false;
+    setButtonBusy(submitButton, false);
   }
 
   event.target.reset();
@@ -1731,7 +1873,7 @@ async function handleCapitalSubmit(event) {
   };
   const submitButton = event.submitter || elements.capitalSubmitButton;
   capitalSubmissionInProgress = true;
-  if (submitButton) submitButton.disabled = true;
+  setButtonBusy(submitButton, true, type === "withdrawal" ? "Retirando..." : "Guardando...");
 
   try {
     await ensureAutomaticBackup();
@@ -1751,7 +1893,7 @@ async function handleCapitalSubmit(event) {
     return;
   } finally {
     capitalSubmissionInProgress = false;
-    if (submitButton) submitButton.disabled = false;
+    setButtonBusy(submitButton, false);
   }
 
   elements.capitalDialog.close();
@@ -1761,7 +1903,7 @@ async function handleCapitalSubmit(event) {
 
 function buildPaymentTransactionPreview(loan, paymentData) {
   const remainingCapitalAfter = roundMoney(Number(loan.remainingCapital || 0) - Number(paymentData.capitalPaid || 0));
-  const nextDueDateAfter = getNextDueDateAfterPayment(loan);
+  const nextDueDateAfter = remainingCapitalAfter <= 0 ? null : getNextDueDateAfterPayment(loan);
   const updatedLoan = {
     ...loan,
     remainingCapital: remainingCapitalAfter,
@@ -1860,9 +2002,14 @@ function buildDashboardData(options = {}) {
   const scopePayments = state.payments.filter((payment) => paymentMatchesDashboardScope(payment, scopeLoans));
   const loans = scopeLoans.filter((loan) => loanWasInPortfolioDuringRange(loan, range));
   const payments = scopePayments.filter((payment) => dateInRange(payment.date, range));
+  const paymentsToRangeEnd = scopePayments.filter((payment) => startOfDay(payment.date) <= startOfDay(range.end));
+  const capitalMovementsInPeriod = (state.capitalMovements || []).filter((movement) => dateInRange(movement.date, range));
   const activeLoans = scopeLoans
     .filter((loan) => loanWasActiveOnDate(loan, range.end))
-    .map((loan) => loanSnapshotAtDate(loan, range.end, scopePayments));
+    .map((loan) => {
+      const snapshot = loanSnapshotAtDate(loan, range.end, scopePayments);
+      return { ...snapshot, expectedInterest: expectedInterest(snapshot, paymentsToRangeEnd) };
+    });
   const overdueLoans = activeLoans.filter((loan) => isOverdueAt(loan, range.end));
   const todayLoans = scopeLoans.filter((loan) => loan.status === "active" && loan.nextDueDate === todayISO()).sort(sortLoansByDueDate);
   const soonLoans = scopeLoans
@@ -1882,21 +2029,26 @@ function buildDashboardData(options = {}) {
   const capitalPending = calculateCapitalPrestadoActual(activeLoans);
   const capitalRecovered = sum(payments, "capitalPaid");
   const realProfit = sum(payments, "interestPaid");
-  const projectedProfit = activeLoans.reduce((total, loan) => total + expectedInterest(loan), 0);
+  const projectedProfit = activeLoans.reduce((total, loan) => total + getLoanExpectedInterest(loan, paymentsToRangeEnd), 0);
   const capitalPlaced = capitalPending;
   const totalLentAccumulated = sum(scopeLoans, "amount");
   const capitalPosition = buildCapitalPositionAtDate(range.end, state.loans, state.payments, state.capitalMovements || []);
   const capitalTotal = capitalPosition.capitalTotal;
   const availableCapital = capitalPosition.availableCapital;
   const periodLoanAmount = sum(loansStartedInPeriod, "amount");
+  const periodPaymentAmount = payments.reduce((total, payment) => total + Number(payment.capitalPaid || 0) + Number(payment.interestPaid || 0), 0);
+  const periodCapitalDeposited = sum(capitalMovementsInPeriod.filter((movement) => movement.type === "deposit"), "amount");
+  const periodCapitalWithdrawn = sum(capitalMovementsInPeriod.filter((movement) => movement.type === "withdrawal"), "amount");
+  const periodCashInflows = periodCapitalDeposited + periodPaymentAmount;
+  const periodCashOutflows = periodLoanAmount + periodCapitalWithdrawn;
   const firstPaymentDate = payments.slice().sort((a, b) => new Date(a.date) - new Date(b.date))[0]?.date || null;
   const reinvested = firstPaymentDate
     ? Math.min(capitalRecovered, loansStartedInPeriod.filter((loan) => loan.startDate >= firstPaymentDate).reduce((total, loan) => total + loan.amount, 0))
     : 0;
   const newMoney = Math.max(periodLoanAmount - capitalRecovered, 0);
-  const overdueAmount = overdueLoans.reduce((total, loan) => total + loan.remainingCapital + expectedInterest(loan), 0);
-  const todayAmount = todayLoans.reduce((total, loan) => total + expectedInterest(loan), 0);
-  const nextMonthInterest = nextMonthLoans.reduce((total, loan) => total + expectedInterest(loan), 0);
+  const overdueAmount = sum(overdueLoans, "remainingCapital");
+  const todayAmount = todayLoans.reduce((total, loan) => total + getLoanExpectedInterest(loan), 0);
+  const nextMonthInterest = nextMonthLoans.reduce((total, loan) => total + getLoanExpectedInterest(loan, paymentsToRangeEnd), 0);
   const nextMonthCapital = sum(nextMonthLoans, "remainingCapital");
   const averageLateDays = overdueLoans.length
     ? overdueLoans.reduce((total, loan) => total + Math.max(daysBetween(loan.nextDueDate, range.end), 0), 0) / overdueLoans.length
@@ -1969,7 +2121,7 @@ function buildDashboardData(options = {}) {
       pendingInterest: projectedProfit,
       averageLoan: loansStartedInPeriod.length ? periodLoanAmount / loansStartedInPeriod.length : 0,
       averageInterestPaid: payments.length ? realProfit / payments.length : 0,
-      cashflow: payments.reduce((total, payment) => total + payment.capitalPaid + payment.interestPaid, 0) - periodLoanAmount,
+      cashflow: roundMoney(periodCashInflows - periodCashOutflows),
       availableAfterProjected: availableCapital + nextMonthCapital + nextMonthInterest,
       profitability: capitalTotal ? (realProfit / capitalTotal) * 100 : 0,
       monthlyRoi: capitalPending ? (projectedProfit / capitalPending) * 100 : 0,
@@ -1977,8 +2129,8 @@ function buildDashboardData(options = {}) {
       recoveryRate,
     },
     charts: {
-      months: buildMonthSeries(6, payments),
-      loansByMonth: buildLoanMonthSeries(6, loansStartedInPeriod),
+      months: buildMonthSeries(payments, range),
+      loansByMonth: buildLoanMonthSeries(loansStartedInPeriod, range),
       statusSegments,
       modeSegments,
       projections: [
@@ -1987,10 +2139,10 @@ function buildDashboardData(options = {}) {
         { label: "6 meses", value: projectedProfit * 6 },
         { label: "12 meses", value: projectedProfit * 12 },
       ],
-      delinquency: buildDelinquencySeries(6, activeLoans, range.end),
+      delinquency: buildDelinquencySeries(activeLoans, range),
       cashflow: [
-        { label: "Ingresos", value: payments.reduce((total, payment) => total + payment.capitalPaid + payment.interestPaid, 0), color: "#00a76f" },
-        { label: "Egresos", value: periodLoanAmount, color: "#ffb000" },
+        { label: "Ingresos", value: periodCashInflows, color: "#00a76f" },
+        { label: "Egresos", value: periodCashOutflows, color: "#ffb000" },
       ],
     },
     lists: buildDashboardLists(activeLoans, payments, scopeLoans, loansStartedInPeriod, range),
@@ -2069,9 +2221,10 @@ function createEmptyDashboardMetrics() {
 }
 
 function createEmptyDashboardCharts() {
+  const emptyRange = getDashboardDateRange({ customStart: "", customEnd: "" });
   return {
-    months: buildMonthSeries(6, []),
-    loansByMonth: buildLoanMonthSeries(6, []),
+    months: buildMonthSeries([], emptyRange),
+    loansByMonth: buildLoanMonthSeries([], emptyRange),
     statusSegments: [
       { label: "Activos", value: 0, color: "#00a76f" },
       { label: "Vencidos", value: 0, color: "#061826" },
@@ -2084,7 +2237,7 @@ function createEmptyDashboardCharts() {
       { label: "6 meses", value: 0 },
       { label: "12 meses", value: 0 },
     ],
-    delinquency: buildDelinquencySeries(6, []),
+    delinquency: buildDelinquencySeries([], emptyRange),
     cashflow: [
       { label: "Ingresos", value: 0, color: "#00a76f" },
       { label: "Egresos", value: 0, color: "#ffb000" },
@@ -2106,7 +2259,7 @@ function createEmptyDashboardLists() {
 }
 
 function calculateCapitalPrestadoActual(loans) {
-  return roundMoney((loans || []).reduce((total, loan) => total + Math.max(Number(loan.remainingCapital || 0), 0), 0));
+  return calculateOutstandingPrincipal(loans);
 }
 
 function getDashboardFilters() {
@@ -2327,6 +2480,7 @@ function getLoanClosedDate(loan) {
 }
 
 function isOverdueAt(loan, dateString) {
+  if (!loan?.nextDueDate) return false;
   return startOfDay(loan.nextDueDate) < startOfDay(dateString);
 }
 
@@ -2342,6 +2496,8 @@ function isBusinessDate(dateString) {
 }
 
 function isPrimaryLoan(loan) {
+  const operationType = normalizeOperationType(loan?.operationType);
+  if (operationType) return operationType === OPERATION_TYPES.principal;
   return getPrimaryLoanForClient(loan.clientId)?.id === loan.id;
 }
 
@@ -2354,6 +2510,46 @@ function normalizeText(value) {
 
 function sum(items, key) {
   return items.reduce((total, item) => total + Number(item[key] || 0), 0);
+}
+
+function calculateOutstandingPrincipal(loans) {
+  return roundMoney((loans || []).reduce((total, loan) => total + Math.max(Number(loan.remainingCapital || 0), 0), 0));
+}
+
+function getClientPendingCapital(clientId, excludeLoanId = "") {
+  return calculateOutstandingPrincipal(
+    state.loans.filter((loan) => loan.clientId === clientId && loan.id !== excludeLoanId && loan.status !== "closed")
+  );
+}
+
+function getLoanFinancialPosition(clientId, amount, currentLoan = null) {
+  const alreadyPaidCapital = currentLoan ? Math.max(Number(currentLoan.amount || 0) - Number(currentLoan.remainingCapital || 0), 0) : 0;
+  const proposedRemaining = currentLoan ? Math.max(roundMoney(Number(amount || 0) - alreadyPaidCapital), 0) : Number(amount || 0);
+  const currentRemaining = currentLoan ? Number(currentLoan.remainingCapital || 0) : 0;
+  const pendingOther = getClientPendingCapital(clientId, currentLoan?.id || "");
+  const currentClientPending = roundMoney(pendingOther + currentRemaining);
+  const additionalDisbursement = Math.max(roundMoney(proposedRemaining - currentRemaining), 0);
+  const availableCapital = buildCapitalPositionAtDate(todayISO()).availableCapital;
+
+  return {
+    pendingOther,
+    currentClientPending,
+    proposedRemaining,
+    additionalDisbursement,
+    availableCapital,
+  };
+}
+
+function validateLoanFinancialLimits(clientId, amount, currentLoan = null) {
+  const position = getLoanFinancialPosition(clientId, amount, currentLoan);
+  if (position.additionalDisbursement > position.availableCapital) {
+    return {
+      ok: false,
+      message: `No puedes desembolsar ${money(position.additionalDisbursement)} porque solo tienes ${money(position.availableCapital)} disponible.`,
+      position,
+    };
+  }
+  return { ok: true, position };
 }
 
 function buildCapitalPositionAtDate(dateString, loans = state.loans, payments = state.payments, capitalMovements = state.capitalMovements || []) {
@@ -3152,7 +3348,7 @@ function renderLoanMiniList(container, loans, emptyMessage) {
           <div>
             <strong>${escapeHTML(client?.name || "Cliente sin nombre")}</strong>
             <span>${escapeHTML(client?.phone || "Sin telefono")} · ${formatDate(loan.nextDueDate)}</span>
-            <small>${money(loan.remainingCapital)} pendiente · ${money(expectedInterest(loan))} interes</small>
+            <small>${money(loan.remainingCapital)} pendiente · ${money(getLoanExpectedInterest(loan))} interes</small>
           </div>
           <span class="status-pill ${status.className}">${status.label}</span>
           <button class="primary-button small-button" type="button" data-pay-loan="${loan.id}">${icons.coin} Cobro</button>
@@ -3320,7 +3516,7 @@ function getDashboardManagementReportItems(dashboard) {
     ["Promedio de prestamo", money(m.averageLoan), "Ejemplo: Si otorgaste prestamos de S/500, S/1,000 y S/1,500, el promedio de prestamo es S/1,000.", "averageLoan"],
     ["Promedio de interes cobrado", money(m.averageInterestPaid), "Ejemplo: Si cobraste S/50, S/100 y S/150 de interes en tres pagos, el promedio de interes cobrado es S/100.", "averageInterestPaid"],
     ["Distribucion por modalidad", modeText || "Sin datos", "Ejemplo: Si tienes 5 prestamos mensuales, 3 quincenales, 2 semanales y 1 diario, aqui ves esa distribucion."],
-    ["Flujo de caja", money(m.cashflow), "Ejemplo: Si ingresaron S/5,000 por pagos y salieron S/3,000 en nuevos prestamos, tu flujo neto fue S/2,000 positivo.", "cashflow"],
+    ["Flujo de caja", money(m.cashflow), "Ejemplo: Si agregas S/2,000, prestas S/1,000, recibes S/150 y retiras S/300, tu flujo neto es +S/850. No es lo mismo que ganancia: la ganancia real solo cuenta intereses cobrados.", "cashflow"],
   ].map(([title, value, tip, metricKey]) => ({ title, value, tip, metricKey }));
 }
 
@@ -3355,8 +3551,8 @@ function renderDashboardCharts(dashboard) {
   renderHorizontalChart(elements.summaryCashflowChart, dashboard.charts.cashflow);
 }
 
-function buildMonthSeries(count, payments) {
-  return getLastMonthKeys(count).map((month) => {
+function buildMonthSeries(payments, range) {
+  return getMonthKeysForDashboardRange(range).map((month) => {
     const monthPayments = payments.filter((payment) => getMonthKey(payment.date) === month.key);
     return {
       label: month.label,
@@ -3366,15 +3562,16 @@ function buildMonthSeries(count, payments) {
   });
 }
 
-function buildLoanMonthSeries(count, loans) {
-  return getLastMonthKeys(count).map((month) => ({
+function buildLoanMonthSeries(loans, range) {
+  return getMonthKeysForDashboardRange(range).map((month) => ({
     label: month.label,
     value: loans.filter((loan) => getMonthKey(loan.startDate) === month.key).reduce((total, loan) => total + loan.amount, 0),
   }));
 }
 
-function buildDelinquencySeries(count, loans, cutoffDate = todayISO()) {
-  return getLastMonthKeys(count).map((month) => ({
+function buildDelinquencySeries(loans, range) {
+  const cutoffDate = range?.end || todayISO();
+  return getMonthKeysForDashboardRange(range).map((month) => ({
     label: month.label,
     value: loans.filter((loan) => loan.status === "active" && getMonthKey(loan.nextDueDate) === month.key && isOverdueAt(loan, cutoffDate)).length,
   }));
@@ -3768,7 +3965,7 @@ function dashboardLoanSectionRows(title, loans) {
   loans.forEach((loan) => {
     const client = getClient(loan.clientId);
     const status = getLoanStatus(loan);
-    const interest = expectedInterest(loan);
+    const interest = getLoanExpectedInterest(loan);
     rows.push([
       excelCellData(client?.name || "Cliente sin nombre", "Text"),
       excelCellData(client?.phone || "Sin telefono", "Text"),
@@ -3886,7 +4083,7 @@ function renderClients() {
       const clientLoans = getLoansForClient(client.id);
       const loan = clientLoans[0] || null;
       const activeLoan = loan?.status === "active" ? loan : null;
-      const extensions = clientLoans.slice(1);
+      const extensions = clientLoans.filter((loan) => !isPrimaryLoan(loan));
       const paymentCount = state.payments.filter((payment) => payment.clientId === client.id).length;
       const status = getLoanStatus(loan);
       const paymentButton = activeLoan
@@ -3921,7 +4118,7 @@ function renderClients() {
   renderEmpty(elements.clientList, "No hay clientes con ese criterio.");
 }
 
-async function deleteClient(clientId) {
+async function deleteClient(clientId, actionButton = null) {
   if (clientDeletionInProgress) return;
 
   const client = state.clients.find((item) => item.id === clientId);
@@ -3935,6 +4132,7 @@ async function deleteClient(clientId) {
   if (!confirmed) return;
 
   clientDeletionInProgress = true;
+  setButtonBusy(actionButton, true, "Eliminando...");
   try {
     await ensureAutomaticBackup(true);
     await deleteCloudClient(clientId);
@@ -3954,6 +4152,7 @@ async function deleteClient(clientId) {
     window.alert(error.message || "No se pudo eliminar el cliente.");
   } finally {
     clientDeletionInProgress = false;
+    setButtonBusy(actionButton, false);
   }
 }
 
@@ -4033,7 +4232,7 @@ async function handleLoanDeleteSubmit(event) {
   const { clientId, loanId } = pendingLoanDelete;
   const submitButton = event.submitter || elements.loanDeleteForm.querySelector("button[type='submit']");
   loanDeletionInProgress = true;
-  if (submitButton) submitButton.disabled = true;
+  setButtonBusy(submitButton, true, "Eliminando...");
 
   try {
     await ensureAutomaticBackup(true);
@@ -4053,7 +4252,7 @@ async function handleLoanDeleteSubmit(event) {
     window.alert(error.message || "No se pudo eliminar la ampliacion.");
   } finally {
     loanDeletionInProgress = false;
-    if (submitButton) submitButton.disabled = false;
+    setButtonBusy(submitButton, false);
   }
 }
 
@@ -4165,6 +4364,70 @@ function renderAdmin() {
     })
     .join("");
   renderEmpty(elements.adminUserList, "No hay usuarios registrados.");
+}
+
+function openIntegrityDialog() {
+  const findings = buildIntegrityFindings();
+  elements.integritySummary.textContent = findings.length
+    ? `Se encontraron ${findings.length} inconsistencia(s). No se modifico ningun dato.`
+    : "Sin inconsistencias detectadas.";
+  elements.integrityList.innerHTML = findings.length
+    ? findings
+        .map(
+          (finding) => `
+            <article class="history-item">
+              <div>
+                <strong>${escapeHTML(finding.title)}</strong>
+                <span>${escapeHTML(finding.detail)}</span>
+              </div>
+              <span class="status-pill warn">${escapeHTML(finding.severity)}</span>
+            </article>
+          `
+        )
+        .join("")
+    : `<div class="empty-state compact-empty">Sin inconsistencias detectadas.</div>`;
+  elements.integrityDialog.showModal();
+}
+
+function buildIntegrityFindings() {
+  const findings = [];
+  validateStateIntegrity(state).forEach((error) => {
+    findings.push({ title: "Integridad de datos", detail: error, severity: "Revisar" });
+  });
+
+  const paymentSignatures = new Map();
+  state.payments.forEach((payment) => {
+    const signature = [payment.loanId, payment.clientId, payment.date, payment.scheduledDueDate || "", payment.interestPaid || 0, payment.capitalPaid || 0].join("|");
+    paymentSignatures.set(signature, (paymentSignatures.get(signature) || 0) + 1);
+  });
+  paymentSignatures.forEach((count, signature) => {
+    if (count > 1) {
+      findings.push({ title: "Pago duplicado sospechoso", detail: `${count} pagos comparten la misma firma: ${signature}.`, severity: "Medio" });
+    }
+  });
+
+  const capitalPosition = buildCapitalPositionAtDate(todayISO());
+  const reconciliationDifference = roundMoney(capitalPosition.capitalTotal - (capitalPosition.availableCapital + capitalPosition.capitalPlaced));
+  if (Math.abs(reconciliationDifference) > 0.01) {
+    findings.push({
+      title: "Reconciliacion de capital",
+      detail: `Capital total no cuadra con disponible + prestado. Diferencia: ${money(reconciliationDifference)}.`,
+      severity: "Alto",
+    });
+  }
+
+  if (state.user?.isAdmin) {
+    adminState.loans.forEach((loan) => {
+      if (loan.user_id && loan.client_id) {
+        const client = adminState.clients.find((item) => item.id === loan.client_id);
+        if (client && client.user_id !== loan.user_id) {
+          findings.push({ title: "Registro de otro usuario", detail: `Prestamo ${loan.id} apunta a un cliente de otro usuario.`, severity: "Alto" });
+        }
+      }
+    });
+  }
+
+  return findings;
 }
 
 function renderAdminPlanButtons(userId, requestId = "") {
@@ -4372,6 +4635,7 @@ function openClientDialog(mode = "new") {
     $("#clientPhone").value = "";
     $("#clientNote").placeholder = "Direccion, referencia o acuerdo especial";
   }
+  updateLoanLimitHint();
 
   elements.clientDialog.showModal();
   (isExtension ? elements.clientNameSelect : $("#clientName")).focus();
@@ -4387,6 +4651,30 @@ function fillExtensionClientFields() {
   const client = getClient(elements.clientNameSelect.value);
   if (!client) return;
   $("#clientPhone").value = client.phone || "";
+  updateLoanLimitHint();
+}
+
+function updateLoanLimitHint() {
+  if (!elements.loanLimitHint) return;
+  const isExtension = elements.clientFormMode.value === "extension";
+  const selectedClient = isExtension ? getClient(elements.clientNameSelect.value) : null;
+  const clientId = selectedClient?.id || "";
+  const amount = toNumber($("#clientLoanAmount").value);
+  const position = clientId ? getLoanFinancialPosition(clientId, amount) : null;
+  const availableCapital = buildCapitalPositionAtDate(todayISO()).availableCapital;
+  const capitalTip = "Muestra cuanto capital tienes libre para entregar en nuevos prestamos o ampliaciones. Si no alcanza, el sistema bloquea el desembolso.";
+
+  if (isExtension && position) {
+    elements.loanLimitHint.innerHTML = `
+      <span>Capital pendiente del cliente: <strong>${money(position.currentClientPending)}</strong></span>
+      <span>Capital disponible: <strong>${money(position.availableCapital)}</strong> ${renderInfoDot(capitalTip)}</span>
+    `;
+    return;
+  }
+
+  elements.loanLimitHint.innerHTML = `
+    <span>Capital disponible: <strong>${money(availableCapital)}</strong> ${renderInfoDot(capitalTip)}</span>
+  `;
 }
 
 function openPaymentDialog(loanId) {
@@ -4411,7 +4699,7 @@ function openHistoryDialog(clientId) {
   if (!client) return;
 
   const loans = getLoansForClient(clientId);
-  const extensions = loans.slice(1);
+  const extensions = loans.filter((loan) => !isPrimaryLoan(loan));
   const payments = buildPaymentHistory(clientId);
   const totalInterest = payments.reduce((sum, payment) => sum + payment.interestPaid, 0);
   const totalCapital = payments.reduce((sum, payment) => sum + payment.capitalPaid, 0);
@@ -4516,11 +4804,18 @@ function getLoansForClient(clientId) {
   return state.loans
     .filter((loan) => loan.clientId === clientId)
     .slice()
-    .sort((a, b) => new Date(a.createdAt || a.startDate) - new Date(b.createdAt || b.startDate));
+    .sort((a, b) => {
+      const leftType = normalizeOperationType(a.operationType);
+      const rightType = normalizeOperationType(b.operationType);
+      if (leftType === OPERATION_TYPES.principal && rightType !== OPERATION_TYPES.principal) return -1;
+      if (rightType === OPERATION_TYPES.principal && leftType !== OPERATION_TYPES.principal) return 1;
+      return compareLoansForOperationOrder(a, b);
+    });
 }
 
 function getPrimaryLoanForClient(clientId) {
-  return getLoansForClient(clientId)[0] || null;
+  const loans = getLoansForClient(clientId);
+  return loans.find((loan) => normalizeOperationType(loan.operationType) === OPERATION_TYPES.principal) || loans[0] || null;
 }
 
 function isClientCompletelyClosed(clientId) {
@@ -4563,7 +4858,7 @@ function exportClientsExcel() {
       client.note || "",
       isClientCompletelyClosed(client.id) ? "Cerrado" : "Activo",
       loans.length,
-      Math.max(loans.length - 1, 0),
+      loans.filter((loan) => !isPrimaryLoan(loan)).length,
       activeLoans.reduce((sum, loan) => sum + Number(loan.remainingCapital || 0), 0),
       client.createdAt ? formatDate(String(client.createdAt).slice(0, 10)) : "",
     ];
@@ -4577,7 +4872,7 @@ function exportClientsExcel() {
 
   const extensionRows = state.clients.flatMap((client) =>
     getLoansForClient(client.id)
-      .slice(1)
+      .filter((loan) => !isPrimaryLoan(loan))
       .map((loan, index) => [`Ampliacion ${index + 1}`, ...loanExcelRow(client, loan)])
   );
 
@@ -4587,7 +4882,7 @@ function exportClientsExcel() {
   const summaryRows = [
     ["Clientes", state.clients.length],
     ["Prestamos registrados", state.loans.length],
-    ["Ampliaciones registradas", Math.max(state.loans.length - state.clients.filter((client) => getPrimaryLoanForClient(client.id)).length, 0)],
+    ["Ampliaciones registradas", state.loans.filter((loan) => !isPrimaryLoan(loan)).length],
     ["Cobros registrados", state.payments.length],
     ["Capital total", capitalPosition.capitalTotal],
     ["Capital disponible", capitalPosition.availableCapital],
@@ -4895,26 +5190,54 @@ function setDefaultDates() {
   if ($("#clientLoanDueDate")) $("#clientLoanDueDate").value = getSuggestedDueDate(today, interestMode);
 }
 
-function expectedInterest(loan) {
+function expectedInterest(loan, payments = state.payments) {
   return calculateInterestForMode(
     loan.remainingCapital,
     loan.monthlyRate,
     normalizeInterestMode(loan.interestMode),
-    getInterestPeriodDays(loan)
+    getInterestPeriodDays(loan, payments),
+    getInterestPeriodFactor(loan, payments)
   );
 }
 
-function calculateInterestForMode(capital, monthlyRate, interestMode = "monthly", days = 1) {
+function getLoanExpectedInterest(loan, payments = state.payments) {
+  return Number.isFinite(Number(loan?.expectedInterest)) ? Number(loan.expectedInterest) : expectedInterest(loan, payments);
+}
+
+function calculateInterestForMode(capital, monthlyRate, interestMode = "monthly", days = 1, periodFactor = null) {
   const mode = normalizeInterestMode(interestMode);
   const modeConfig = INTEREST_MODES[mode];
   const periodDays = Math.max(Number(days) || 1, 1);
-  const factor = mode === "daily" ? modeConfig.rateFactor * periodDays : modeConfig.rateFactor;
+  const hasPeriodFactor = periodFactor !== null && periodFactor !== undefined && Number.isFinite(Number(periodFactor));
+  const factor = hasPeriodFactor ? Number(periodFactor) : mode === "daily" ? modeConfig.rateFactor * periodDays : modeConfig.rateFactor;
   return roundMoney(Number(capital || 0) * (Number(monthlyRate || 0) / 100) * factor);
 }
 
-function getInterestPeriodDays(loan) {
+function getInterestPeriodFactor(loan, payments = state.payments) {
+  if (normalizeInterestMode(loan?.interestMode) !== "monthly" || !isFirstInterestPeriod(loan, payments)) {
+    return null;
+  }
+  return calculateFirstPeriodInterestFactor(loan.startDate, loan.nextDueDate);
+}
+
+function calculateFirstPeriodInterestFactor(startDate, dueDate) {
+  const calendarDays = Math.max(daysBetween(startDate, dueDate), 0);
+  if (calendarDays >= 25) return 1;
+  if (calendarDays >= 15) return 0.5;
+  return 0;
+}
+
+function calculateFirstPeriodInterest(capital, monthlyRate, startDate, dueDate) {
+  return calculateInterestForMode(capital, monthlyRate, "monthly", 1, calculateFirstPeriodInterestFactor(startDate, dueDate));
+}
+
+function isFirstInterestPeriod(loan, payments = state.payments) {
+  return !(payments || []).some((payment) => payment.loanId === loan?.id);
+}
+
+function getInterestPeriodDays(loan, payments = state.payments) {
   if (normalizeInterestMode(loan?.interestMode) !== "daily") return 1;
-  const latestPayment = state.payments
+  const latestPayment = (payments || [])
     .filter((payment) => payment.loanId === loan.id && payment.scheduledDueDate)
     .slice()
     .sort((a, b) => new Date(a.scheduledDueDate) - new Date(b.scheduledDueDate))
@@ -4984,6 +5307,24 @@ function getLastMonthKeys(count) {
   });
 }
 
+function getMonthKeysForDashboardRange(range) {
+  if (!range || range.invalid) return getLastMonthKeys(6);
+  const start = parseLocalDate(range.start);
+  const end = parseLocalDate(range.end);
+  const months = [];
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+  const labelOptions = start.getFullYear() === end.getFullYear() ? { month: "short" } : { month: "short", year: "2-digit" };
+  while (cursor <= endMonth) {
+    months.push({
+      key: getMonthKey(toISODate(cursor)),
+      label: new Intl.DateTimeFormat("es-PE", labelOptions).format(cursor),
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return months.length ? months : getLastMonthKeys(6);
+}
+
 function buildConicGradient(segments, total) {
   let cursor = 0;
   const stops = segments
@@ -5042,6 +5383,19 @@ function getDayOfMonth(dateString) {
 function createId(prefix) {
   const id = window.crypto?.randomUUID ? window.crypto.randomUUID() : Date.now().toString(36);
   return isCloudMode() ? id : `${prefix}-${id}`;
+}
+
+function setButtonBusy(button, busy, busyText = "Procesando...") {
+  if (!button) return;
+  if (busy) {
+    button.dataset.idleHtml = button.innerHTML;
+    button.innerHTML = busyText;
+    button.disabled = true;
+    return;
+  }
+  button.innerHTML = button.dataset.idleHtml || button.innerHTML;
+  button.disabled = false;
+  delete button.dataset.idleHtml;
 }
 
 function getClient(id) {

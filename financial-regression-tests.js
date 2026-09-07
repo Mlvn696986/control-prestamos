@@ -4,6 +4,7 @@ const vm = require("vm");
 const appCode = fs.readFileSync("app.js", "utf8");
 const htmlCode = fs.readFileSync("index.html", "utf8");
 const sqlCode = fs.readFileSync("supabase-financial-integrity.sql", "utf8");
+const schemaCode = fs.readFileSync("supabase-schema.sql", "utf8");
 const stylesCode = fs.readFileSync("styles.css", "utf8");
 const localStorageStore = new Map();
 
@@ -154,6 +155,8 @@ function testLoan(data) {
     dueDay: Number((data.nextDueDate || data.startDate).slice(8, 10)),
     note: "",
     status: data.status || "active",
+    operationType: data.operationType || null,
+    parentLoanId: data.parentLoanId || null,
     createdAt: data.createdAt || data.startDate + "T00:00:00.000Z",
     closedAt: data.closedAt || null,
   };
@@ -206,13 +209,124 @@ function buildTestDashboard(operation = "all") {
 }
 
 resetTestState({
+  clients: [testClient("reglas")],
+  loans: [
+    testLoan({ id: "reglas-main", clientId: "reglas", amount: 500, monthlyRate: 10, startDate: "2026-08-01", nextDueDate: "2026-09-01", operationType: "principal" }),
+  ],
+  capitalMovements: [testCapitalMovement({ id: "reglas-capital", type: "deposit", amount: 2000, date: "2026-08-01" })],
+});
+let dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(state.loans[0].remainingCapital, 500, "Test 1: prestamo S/500 inicia con capital pendiente S/500.");
+let preview = buildPaymentTransactionPreview(state.loans[0], {
+  paymentDate: "2026-09-01",
+  scheduledDueDate: "2026-09-01",
+  interestPaid: 50,
+  capitalPaid: 250,
+});
+state.loans[0] = preview.updatedLoan;
+state.payments.push(preview.payment);
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(state.loans[0].remainingCapital, 250, "Test 2: pagar S/250 de capital deja S/250 pendiente.");
+assertMoney(dashboard.metrics.realProfit, 50, "Test 2: ganancia real suma solo S/50 de interes.");
+assertMoney(expectedInterest(state.loans[0]), 25, "Test 3: siguiente interes mensual es 10% de S/250.");
+state.loans.push(testLoan({
+  id: "reglas-ext",
+  clientId: "reglas",
+  amount: 300,
+  monthlyRate: 10,
+  startDate: "2026-09-02",
+  nextDueDate: "2026-10-02",
+  operationType: "ampliacion",
+  parentLoanId: "reglas-main",
+}));
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 550, "Test 4: capital actualmente prestado suma principal pendiente + ampliacion.");
+assertMoney(dashboard.metrics.totalLentAccumulated, 800, "Test 4: total prestado acumulado suma desembolsos originales.");
+state.loans[0].nextDueDate = addDays(todayISO(), -1);
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.capitalPlaced, 550, "Test 5: prestamo vencido sigue contando como capital prestado.");
+assertMoney(dashboard.metrics.overdueAmount, 250, "Test 5: monto vencido muestra solo capital pendiente vencido.");
+assertMoney(calculateFirstPeriodInterest(500, 10, "2026-08-01", "2026-08-31"), 50, "Test 6: primer periodo mensual de 30 dias cobra 10%.");
+assertMoney(calculateFirstPeriodInterest(500, 10, "2026-08-11", "2026-08-31"), 25, "Test 6: primer periodo mensual de 20 dias cobra 5%.");
+assertMoney(calculateFirstPeriodInterest(500, 10, "2026-08-24", "2026-08-31"), 0, "Test 6: primer periodo mensual de 7 dias no cobra interes.");
+
+resetTestState({
+  clients: [testClient("sin-limite")],
+  loans: [
+    testLoan({ id: "sin-limite-main", clientId: "sin-limite", amount: 700, remainingCapital: 700, startDate: "2026-08-01", nextDueDate: "2026-09-01", operationType: "principal" }),
+  ],
+  capitalMovements: [testCapitalMovement({ id: "sin-limite-capital", type: "deposit", amount: 2000, date: "2026-08-01" })],
+});
+let limitCheck = validateLoanFinancialLimits("sin-limite", 500);
+assertEqual(limitCheck.ok, true, "Regla actual: cliente con S/700 pendientes puede ampliar S/500 si hay capital disponible.");
+resetTestState({
+  clients: [testClient("caja"), testClient("nuevo")],
+  loans: [
+    testLoan({ id: "caja-main", clientId: "caja", amount: 500, remainingCapital: 500, startDate: "2026-08-01", nextDueDate: "2026-09-01", operationType: "principal" }),
+  ],
+  capitalMovements: [testCapitalMovement({ id: "caja-capital", type: "deposit", amount: 700, date: "2026-08-01" })],
+});
+limitCheck = validateLoanFinancialLimits("nuevo", 500);
+assertEqual(limitCheck.ok, false, "Test 8: no se puede prestar S/500 si solo hay S/200 disponible.");
+
+resetTestState({
+  clients: [testClient("captura")],
+  loans: [
+    testLoan({ id: "captura-main", clientId: "captura", amount: 50, remainingCapital: 50, startDate: "2026-09-06", nextDueDate: "2026-10-06", operationType: "principal" }),
+  ],
+  capitalMovements: [testCapitalMovement({ id: "captura-capital", type: "deposit", amount: 2000, date: "2026-09-01" })],
+});
+limitCheck = validateLoanFinancialLimits("captura", 960);
+assertEqual(limitCheck.ok, true, "Captura: S/50 pendiente + ampliacion S/960 debe permitirse si hay capital disponible.");
+
+preview = buildPaymentTransactionPreview(testLoan({ id: "cierra-total", clientId: "caja", amount: 500, remainingCapital: 500, startDate: "2026-08-01", nextDueDate: "2026-09-01", operationType: "principal" }), {
+  paymentDate: "2026-09-01",
+  scheduledDueDate: "2026-09-01",
+  interestPaid: 50,
+  capitalPaid: 500,
+});
+assertMoney(preview.updatedLoan.remainingCapital, 0, "Test 9: pago total deja capital pendiente cero.");
+assertEqual(preview.updatedLoan.status, "closed", "Test 9: pago total cierra el prestamo.");
+assertEqual(preview.updatedLoan.nextDueDate, null, "Test 9: prestamo cerrado deja nextDueDate null.");
+
+resetTestState({
+  clients: [testClient("flujo")],
+  loans: [
+    testLoan({ id: "flujo-main", clientId: "flujo", amount: 1000, remainingCapital: 850, startDate: "2026-08-02", nextDueDate: "2026-09-02", operationType: "principal" }),
+  ],
+  payments: [testPayment({ id: "flujo-pago", loanId: "flujo-main", clientId: "flujo", date: "2026-08-15", interestPaid: 50, capitalPaid: 100 })],
+  capitalMovements: [
+    testCapitalMovement({ id: "flujo-aporte", type: "deposit", amount: 2000, date: "2026-08-01" }),
+    testCapitalMovement({ id: "flujo-retiro", type: "withdrawal", amount: 300, date: "2026-08-20" }),
+  ],
+});
+dashboard = buildDashboardData({ filters: { customStart: "2026-08-01", customEnd: "2026-08-31", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.cashflow, 850, "Test 13: flujo debe ser +2000 -1000 +150 -300 = +850.");
+dashboard = buildDashboardData({ filters: { customStart: "2026-01-01", customEnd: "2026-03-31", compare: "none", operation: "all" }, skipComparison: true });
+assertEqual(dashboard.charts.months.length, 3, "Test 14: grafico enero-marzo debe tener tres meses.");
+assert(dashboard.charts.months[0].label.toLowerCase().startsWith("ene"), "Test 14: primer mes debe ser enero.");
+assert(dashboard.charts.months[2].label.toLowerCase().startsWith("mar"), "Test 14: tercer mes debe ser marzo.");
+
+resetTestState({
+  clients: [testClient("ops")],
+  loans: [
+    testLoan({ id: "ops-main", clientId: "ops", amount: 400, startDate: "2026-08-01", nextDueDate: "2026-09-01", operationType: "principal" }),
+    testLoan({ id: "ops-ext-1", clientId: "ops", amount: 100, startDate: "2026-08-02", nextDueDate: "2026-09-02", operationType: "ampliacion", parentLoanId: "ops-main" }),
+    testLoan({ id: "ops-ext-2", clientId: "ops", amount: 100, startDate: "2026-08-03", nextDueDate: "2026-09-03", operationType: "ampliacion", parentLoanId: "ops-main" }),
+    testLoan({ id: "ops-ext-3", clientId: "ops", amount: 100, startDate: "2026-08-04", nextDueDate: "2026-09-04", operationType: "ampliacion", parentLoanId: "ops-main" }),
+  ],
+});
+assertEqual(getLoansForClient("ops").filter(isPrimaryLoan).length, 1, "Test 15: debe existir un unico principal explicito.");
+assertEqual(getLoansForClient("ops").filter((loan) => !isPrimaryLoan(loan)).length, 3, "Test 15: deben existir tres ampliaciones explicitas.");
+
+resetTestState({
   clients: [testClient("atraviesa"), testClient("cerrado")],
   loans: [
     testLoan({ id: "loan-cross", clientId: "atraviesa", amount: 500, startDate: "2026-07-15", nextDueDate: "2026-09-15" }),
     testLoan({ id: "loan-closed", clientId: "cerrado", amount: 300, remainingCapital: 0, startDate: "2026-07-01", nextDueDate: "2026-07-20", status: "closed", closedAt: "2026-07-20" }),
   ],
 });
-let dashboard = buildTestDashboard();
+dashboard = buildTestDashboard();
 assertEqual(dashboard.metrics.activeLoans, 1, "Prueba A/B: solo el prestamo que atraviesa agosto debe estar activo al cierre.");
 assertMoney(dashboard.metrics.capitalPending, 500, "Prueba A: capital pendiente del prestamo que atraviesa el periodo.");
 assertEqual(dashboard.metrics.activeClientCount, 1, "Prueba A: cliente activo al cierre del periodo.");
@@ -350,7 +464,7 @@ assertMoney(dashboard.metrics.capitalPlaced, 500, "Capital actualmente prestado:
 assertMoney(dashboard.metrics.totalLentAccumulated, 500, "Total prestado acumulado: inicialmente cuenta el monto original desembolsado.");
 let pendingCapitalHTML = renderLoanPendingCapital(state.loans[0]);
 assert(pendingCapitalHTML.includes(money(500)), "Tabla cliente: inicialmente debe mostrar el capital pendiente completo.");
-let preview = buildPaymentTransactionPreview(state.loans[0], {
+preview = buildPaymentTransactionPreview(state.loans[0], {
   paymentDate: "2026-09-01",
   scheduledDueDate: "2026-09-01",
   interestPaid: 50,
@@ -581,6 +695,10 @@ function assertCondition(condition, message) {
 });
 
 assertFileIncludes(appCode, 'saas.client.rpc("register_payment"', "Prueba E/F: el cobro en nube debe usar RPC transaccional.");
+assertFileIncludes(appCode, 'saas.client.rpc("create_client_with_loan"', "Test 11: crear cliente + prestamo debe usar RPC atomica.");
+assertFileIncludes(appCode, 'saas.client.rpc("update_client_with_loan"', "Editar cliente + prestamo debe usar RPC atomica.");
+assertFileIncludes(appCode, 'saas.client.rpc("create_loan_operation"', "Crear ampliacion debe usar RPC atomica de operacion.");
+assertCondition(!appCode.includes("restoreCloudCapitalMovements"), "Test 10: restauracion no debe duplicar delete/insert de capital_movements en frontend.");
 assertFileIncludes(appCode, "paymentSubmissionInProgress", "Prueba H: debe existir proteccion de doble clic en cobro.");
 assertFileIncludes(appCode, "clientSubmissionInProgress", "Prueba H: debe existir proteccion de doble clic al guardar cliente/ampliacion.");
 assertFileIncludes(appCode, "loanDeletionInProgress", "Prueba H: debe existir proteccion de doble clic al eliminar ampliacion.");
@@ -588,13 +706,32 @@ assertFileIncludes(appCode, "clientDeletionInProgress", "Prueba H: debe existir 
 assertCondition(!appCode.includes('.from("payments").delete'), "Eliminaciones cloud no deben borrar pagos manualmente antes de borrar cliente/prestamo.");
 assertCondition(!appCode.includes('.from("payments").insert'), "Pagos cloud no deben insertarse fuera de RPC transaccional.");
 assertFileIncludes(sqlCode.toLowerCase(), "for update", "Prueba E/F: la RPC debe bloquear el prestamo con FOR UPDATE.");
+assertFileIncludes(sqlCode, "create or replace function public.restore_user_snapshot", "Test 10: migracion debe reemplazar la RPC de restauracion.");
+assertFileIncludes(sqlCode, "perform set_config('app.restoring_snapshot', 'on', true)", "Test 10: restauracion debe ejecutarse como snapshot transaccional controlado.");
+assertFileIncludes(sqlCode, "create or replace function public.create_client_with_loan", "Test 11: SQL debe definir RPC atomica de cliente + prestamo.");
+assertFileIncludes(sqlCode, "create or replace function public.update_client_with_loan", "Editar: SQL debe definir RPC atomica de cliente + prestamo.");
+assertFileIncludes(sqlCode, "create or replace function public.create_loan_operation", "Ampliacion: SQL debe definir RPC atomica de prestamo/ampliacion.");
+assertFileIncludes(sqlCode, "Ya existe un cobro registrado para este periodo.", "Test 12: register_payment debe rechazar doble pago del mismo vencimiento.");
+assertFileIncludes(sqlCode, "Este periodo ya fue cobrado o el prestamo ya avanzo a otra fecha.", "Test 12: register_payment debe rechazar pagos atrasados por dos pestanas.");
+assertFileIncludes(sqlCode, "next_due_date = case when v_new_remaining = 0 then null else v_next_due end", "Test 9: RPC debe dejar next_due_date null al cerrar.");
+assertFileIncludes(sqlCode, "calculate_available_capital", "Test 8: servidor debe validar capital disponible desde una funcion central.");
+assertCondition(!sqlCode.includes("El cliente supera el limite de S/1,000"), "Regla actual: servidor no debe bloquear por limite S/1,000 por cliente.");
 assertFileIncludes(sqlCode, "loans_amount_nonnegative", "Prueba G: falta constraint de monto de prestamo no negativo.");
 assertFileIncludes(sqlCode, "payments_capital_paid_nonnegative", "Prueba G: falta constraint de capital pagado no negativo.");
 assertFileIncludes(sqlCode, "payments_interest_paid_nonnegative", "Prueba G: falta constraint de interes pagado no negativo.");
 assertFileIncludes(sqlCode, "loans_client_same_user", "RLS/FK: falta relacion que obliga prestamo y cliente del mismo usuario.");
 assertFileIncludes(sqlCode, "payments_loan_same_user", "RLS/FK: falta relacion que obliga pago y prestamo del mismo usuario.");
 assertFileIncludes(sqlCode, "loans_status_matches_remaining_capital", "Invariantes: falta constraint de estado vs capital pendiente.");
+assertFileIncludes(sqlCode, "loans_status_matches_due_date", "Invariantes: falta constraint de estado vs proxima fecha.");
+assertFileIncludes(sqlCode, "loans_operation_type_valid", "Test 15: falta constraint de tipo de operacion.");
+assertFileIncludes(sqlCode, "loans_parent_matches_type", "Test 15: falta constraint de parent_loan_id para ampliaciones.");
+assertFileIncludes(sqlCode, "loans_one_principal_per_client", "Test 15: debe existir indice unico de principal por cliente.");
 assertFileIncludes(sqlCode, "payments_has_amount", "Invariantes: falta constraint que impide pagos en cero.");
+assertFileIncludes(schemaCode, "create or replace function public.create_client_with_loan", "Esquema base debe incluir RPC atomica de cliente + prestamo.");
+assertFileIncludes(schemaCode, "create or replace function public.create_loan_operation", "Esquema base debe incluir RPC atomica de ampliacion.");
+assertFileIncludes(schemaCode, "create or replace function public.update_client_with_loan", "Esquema base debe incluir RPC atomica de edicion.");
+assertFileIncludes(schemaCode, "operation_type text not null default 'principal'", "Esquema base debe crear operation_type desde el inicio.");
+assertFileIncludes(schemaCode, "parent_loan_id uuid references loans(id)", "Esquema base debe crear parent_loan_id desde el inicio.");
 assertCondition(!appCode.includes(".slice(0, 4)"), "Cobranza rapida no debe cortar registros; debe usar scroll interno.");
 assertFileIncludes(appCode, "summary-scroll-count", "Cobranza rapida debe mostrar contador cuando hay mas de 3 registros.");
 assertFileIncludes(appCode, "scrollQuickCollection", "Cobranza rapida debe permitir avanzar con chevron.");
