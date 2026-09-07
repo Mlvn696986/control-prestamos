@@ -1007,19 +1007,25 @@ textarea:focus {
 .summary-compare-field {
   display: flex;
   align-items: end;
-  gap: 8px;
 }
 
 .summary-compare-button {
+  position: relative;
   flex: 1 1 auto;
   min-width: 0;
+  padding: 0 34px 0 14px;
   white-space: nowrap;
 }
 
 .summary-compare-info {
-  flex: 0 0 auto;
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 16px;
+  height: 16px;
   margin-left: 0;
-  margin-bottom: 8px;
+  margin-bottom: 0;
+  font-size: 0.66rem;
 }
 
 .summary-compare-button.active {
@@ -1208,6 +1214,16 @@ textarea:focus {
   font-weight: 900;
   vertical-align: middle;
   cursor: help;
+}
+
+.summary-compare-button .summary-compare-info {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 16px;
+  height: 16px;
+  margin-left: 0;
+  font-size: 0.66rem;
 }
 
 .info-dot::after {
