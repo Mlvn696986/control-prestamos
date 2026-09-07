@@ -253,19 +253,43 @@ const hiddenManagementTitles = [
   "Ganancia esperada siguiente periodo",
   "Capital que regresara siguiente periodo",
   "Total estimado siguiente periodo",
+  "Cobrado en el periodo",
+  "Nuevos prestamos del periodo",
   "Ampliaciones del periodo",
+  "Monto total en ampliaciones",
+  "Dias promedio de atraso",
+  "Interes pendiente",
+  "Promedio de prestamo",
+  "Promedio de interes cobrado",
+  "Distribucion por modalidad",
 ];
 hiddenManagementTitles.forEach((title) => {
   assert(!getDashboardManagementItems(dashboard).some((item) => item.title === title), "Resumen: " + title + " no debe mostrarse como indicador visual.");
   assert(getDashboardManagementReportItems(dashboard).some((item) => item.title === title), "Exportaciones: " + title + " debe seguir disponible en la lista interna de reporte.");
 });
-["Capital agregado", "Capital retirado", "Cobrado en el periodo", "Total prestado acumulado", "Nuevos prestamos del periodo"].forEach((title) => {
+["Capital agregado", "Capital retirado", "Total prestado acumulado", "Clientes atrasados", "Capital en riesgo", "Flujo de caja"].forEach((title) => {
   assert(getDashboardManagementItems(dashboard).some((item) => item.title === title), "Resumen: " + title + " debe seguir visible.");
 });
-saveIndicatorOrder(["ganancia-reinvertida", "ampliaciones-del-periodo", "capital-agregado"]);
+const hiddenAdvancedTitles = ["Rendimiento proyectado de cartera"];
+hiddenAdvancedTitles.forEach((title) => {
+  assert(!getDashboardAdvancedItems(dashboard).some((item) => item.title === title), "Resumen: " + title + " no debe mostrarse como indicador visual.");
+  assert(getDashboardAdvancedReportItems(dashboard).some((item) => item.title === title), "Exportaciones: " + title + " debe seguir disponible en la lista interna de reporte.");
+});
+assert(getDashboardAdvancedItems(dashboard).some((item) => item.title === "Cliente mas rentable"), "Resumen: Cliente mas rentable debe seguir visible.");
+saveIndicatorOrder([
+  "ganancia-reinvertida",
+  "ampliaciones-del-periodo",
+  "cobrado-en-el-periodo",
+  "interes-pendiente",
+  "rendimiento-proyectado-de-cartera",
+  "capital-agregado",
+]);
 const orderedItemsAfterHiddenRemoval = getOrderedDashboardIndicatorItems(dashboard);
 assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Ganancia reinvertida"), "Orden guardado: debe ignorar Ganancia reinvertida eliminada visualmente.");
 assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Ampliaciones del periodo"), "Orden guardado: debe ignorar Ampliaciones del periodo eliminada visualmente.");
+assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Cobrado en el periodo"), "Orden guardado: debe ignorar Cobrado en el periodo eliminado visualmente.");
+assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Interes pendiente"), "Orden guardado: debe ignorar Interes pendiente eliminado visualmente.");
+assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Rendimiento proyectado de cartera"), "Orden guardado: debe ignorar Rendimiento proyectado de cartera eliminado visualmente.");
 assertEqual(orderedItemsAfterHiddenRemoval[0].title, "Capital agregado", "Orden guardado: debe conservar los indicadores visibles restantes.");
 const capitalPrestadoIndicator = getDashboardKpiItems(dashboard).find((item) => item.title === "Capital actualmente prestado");
 assert(capitalPrestadoIndicator?.tip.startsWith("Ejemplo:"), "Capital actualmente prestado: el tooltip debe comenzar con Ejemplo.");
@@ -542,6 +566,19 @@ function assertCondition(condition, message) {
     throw new Error(message);
   }
 }
+
+[
+  "Cobrado en el periodo",
+  "Nuevos prestamos del periodo",
+  "Monto total en ampliaciones",
+  "Dias promedio de atraso",
+  "Interes pendiente",
+  "Promedio de prestamo",
+  "Promedio de interes cobrado",
+  "Distribucion por modalidad",
+].forEach((title) => {
+  assertCondition(!appCode.includes('  "' + title + '": ['), "Mensajes rotativos: " + title + " no debe conservar frases visuales.");
+});
 
 assertFileIncludes(appCode, 'saas.client.rpc("register_payment"', "Prueba E/F: el cobro en nube debe usar RPC transaccional.");
 assertFileIncludes(appCode, "paymentSubmissionInProgress", "Prueba H: debe existir proteccion de doble clic en cobro.");

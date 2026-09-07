@@ -2942,33 +2942,12 @@ const INDICATOR_MESSAGES = {
     "👏 Controlarlos mejora resultados.",
     "💡 Seguimiento bueno fortalece relaciones.",
   ],
-  "Cobrado en el periodo": [
-    "🎉 Buen trabajo, dinero ya ingresado.",
-    "💰 Cada cobro mejora tu flujo.",
-    "😊 Vas recuperando tu cartera.",
-    "📈 Cobrar a tiempo sube la cifra.",
-    "🚀 Buena cobranza mantiene salud.",
-  ],
   "Total prestado acumulado": [
     "💰 Todo lo que has prestado suma aqui.",
     "📈 Capital colocado a lo largo del tiempo.",
     "🚀 Cada nuevo prestamo hace crecer este acumulado.",
     "📊 Mide cuanto movimiento has generado.",
     "👏 Refleja todo el capital desembolsado.",
-  ],
-  "Nuevos prestamos del periodo": [
-    "👏 Nuevas operaciones en este periodo.",
-    "🚀 Tu cartera sigue creciendo.",
-    "😊 Cada prestamo abre oportunidad.",
-    "📈 Buen movimiento puede mejorar resultados.",
-    "💰 El negocio mantiene actividad.",
-  ],
-  "Monto total en ampliaciones": [
-    "💰 Capital adicional entregado.",
-    "🔄 Tambien pone dinero a trabajar.",
-    "🚀 Puede subir ingresos futuros.",
-    "😊 Controlarlas cuida tu cartera.",
-    "📈 Aportan al crecimiento.",
   ],
   "Clientes atrasados": [
     "⚠️ Necesitan seguimiento prioritario.",
@@ -2977,47 +2956,12 @@ const INDICATOR_MESSAGES = {
     "💪 Reducirlos fortalece la cartera.",
     "🚨 Menos atrasos, mejor cobranza.",
   ],
-  "Dias promedio de atraso": [
-    "⏳ Mide cuanto tardan en pagar.",
-    "⚠️ Si sube, refuerza seguimiento.",
-    "📲 Cobrar rapido baja el promedio.",
-    "👀 Bajo promedio, cartera sana.",
-    "💪 Intenta mantenerlo bajo.",
-  ],
   "Capital en riesgo": [
     "⚠️ Capital que requiere atencion.",
     "👀 Dinero pendiente en vencidos.",
     "💪 Recuperarlo es prioridad.",
     "📲 Seguimiento reduce riesgo.",
     "🚨 Menor monto, cartera mas sana.",
-  ],
-  "Interes pendiente": [
-    "💰 Ganancia que espera cobrarse.",
-    "📈 Puede convertirse en utilidad real.",
-    "😊 Buena cobranza ayuda.",
-    "🚀 Aun hay potencial.",
-    "💡 Pendiente no significa ganado.",
-  ],
-  "Promedio de prestamo": [
-    "📊 Tamano promedio de tus operaciones.",
-    "💰 Te muestra cuanto sueles prestar.",
-    "😊 Ayuda a distribuir capital.",
-    "📈 Vigilarlo controla riesgo.",
-    "💡 Evita concentrar demasiado.",
-  ],
-  "Promedio de interes cobrado": [
-    "💰 Interes promedio por operacion.",
-    "📊 Te ayuda a medir rendimiento.",
-    "😊 Cada interes suma ganancia.",
-    "📈 Un promedio sano mejora rentabilidad.",
-    "🚀 Buena cartera puede elevarlo.",
-  ],
-  "Distribucion por modalidad": [
-    "📊 Mira como repartes tus prestamos.",
-    "💡 Compara mensual, quincenal y mas.",
-    "😊 Detecta tu modalidad mas usada.",
-    "📈 Puede mejorar tu estrategia.",
-    "🔍 Observa que modalidad predomina.",
   ],
   "Flujo de caja": [
     "💸 Muestra si entra mas de lo que sale.",
@@ -3341,7 +3285,15 @@ const HIDDEN_DASHBOARD_MANAGEMENT_TITLES = new Set([
   "Ganancia esperada siguiente periodo",
   "Capital que regresara siguiente periodo",
   "Total estimado siguiente periodo",
+  "Cobrado en el periodo",
+  "Nuevos prestamos del periodo",
   "Ampliaciones del periodo",
+  "Monto total en ampliaciones",
+  "Dias promedio de atraso",
+  "Interes pendiente",
+  "Promedio de prestamo",
+  "Promedio de interes cobrado",
+  "Distribucion por modalidad",
 ]);
 
 function getDashboardManagementReportItems(dashboard) {
@@ -3590,6 +3542,12 @@ function renderDashboardAdvanced(dashboard) {
 }
 
 function getDashboardAdvancedItems(dashboard) {
+  return getDashboardAdvancedReportItems(dashboard).filter((item) => !HIDDEN_DASHBOARD_ADVANCED_TITLES.has(item.title));
+}
+
+const HIDDEN_DASHBOARD_ADVANCED_TITLES = new Set(["Rendimiento proyectado de cartera"]);
+
+function getDashboardAdvancedReportItems(dashboard) {
   const m = dashboard.metrics;
   const mostProfitable = dashboard.lists.profit[0]?.client.name || "Sin datos";
   const highestDebt = dashboard.lists.debt[0]?.client.name || "Sin datos";
@@ -3642,7 +3600,7 @@ function exportDashboardSummary() {
   const dashboard = buildDashboardData();
   const criticalRows = getDashboardKpiReportItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
   const managementRows = getDashboardManagementReportItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
-  const advancedRows = getDashboardAdvancedItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
+  const advancedRows = getDashboardAdvancedReportItems(dashboard).map((item) => dashboardIndicatorRow(item, dashboard));
   const alerts = buildDashboardAlertMessages(dashboard);
   const workbook = buildExcelWorkbook([
     buildSummaryIndicatorsSheet(dashboard, criticalRows, managementRows, advancedRows),
