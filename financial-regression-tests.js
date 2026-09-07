@@ -577,7 +577,7 @@ assertCondition(!htmlCode.includes('<select id="summaryCompare"'), "Resumen: el 
 assertFileIncludes(appCode, "setDashboardPreviousMonthComparison", "Resumen: falta la funcion del boton Mes anterior.");
 assertFileIncludes(appCode, 'elements.summaryCompare.value = "previousMonth"', "Resumen: el boton debe activar previousMonth.");
 assertFileIncludes(appCode, 'elements.summaryComparePreviousMonth.addEventListener("click"', "Resumen: el boton debe estar conectado al clic.");
-assertFileIncludes(appCode, "elements.summaryCustomStart.value = toISODate", "Resumen: el boton debe definir fecha Desde si estaba en todo el historial.");
+assertFileIncludes(appCode, "elements.summaryCustomStart.value = addMonthsKeepingDay(today, getDayOfMonth(today), -1)", "Resumen: el boton debe iniciar en el mismo dia del mes anterior.");
 assertCondition(!htmlCode.includes("summaryOperation"), "Resumen: el filtro visual Tipo de operacion no debe seguir en el HTML.");
 assertFileIncludes(appCode, 'operation: "all"', "Resumen: al retirar el filtro visual, la operacion interna debe quedar en Todos.");
 assertCondition(!appCode.includes("summaryCustomStart.value = getCalendarMonthRange"), "Resumen: Desde no debe llenarse automaticamente con el mes actual.");

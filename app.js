@@ -2131,8 +2131,9 @@ function setDashboardPreviousMonthComparison() {
   if (!elements.summaryCompare) return;
   const hasManualRange = Boolean(elements.summaryCustomStart?.value || elements.summaryCustomEnd?.value);
   if (!hasManualRange) {
-    elements.summaryCustomStart.value = toISODate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-    elements.summaryCustomEnd.value = todayISO();
+    const today = todayISO();
+    elements.summaryCustomStart.value = addMonthsKeepingDay(today, getDayOfMonth(today), -1);
+    elements.summaryCustomEnd.value = today;
   }
   elements.summaryCompare.value = "previousMonth";
   renderDashboard();
