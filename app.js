@@ -121,6 +121,25 @@ const elements = {
   passwordSuccessClose: $("#passwordSuccessClose"),
   signupSuccessDialog: $("#signupSuccessDialog"),
   termsDialog: $("#termsDialog"),
+  claimsDialog: $("#claimsDialog"),
+  claimBookForm: $("#claimBookForm"),
+  claimBookNotice: $("#claimBookNotice"),
+  claimBookSubmit: $("#claimBookSubmit"),
+  claimBookResult: $("#claimBookResult"),
+  claimType: $("#claimType"),
+  claimService: $("#claimService"),
+  claimFirstName: $("#claimFirstName"),
+  claimLastName: $("#claimLastName"),
+  claimDocumentType: $("#claimDocumentType"),
+  claimDocumentNumber: $("#claimDocumentNumber"),
+  claimEmail: $("#claimEmail"),
+  claimPhone: $("#claimPhone"),
+  claimAddress: $("#claimAddress"),
+  claimAmount: $("#claimAmount"),
+  claimPaymentReference: $("#claimPaymentReference"),
+  claimDetail: $("#claimDetail"),
+  claimRequest: $("#claimRequest"),
+  claimTruthAccept: $("#claimTruthAccept"),
   showSignup: $("#showSignup"),
   showLogin: $("#showLogin"),
   businessLabel: $("#businessLabel"),
@@ -309,6 +328,10 @@ function bindEvents() {
   $$("[data-open-terms]").forEach((button) => {
     button.addEventListener("click", () => elements.termsDialog.showModal());
   });
+  $$("[data-open-claims]").forEach((button) => {
+    button.addEventListener("click", openClaimBookDialog);
+  });
+  elements.claimBookForm.addEventListener("submit", handleClaimBookSubmit);
   elements.adminRefresh.addEventListener("click", refreshAdminPanel);
   elements.adminIntegrityCheck.addEventListener("click", openIntegrityDialog);
   elements.interestInfoButton.addEventListener("click", () => elements.interestInfoDialog.showModal());
@@ -1170,6 +1193,109 @@ async function createPlanCheckout(requestedPlan, message) {
   }
 
   return data.checkoutUrl;
+}
+
+function openClaimBookDialog() {
+  elements.claimBookNotice.classList.add("is-hidden");
+  elements.claimBookNotice.textContent = "";
+  elements.claimBookResult.classList.add("is-hidden");
+  elements.claimBookResult.textContent = "";
+  elements.claimBookSubmit.disabled = false;
+  elements.claimBookSubmit.textContent = "Registrar hoja";
+
+  if (!elements.claimService.value.trim()) {
+    elements.claimService.value = "Suscripcion ERMIF";
+  }
+
+  if (!elements.claimEmail.value.trim()) {
+    elements.claimEmail.value = state.user?.email || saas.session?.user?.email || "";
+  }
+
+  elements.claimsDialog.showModal();
+}
+
+function setClaimBookNotice(message, variant = "info") {
+  elements.claimBookNotice.textContent = message || "";
+  elements.claimBookNotice.classList.toggle("is-hidden", !message);
+  elements.claimBookNotice.classList.toggle("auth-notice-premium", variant === "success");
+}
+
+function collectClaimBookPayload() {
+  const amountText = elements.claimAmount.value.trim();
+  const amount = amountText ? Number(amountText) : null;
+
+  if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
+    throw new Error("El monto reclamado debe ser cero o mayor.");
+  }
+
+  return {
+    requestType: elements.claimType.value,
+    serviceName: elements.claimService.value.trim(),
+    consumerFirstName: elements.claimFirstName.value.trim(),
+    consumerLastName: elements.claimLastName.value.trim(),
+    documentType: elements.claimDocumentType.value,
+    documentNumber: elements.claimDocumentNumber.value.trim(),
+    email: elements.claimEmail.value.trim(),
+    phone: elements.claimPhone.value.trim(),
+    address: elements.claimAddress.value.trim(),
+    amount,
+    paymentReference: elements.claimPaymentReference.value.trim(),
+    detail: elements.claimDetail.value.trim(),
+    request: elements.claimRequest.value.trim(),
+  };
+}
+
+async function submitClaimBook(payload) {
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  if (saas.session?.access_token) {
+    headers.Authorization = `Bearer ${saas.session.access_token}`;
+  }
+
+  const response = await fetch("/api/reclamaciones", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || "No se pudo registrar la hoja de reclamacion.");
+  }
+
+  return data;
+}
+
+async function handleClaimBookSubmit(event) {
+  event.preventDefault();
+
+  if (!elements.claimTruthAccept.checked) {
+    window.alert("Debes confirmar que la informacion registrada es verdadera.");
+    return;
+  }
+
+  try {
+    const payload = collectClaimBookPayload();
+    elements.claimBookSubmit.disabled = true;
+    elements.claimBookSubmit.textContent = "Registrando...";
+    setClaimBookNotice("Registrando tu hoja de reclamacion...", "info");
+
+    const result = await submitClaimBook(payload);
+    const claimCode = result.claimCode || "codigo generado";
+    elements.claimBookResult.textContent = `Hoja registrada correctamente. Codigo de seguimiento: ${claimCode}. Conserva este codigo; ERMIF respondera por escrito al correo indicado en un plazo maximo de 15 dias habiles.`;
+    elements.claimBookResult.classList.remove("is-hidden");
+    setClaimBookNotice("Tu hoja fue registrada correctamente.", "success");
+    elements.claimBookForm.reset();
+    elements.claimService.value = "Suscripcion ERMIF";
+    elements.claimBookSubmit.textContent = "Registrar otra hoja";
+  } catch (error) {
+    setClaimBookNotice(error.message || "No se pudo registrar la hoja de reclamacion.");
+    elements.claimBookSubmit.textContent = "Registrar hoja";
+  } finally {
+    elements.claimBookSubmit.disabled = false;
+  }
 }
 
 async function reloadAfterCloudError() {

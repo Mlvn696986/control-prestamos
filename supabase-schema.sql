@@ -90,6 +90,32 @@ create table if not exists plan_requests (
   created_at timestamptz default now()
 );
 
+create table if not exists claim_book_entries (
+  id uuid primary key default gen_random_uuid(),
+  claim_code text not null unique,
+  submitted_user_id uuid references auth.users(id) on delete set null,
+  request_type text not null check (request_type in ('reclamo', 'queja')),
+  service_name text not null,
+  consumer_first_name text not null,
+  consumer_last_name text not null,
+  document_type text not null,
+  document_number text not null,
+  email text not null,
+  phone text not null,
+  address text not null,
+  amount numeric check (amount is null or amount >= 0),
+  payment_reference text,
+  detail text not null,
+  request text not null,
+  provider_email text not null,
+  provider_phone text not null,
+  status text not null default 'received' check (status in ('received', 'in_review', 'answered', 'closed')),
+  response text,
+  responded_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 create table if not exists user_backups (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -151,6 +177,7 @@ alter table loans enable row level security;
 alter table payments enable row level security;
 alter table capital_movements enable row level security;
 alter table plan_requests enable row level security;
+alter table claim_book_entries enable row level security;
 alter table user_backups enable row level security;
 
 create or replace function public.is_admin()
@@ -179,6 +206,7 @@ drop policy if exists "loans own data" on loans;
 drop policy if exists "payments own data" on payments;
 drop policy if exists "capital movements own data" on capital_movements;
 drop policy if exists "plan requests own data" on plan_requests;
+drop policy if exists "claim book entries own select" on claim_book_entries;
 drop policy if exists "user backups own data" on user_backups;
 drop policy if exists "profiles admin data" on profiles;
 drop policy if exists "subscriptions admin data" on subscriptions;
@@ -187,6 +215,7 @@ drop policy if exists "loans admin data" on loans;
 drop policy if exists "payments admin data" on payments;
 drop policy if exists "capital movements admin data" on capital_movements;
 drop policy if exists "plan requests admin data" on plan_requests;
+drop policy if exists "claim book entries admin data" on claim_book_entries;
 drop policy if exists "user backups admin data" on user_backups;
 
 create policy "profiles own select"
@@ -273,6 +302,15 @@ with check (auth.uid() = user_id);
 
 create policy "plan requests admin data"
 on plan_requests for all
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "claim book entries own select"
+on claim_book_entries for select
+using (submitted_user_id is not null and auth.uid() = submitted_user_id);
+
+create policy "claim book entries admin data"
+on claim_book_entries for all
 using (public.is_admin())
 with check (public.is_admin());
 
@@ -1088,6 +1126,12 @@ end $$;
 create index if not exists plan_requests_provider_subscription_idx
 on plan_requests(provider, provider_subscription_id);
 
+create index if not exists claim_book_entries_created_at_idx
+on claim_book_entries(created_at desc);
+
+create index if not exists claim_book_entries_status_idx
+on claim_book_entries(status, created_at desc);
+
 alter table subscriptions validate constraint subscriptions_client_limit_nonnegative;
 alter table loans validate constraint loans_amount_nonnegative;
 alter table loans validate constraint loans_amount_positive;
@@ -1125,6 +1169,7 @@ grant select, insert, update, delete on loans to authenticated;
 grant select, insert, update, delete on payments to authenticated;
 grant select, insert, update, delete on capital_movements to authenticated;
 grant select, insert, update, delete on plan_requests to authenticated;
+grant select, insert, update, delete on claim_book_entries to authenticated;
 grant select, insert, update, delete on user_backups to authenticated;
 grant select, insert, update, delete on profiles to service_role;
 grant select, insert, update, delete on subscriptions to service_role;
@@ -1133,6 +1178,7 @@ grant select, insert, update, delete on loans to service_role;
 grant select, insert, update, delete on payments to service_role;
 grant select, insert, update, delete on capital_movements to service_role;
 grant select, insert, update, delete on plan_requests to service_role;
+grant select, insert, update, delete on claim_book_entries to service_role;
 grant select, insert, update, delete on user_backups to service_role;
 
 -- Despues de ejecutar este archivo, activa tu cuenta admin cambiando el correo:

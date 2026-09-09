@@ -259,12 +259,17 @@ h3 {
 }
 
 .sidebar-legal {
+  display: grid;
+  gap: 10px;
   margin-top: 82px;
 }
 
 .sidebar-legal button {
   width: 100%;
-  padding: 12px 14px;
+  min-height: auto;
+  justify-content: flex-start;
+  gap: 11px;
+  padding: 12px;
   text-align: left;
   color: #ffffff;
   background: rgba(255, 255, 255, 0.06);
@@ -273,17 +278,44 @@ h3 {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
 }
 
-.sidebar-legal span,
-.sidebar-legal small {
+.sidebar-legal-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--ink);
+  background: #ffffff;
+  border: 1px solid rgba(255, 176, 0, 0.45);
+  border-radius: 8px;
+}
+
+.sidebar-legal-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.sidebar-claim-button .sidebar-legal-icon {
+  color: var(--accent-strong);
+  background: #ffffff;
+}
+
+.sidebar-legal-text {
+  min-width: 0;
+}
+
+.sidebar-legal-text span,
+.sidebar-legal-text small {
   display: block;
 }
 
-.sidebar-legal span {
+.sidebar-legal-text span {
   font-size: 0.9rem;
   font-weight: 900;
+  line-height: 1.15;
 }
 
-.sidebar-legal small {
+.sidebar-legal-text small {
   margin-top: 4px;
   color: rgba(255, 255, 255, 0.68);
   font-size: 0.75rem;
@@ -568,6 +600,17 @@ h3 {
 
 .inline-link:hover {
   color: var(--ink);
+}
+
+.auth-legal-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+  color: rgba(6, 24, 38, 0.5);
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .google-auth-button {
@@ -2107,7 +2150,8 @@ input.field-success {
 .legal-panel {
   width: min(92vw, 760px);
   max-height: min(86vh, 820px);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .legal-copy {
@@ -2138,6 +2182,116 @@ input.field-success {
   display: flex;
   justify-content: flex-start;
   padding-top: 6px;
+}
+
+.claims-modal {
+  width: min(860px, calc(100vw - 28px));
+}
+
+.claims-modal .legal-panel {
+  width: 100%;
+}
+
+.claim-book-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.claim-book-notice {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  color: var(--ink);
+  background: rgba(0, 167, 111, 0.08);
+  border: 1px solid rgba(0, 167, 111, 0.18);
+  border-radius: 8px;
+}
+
+.claim-book-badge {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  color: var(--accent-strong);
+  background: #ffffff;
+  border: 1px solid rgba(0, 167, 111, 0.24);
+  border-radius: 8px;
+  box-shadow: 0 10px 22px rgba(0, 167, 111, 0.12);
+}
+
+.claim-book-badge svg {
+  width: 30px;
+  height: 30px;
+}
+
+.claim-book-notice strong,
+.claim-book-notice span {
+  display: block;
+}
+
+.claim-book-notice strong {
+  font-size: 0.96rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.claim-book-notice span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 750;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.claim-provider-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  padding: 14px;
+  background: rgba(6, 24, 38, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.claim-provider-card p {
+  margin: 0;
+  color: rgba(6, 24, 38, 0.78);
+  font-size: 0.83rem;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.claim-provider-card strong {
+  color: var(--ink);
+}
+
+.claim-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.claim-field-wide {
+  grid-column: 1 / -1;
+}
+
+.claim-result {
+  padding: 14px;
+  color: var(--accent-strong);
+  background: rgba(0, 167, 111, 0.08);
+  border: 1px solid rgba(0, 167, 111, 0.2);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.42;
+}
+
+.claim-result strong {
+  display: block;
+  color: var(--ink);
+  font-size: 1rem;
 }
 
 .status-pill {
@@ -2902,6 +3056,12 @@ input.field-success {
   }
 
   .modal-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .claim-book-notice,
+  .claim-provider-card,
+  .claim-form-grid {
     grid-template-columns: 1fr;
   }
 

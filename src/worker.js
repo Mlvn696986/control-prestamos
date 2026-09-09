@@ -37,6 +37,10 @@ export default {
         return await handleMercadoPagoWebhook(request, env);
       }
 
+      if (url.pathname === "/api/reclamaciones" && request.method === "POST") {
+        return await handleClaimBookSubmit(request, env);
+      }
+
       if (url.pathname.startsWith("/api/")) {
         return json({ error: "Ruta no encontrada." }, 404);
       }
@@ -102,6 +106,20 @@ async function handleCheckout(request, env) {
   });
 
   return json({ checkoutUrl });
+}
+
+async function handleClaimBookSubmit(request, env) {
+  requireEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
+
+  const body = await request.json().catch(() => ({}));
+  const user = await getOptionalAuthenticatedUser(request, env);
+  const row = normalizeClaimBookEntry(body, user?.id);
+  const saved = await supabaseInsert(env, "claim_book_entries", row);
+
+  return json({
+    claimCode: saved.claim_code,
+    createdAt: saved.created_at,
+  });
 }
 
 async function handleMercadoPagoWebhook(request, env) {
@@ -269,6 +287,19 @@ async function getAuthenticatedUser(request, env) {
   return response.json();
 }
 
+async function getOptionalAuthenticatedUser(request, env) {
+  const authorization = request.headers.get("Authorization") || "";
+  if (!authorization.startsWith("Bearer ")) {
+    return null;
+  }
+
+  try {
+    return await getAuthenticatedUser(request, env);
+  } catch {
+    return null;
+  }
+}
+
 async function supabaseSelect(env, path) {
   return supabaseFetch(env, path, { method: "GET" });
 }
@@ -413,6 +444,62 @@ function getPublicBaseUrl(env) {
 
 function sanitizeMessage(message) {
   return String(message || "").trim().slice(0, 500);
+}
+
+function normalizeClaimBookEntry(body, userId) {
+  const requestType = String(body.requestType || "").trim().toLowerCase();
+  if (!["reclamo", "queja"].includes(requestType)) {
+    throw httpError("Selecciona si registraras un reclamo o una queja.", 400);
+  }
+
+  const email = requiredText(body.email, "Ingresa el correo electronico.", 160).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw httpError("Ingresa un correo electronico valido.", 400);
+  }
+
+  const amount = body.amount === null || body.amount === undefined || body.amount === "" ? null : Number(body.amount);
+  if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
+    throw httpError("El monto reclamado debe ser cero o mayor.", 400);
+  }
+
+  return {
+    claim_code: createClaimCode(),
+    submitted_user_id: userId || null,
+    request_type: requestType,
+    service_name: requiredText(body.serviceName, "Ingresa el servicio contratado.", 120),
+    consumer_first_name: requiredText(body.consumerFirstName, "Ingresa tus nombres.", 120),
+    consumer_last_name: requiredText(body.consumerLastName, "Ingresa tus apellidos.", 120),
+    document_type: requiredText(body.documentType, "Selecciona el tipo de documento.", 30),
+    document_number: requiredText(body.documentNumber, "Ingresa el numero de documento.", 20),
+    email,
+    phone: requiredText(body.phone, "Ingresa un telefono o WhatsApp.", 30),
+    address: requiredText(body.address, "Ingresa la direccion del consumidor.", 240),
+    amount,
+    payment_reference: optionalText(body.paymentReference, 120),
+    detail: requiredText(body.detail, "Describe el reclamo o queja.", 1200),
+    request: requiredText(body.request, "Indica el pedido concreto.", 700),
+    status: "received",
+    provider_email: "MLVN696986@GMAIL.COM",
+    provider_phone: "984096252",
+  };
+}
+
+function requiredText(value, message, maxLength) {
+  const text = String(value || "").trim();
+  if (!text) {
+    throw httpError(message, 400);
+  }
+  return text.slice(0, maxLength);
+}
+
+function optionalText(value, maxLength) {
+  return String(value || "").trim().slice(0, maxLength) || null;
+}
+
+function createClaimCode() {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const suffix = crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
+  return `ERMIF-${date}-${suffix}`;
 }
 
 function requireEnv(env, name) {

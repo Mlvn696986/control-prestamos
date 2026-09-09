@@ -77,6 +77,12 @@
             </svg>
           </button>
         </form>
+
+        <div class="auth-legal-links" aria-label="Documentos legales">
+          <button class="inline-link" type="button" data-open-claims>Libro de Reclamaciones</button>
+          <span aria-hidden="true">/</span>
+          <button class="inline-link" type="button" data-open-terms>Terminos y Condiciones</button>
+        </div>
       </section>
     </div>
 
@@ -121,9 +127,23 @@
         </button>
 
         <div class="sidebar-legal">
-          <button type="button" data-open-terms>
-            <span>Terminos y Condiciones</span>
-            <small>Informacion legal de ERMIF</small>
+          <button class="sidebar-legal-button sidebar-claim-button" type="button" data-open-claims>
+            <span class="sidebar-legal-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H20v17H7.5A3.5 3.5 0 0 0 4 22V5.5Z" /><path d="M4 19a3.5 3.5 0 0 1 3.5-3.5H20" /><path d="M8 6h8" /><path d="M8 10h7" /></svg>
+            </span>
+            <span class="sidebar-legal-text">
+              <span>Libro de Reclamaciones</span>
+              <small>Registra quejas o reclamos</small>
+            </span>
+          </button>
+          <button class="sidebar-legal-button" type="button" data-open-terms>
+            <span class="sidebar-legal-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /><path d="M8 13h8" /><path d="M8 17h6" /></svg>
+            </span>
+            <span class="sidebar-legal-text">
+              <span>Terminos y Condiciones</span>
+              <small>Informacion legal de ERMIF</small>
+            </span>
           </button>
         </div>
       </aside>
@@ -944,7 +964,7 @@
           <p>ERMIF es una herramienta de gestion. No otorga prestamos, no actua como entidad financiera y no reemplaza asesoria legal, contable o tributaria. El usuario es responsable de sus operaciones comerciales, tributarias y contractuales.</p>
 
           <h4>9. Libro de Reclamaciones</h4>
-          <p>Los usuarios pueden presentar quejas o reclamos mediante el canal de Libro de Reclamaciones que ERMIF habilite en la plataforma o por el correo de soporte mientras se implementa el formulario virtual.</p>
+          <p>Los usuarios pueden presentar quejas o reclamos mediante el Libro de Reclamaciones virtual habilitado en la plataforma. ERMIF atendera la comunicacion por escrito al correo informado por el usuario.</p>
 
           <h4>10. Legislacion aplicable</h4>
           <p>Estos terminos se rigen por las leyes de la Republica del Peru. Cualquier controversia sera atendida conforme a la normativa peruana aplicable.</p>
@@ -955,6 +975,117 @@
           </div>
         </div>
       </section>
+    </dialog>
+
+    <dialog id="claimsDialog" class="modal claims-modal">
+      <form id="claimBookForm" method="dialog" class="modal-panel legal-panel claim-book-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Atencion al consumidor</p>
+            <h3>Libro de Reclamaciones</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+
+        <div class="claim-book-notice">
+          <div class="claim-book-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H20v17H7.5A3.5 3.5 0 0 0 4 22V5.5Z" /><path d="M4 19a3.5 3.5 0 0 1 3.5-3.5H20" /><path d="M8 6h8" /><path d="M8 10h7" /></svg>
+          </div>
+          <div>
+            <strong>ERMIF atiende reclamos y quejas en un plazo maximo de 15 dias habiles.</strong>
+            <span>Al registrar la hoja recibiras un codigo de seguimiento. La respuesta sera enviada al correo que indiques.</span>
+          </div>
+        </div>
+
+        <section class="claim-provider-card" aria-label="Datos del proveedor">
+          <p><strong>Razon social:</strong> HOYOS BUENO MELVIN</p>
+          <p><strong>RUC:</strong> 10735063818</p>
+          <p><strong>Nombre comercial:</strong> ERMIF</p>
+          <p><strong>Direccion:</strong> Mz. E Lote 33 Urb. Tres Orizontes, San Martin de Porres, Lima, Lima</p>
+          <p><strong>Correo de atencion:</strong> MLVN696986@GMAIL.COM</p>
+          <p><strong>Telefono o WhatsApp:</strong> 984096252</p>
+          <p><strong>Horario:</strong> 8:00 a. m. a 6:00 p. m.</p>
+        </section>
+
+        <div id="claimBookNotice" class="auth-notice is-hidden" role="status"></div>
+
+        <div class="form-grid claim-form-grid">
+          <label>
+            Tipo de solicitud
+            <select id="claimType" required>
+              <option value="reclamo">Reclamo sobre el servicio</option>
+              <option value="queja">Queja sobre la atencion</option>
+            </select>
+          </label>
+          <label>
+            Servicio contratado
+            <input id="claimService" type="text" value="Suscripcion ERMIF" maxlength="120" required />
+          </label>
+          <label>
+            Nombres
+            <input id="claimFirstName" type="text" maxlength="120" autocomplete="given-name" required />
+          </label>
+          <label>
+            Apellidos
+            <input id="claimLastName" type="text" maxlength="120" autocomplete="family-name" required />
+          </label>
+          <label>
+            Tipo de documento
+            <select id="claimDocumentType" required>
+              <option value="DNI">DNI</option>
+              <option value="CE">Carnet de extranjeria</option>
+              <option value="RUC">RUC</option>
+              <option value="PASAPORTE">Pasaporte</option>
+            </select>
+          </label>
+          <label>
+            Numero de documento
+            <input id="claimDocumentNumber" type="text" maxlength="20" inputmode="text" required />
+          </label>
+          <label>
+            Correo electronico
+            <input id="claimEmail" type="email" maxlength="160" autocomplete="email" required />
+          </label>
+          <label>
+            Telefono o WhatsApp
+            <input id="claimPhone" type="tel" maxlength="30" autocomplete="tel" required />
+          </label>
+          <label class="claim-field-wide">
+            Direccion del consumidor
+            <input id="claimAddress" type="text" maxlength="240" autocomplete="street-address" required />
+          </label>
+          <label>
+            Monto reclamado
+            <input id="claimAmount" type="number" min="0" step="0.01" placeholder="Opcional" />
+          </label>
+          <label>
+            Codigo de pago o referencia
+            <input id="claimPaymentReference" type="text" maxlength="120" placeholder="Opcional" />
+          </label>
+          <label class="claim-field-wide">
+            Detalle del reclamo o queja
+            <textarea id="claimDetail" rows="4" maxlength="1200" required placeholder="Describe lo ocurrido con fechas, pagos o datos que ayuden a revisar el caso."></textarea>
+          </label>
+          <label class="claim-field-wide">
+            Pedido concreto
+            <textarea id="claimRequest" rows="3" maxlength="700" required placeholder="Indica que solucion solicitas."></textarea>
+          </label>
+        </div>
+
+        <label class="legal-check">
+          <input id="claimTruthAccept" type="checkbox" required />
+          <span>Declaro que la informacion registrada es verdadera y autorizo el uso de estos datos para atender mi reclamo o queja.</span>
+        </label>
+
+        <div id="claimBookResult" class="claim-result is-hidden" aria-live="polite"></div>
+
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" data-close-dialog>Regresar</button>
+          <button id="claimBookSubmit" class="primary-button" type="submit">Registrar hoja</button>
+        </div>
+      </form>
     </dialog>
 
     <template id="emptyTemplate">

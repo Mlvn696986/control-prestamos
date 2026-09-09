@@ -879,6 +879,16 @@ assertFileIncludes(appCode, "Debes aceptar los terminos y el cobro mensual", "Pa
 assertFileIncludes(stylesCode, ".billing-terms-note", "Pagos: la nota legal de suscripcion debe tener estilo propio.");
 assertFileIncludes(htmlCode, 'id="termsDialog"', "Legal: debe existir modal de Terminos y Condiciones.");
 assertFileIncludes(htmlCode, "sidebar-legal", "Legal: debe existir acceso a terminos en la barra lateral.");
+assertFileIncludes(htmlCode, 'data-open-claims', "Legal: debe existir acceso lateral al Libro de Reclamaciones.");
+assertFileIncludes(htmlCode, 'id="claimsDialog"', "Legal: debe existir modal de Libro de Reclamaciones.");
+assertFileIncludes(htmlCode, 'id="claimBookForm"', "Legal: debe existir formulario de Libro de Reclamaciones.");
+assertFileIncludes(htmlCode, "Mz. E Lote 33 Urb. Tres Orizontes", "Libro de Reclamaciones: debe mostrar direccion del proveedor.");
+assertFileIncludes(appCode, 'fetch("/api/reclamaciones"', "Libro de Reclamaciones: el frontend debe registrar la hoja via Worker.");
+assertFileIncludes(workerCode, "/api/reclamaciones", "Libro de Reclamaciones: el Worker debe exponer endpoint seguro.");
+assertFileIncludes(workerCode, "normalizeClaimBookEntry", "Libro de Reclamaciones: el Worker debe validar datos antes de guardar.");
+assertFileIncludes(sqlCode, "create table if not exists claim_book_entries", "Libro de Reclamaciones: migracion debe crear tabla.");
+assertFileIncludes(sqlCode, "grant select, insert, update, delete on claim_book_entries to service_role", "Libro de Reclamaciones: service_role debe poder guardar hojas.");
+assertFileIncludes(schemaCode, "create table if not exists claim_book_entries", "Libro de Reclamaciones: esquema base debe crear tabla.");
 assertFileIncludes(htmlCode, "HOYOS BUENO MELVIN", "Legal: los terminos deben incluir titular legal.");
 assertFileIncludes(htmlCode, "10735063818", "Legal: los terminos deben incluir RUC correcto.");
 assertFileIncludes(htmlCode, "MLVN696986@GMAIL.COM", "Legal: los terminos deben incluir correo de soporte.");
