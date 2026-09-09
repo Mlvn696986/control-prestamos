@@ -608,12 +608,24 @@ function setAuthMode(mode) {
       ? "Escribe tu nueva contrasena para recuperar el acceso."
       : isLogin
       ? "Accede a tu cartera desde cualquier equipo."
-      : "Crea una cuenta gratis para probar hasta 10 clientes."
+      : "Registra hasta 10 clientes gratis, prueba el sistema con calma y pasa a Premium cuando quieras crecer.",
+    isRecovery || isLogin ? "info" : "trial"
   );
 }
 
-function setAuthNotice(message) {
+function setAuthNotice(message, variant = "info") {
   if (!elements.authNotice) return;
+  elements.authNotice.classList.toggle("auth-notice-premium", variant === "trial");
+  if (variant === "trial") {
+    elements.authNotice.innerHTML = `
+      <span class="auth-notice-icon" aria-hidden="true">i</span>
+      <span>
+        <strong>Prueba gratis</strong>
+        <small>${escapeHTML(message || "")}</small>
+      </span>
+    `;
+    return;
+  }
   elements.authNotice.textContent = message || "";
 }
 

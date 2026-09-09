@@ -770,6 +770,10 @@ assertFileIncludes(htmlCode, 'src="assets/ermif-mark.png"', "Marca: la barra lat
 assertFileIncludes(htmlCode, '<span id="ownerLabel" class="is-hidden">Prestamista</span>', "Sidebar: Prestamista no debe mostrarse visualmente debajo del nombre del negocio.");
 assertFileIncludes(stylesCode, ".brand-logo-auth", "Marca: el logo del login debe tener estilo propio.");
 assertFileIncludes(stylesCode, ".brand-logo-sidebar", "Marca: el logo lateral debe tener estilo propio.");
+assertFileIncludes(appCode, "Registra hasta 10 clientes gratis, prueba el sistema con calma y pasa a Premium cuando quieras crecer.", "Registro: la nota informativa debe tener un texto comercial breve.");
+assertFileIncludes(appCode, "auth-notice-premium", "Registro: la nota informativa debe activar el estilo premium.");
+assertFileIncludes(stylesCode, ".auth-notice-premium", "Registro: la nota informativa debe tener estilo premium.");
+assertFileIncludes(stylesCode, ".auth-notice-icon", "Registro: la nota informativa debe incluir un icono discreto.");
 assertFileIncludes(appCode, "business_name: businessName || \"Mi negocio\"", "Registro: el nombre del negocio debe guardarse en metadata de Auth.");
 assertFileIncludes(appCode, "metadata.business_name || metadata.businessName || \"Mi negocio\"", "Carga de perfil: debe recuperar nombre del negocio desde metadata si falta profile.");
 assertFileIncludes(cloudflareBuildCode, 'const publicDirs = ["assets"]', "Cloudflare: el build debe copiar la carpeta assets.");
