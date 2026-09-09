@@ -303,12 +303,17 @@ async function markPlanRequest(env, requestId, row) {
 }
 
 async function supabaseFetch(env, path, options) {
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
   const headers = {
-    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-    Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    apikey: serviceKey,
     "Content-Type": "application/json",
     ...(options.headers || {}),
   };
+
+  if (!serviceKey.startsWith("sb_secret_")) {
+    headers.Authorization = `Bearer ${serviceKey}`;
+  }
+
   const response = await fetch(`${getSupabaseUrl(env)}/rest/v1/${path}`, {
     method: options.method,
     headers,
