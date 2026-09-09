@@ -308,6 +308,24 @@ assert(dashboard.charts.months[0].label.toLowerCase().startsWith("ene"), "Test 1
 assert(dashboard.charts.months[2].label.toLowerCase().startsWith("mar"), "Test 14: tercer mes debe ser marzo.");
 
 resetTestState({
+  clients: [testClient("mora-enero"), testClient("mora-marzo")],
+  loans: [
+    testLoan({ id: "mora-enero-loan", clientId: "mora-enero", amount: 100, remainingCapital: 0, startDate: "2026-01-01", nextDueDate: "2026-01-15", status: "closed", closedAt: "2026-02-15" }),
+    testLoan({ id: "mora-marzo-loan", clientId: "mora-marzo", amount: 200, remainingCapital: 200, startDate: "2026-02-10", nextDueDate: "2026-03-05" }),
+  ],
+  payments: [testPayment({ id: "mora-enero-payment", loanId: "mora-enero-loan", clientId: "mora-enero", date: "2026-02-15", capitalPaid: 100, remainingCapitalAfter: 0 })],
+});
+dashboard = buildDashboardData({ filters: { customStart: "2026-01-01", customEnd: "2026-03-31", compare: "none", operation: "all" }, skipComparison: true });
+assertEqual(dashboard.charts.delinquency[0].value, 1, "Tendencia de morosidad: enero debe contar el vencido activo al cierre de enero.");
+assertEqual(dashboard.charts.delinquency[1].value, 0, "Tendencia de morosidad: febrero no debe arrastrar vencidos ya cerrados ni anticipar marzo.");
+assertEqual(dashboard.charts.delinquency[2].value, 1, "Tendencia de morosidad: marzo debe contar el vencido activo al cierre de marzo.");
+let chartContainer = document.createElement("div");
+renderSimpleBarChart(chartContainer, [{ label: "ene", value: 10 }], "money");
+assert(chartContainer.innerHTML.includes("S/"), "Grafico de prestamos por mes: valores pequenos tambien deben mostrarse como dinero.");
+renderSimpleBarChart(chartContainer, [{ label: "morosos", value: 21 }], "number");
+assert(!chartContainer.innerHTML.includes("S/"), "Grafico de morosidad: cantidades grandes no deben mostrarse como dinero.");
+
+resetTestState({
   clients: [testClient("ops")],
   loans: [
     testLoan({ id: "ops-main", clientId: "ops", amount: 400, startDate: "2026-08-01", nextDueDate: "2026-09-01", operationType: "principal" }),
@@ -746,6 +764,9 @@ assertCondition(!stylesCode.includes(".summary-compact-card strong"), "Resumen: 
 assertFileIncludes(htmlCode, "<h3>Indicadores:</h3>", "Resumen: el titulo de Indicadores debe incluir dos puntos.");
 assertFileIncludes(htmlCode, "Mantén presionada una tarjeta y arrástrala para ordenar los indicadores como prefieras.", "Resumen: debe explicar como ordenar indicadores arrastrando.");
 assertFileIncludes(stylesCode, ".section-helper", "Resumen: el texto de ayuda debe tener estilo propio.");
+assertFileIncludes(htmlCode, 'src="assets/ermi-logo.png"', "Marca: el login y la barra lateral deben usar el logo ERMI.");
+assertFileIncludes(stylesCode, ".brand-logo-auth", "Marca: el logo del login debe tener estilo propio.");
+assertFileIncludes(stylesCode, ".brand-logo-sidebar", "Marca: el logo lateral debe tener estilo propio.");
 assertFileIncludes(appCode, '<span class="status-pill ok">Capital disponible</span>', "Resumen superior: la tarjeta derecha debe mostrar Capital disponible.");
 assertFileIncludes(appCode, "<strong>${money(dashboard.metrics.availableCapital)}</strong>", "Resumen superior: la tarjeta derecha debe usar capital disponible.");
 assertFileIncludes(appCode, "<small>Monto que debe figurar en tu tarjeta</small>", "Resumen superior: el mensaje bajo el valor debe ser el texto solicitado.");
@@ -758,6 +779,9 @@ assertFileIncludes(htmlCode, "summary-compare-info", "Resumen: el boton Mes ante
 assertFileIncludes(htmlCode, '<button id="summaryComparePreviousMonth" class="ghost-button summary-compare-button" type="button">\n                  Comparar con mes anterior\n                  <span', "Resumen: el icono de informacion debe estar dentro del boton Mes anterior.");
 assertFileIncludes(htmlCode, "compara el periodo seleccionado contra el mismo rango movido un mes atras", "Resumen: el tooltip debe explicar contra que compara.");
 assertFileIncludes(htmlCode, "06/08/2026 - 06/09/2026 contra 06/07/2026 - 06/08/2026", "Resumen: el tooltip debe incluir un ejemplo claro.");
+assertFileIncludes(htmlCode, "S/1,300 otorgados ese mes", "Resumen: el tooltip de prestamos por mes debe explicar que el grafico muestra monto otorgado.");
+assertFileIncludes(appCode, 'excelHeaderRow(["Mes", "Monto otorgado"])', "Exportacion: prestamos otorgados por mes debe exportarse como monto, no como cantidad.");
+assertCondition(!appCode.includes('excelHeaderRow(["Mes", "Prestamos creados"])'), "Exportacion: prestamos otorgados por mes no debe conservar encabezado de cantidad.");
 assertCondition(!htmlCode.includes('<select id="summaryCompare"'), "Resumen: el selector de comparacion debe ser reemplazado por un boton.");
 assertFileIncludes(appCode, "setDashboardPreviousMonthComparison", "Resumen: falta la funcion del boton Mes anterior.");
 assertFileIncludes(appCode, 'elements.summaryCompare.value = "previousMonth"', "Resumen: el boton debe activar previousMonth.");

@@ -9,19 +9,9 @@
   <body>
     <div id="authScreen" class="auth-screen">
       <section class="auth-panel" aria-labelledby="authTitle">
-        <div class="brand-lockup">
-          <div class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 48 48" role="img">
-              <path d="M8 34c8-1 11-14 19-14 4 0 6 3 7 6 1 4 3 7 6 8" />
-              <path d="M13 18h22" />
-              <path d="M18 12h12" />
-              <circle cx="24" cy="24" r="18" />
-            </svg>
-          </div>
-          <div>
-            <p class="eyebrow">SaaS basico</p>
-            <h1 id="authTitle">Control de Prestamos</h1>
-          </div>
+        <div class="brand-lockup brand-logo-lockup">
+          <img class="brand-logo brand-logo-auth" src="assets/ermi-logo.png" alt="ERMI - Gestion inteligente de prestamos" />
+          <h1 id="authTitle" class="sr-only">ERMI - Gestion inteligente de prestamos</h1>
         </div>
 
         <form id="registerForm" class="form-grid">
@@ -68,15 +58,8 @@
 
     <main id="appShell" class="app-shell is-hidden">
       <aside class="sidebar">
-        <div class="brand-lockup compact">
-          <div class="brand-mark small" aria-hidden="true">
-            <svg viewBox="0 0 48 48" role="img">
-              <path d="M8 34c8-1 11-14 19-14 4 0 6 3 7 6 1 4 3 7 6 8" />
-              <path d="M13 18h22" />
-              <path d="M18 12h12" />
-              <circle cx="24" cy="24" r="18" />
-            </svg>
-          </div>
+        <div class="brand-lockup compact brand-sidebar-lockup">
+          <img class="brand-logo brand-logo-sidebar" src="assets/ermi-logo.png" alt="ERMI" />
           <div>
             <strong id="businessLabel">Control</strong>
             <span id="ownerLabel">Prestamista</span>
@@ -316,7 +299,7 @@
                   <div id="summaryMonthlyChart" class="summary-bar-chart"></div>
                 </section>
                 <section class="summary-chart-panel">
-                  <h3>Prestamos otorgados por mes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en marzo registraste 3 prestamos y 2 ampliaciones, el grafico mostrara 5 operaciones creadas ese mes.">i</span></h3>
+                  <h3>Prestamos otorgados por mes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en marzo prestaste S/1,000 y registraste una ampliacion de S/300, el grafico mostrara S/1,300 otorgados ese mes.">i</span></h3>
                   <div id="summaryLoansChart" class="summary-bar-chart"></div>
                 </section>
                 <section class="summary-chart-panel">

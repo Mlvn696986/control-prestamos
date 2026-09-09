@@ -2139,7 +2139,7 @@ function buildDashboardData(options = {}) {
         { label: "6 meses", value: projectedProfit * 6 },
         { label: "12 meses", value: projectedProfit * 12 },
       ],
-      delinquency: buildDelinquencySeries(activeLoans, range),
+      delinquency: buildDelinquencySeries(scopeLoans, range, scopePayments),
       cashflow: [
         { label: "Ingresos", value: periodCashInflows, color: "#00a76f" },
         { label: "Egresos", value: periodCashOutflows, color: "#ffb000" },
@@ -3534,7 +3534,7 @@ function renderCompactMetric({ title, value, tip, metricKey, compareFactor }, da
 
 function renderDashboardCharts(dashboard) {
   renderStackedMonthChart(elements.summaryMonthlyChart, dashboard.charts.months, "capital", "interest");
-  renderSimpleBarChart(elements.summaryLoansChart, dashboard.charts.loansByMonth);
+  renderSimpleBarChart(elements.summaryLoansChart, dashboard.charts.loansByMonth, "money");
   renderDonutChart(elements.summaryStatusChart, dashboard.charts.statusSegments);
   renderHorizontalChart(elements.summaryCapitalChart, [
     { label: "Capital pendiente", value: dashboard.metrics.capitalPending, color: "#00a76f" },
@@ -3547,7 +3547,7 @@ function renderDashboardCharts(dashboard) {
     dashboard.charts.modeSegments.map((item, index) => ({ ...item, color: ["#00a76f", "#2f6fed", "#ffb000", "#0f766e"][index] }))
   );
   renderProjectionChart(elements.summaryProjectionChart, dashboard.charts.projections);
-  renderSimpleBarChart(elements.summaryDelinquencyChart, dashboard.charts.delinquency);
+  renderSimpleBarChart(elements.summaryDelinquencyChart, dashboard.charts.delinquency, "number");
   renderHorizontalChart(elements.summaryCashflowChart, dashboard.charts.cashflow);
 }
 
@@ -3569,12 +3569,25 @@ function buildLoanMonthSeries(loans, range) {
   }));
 }
 
-function buildDelinquencySeries(loans, range) {
-  const cutoffDate = range?.end || todayISO();
-  return getMonthKeysForDashboardRange(range).map((month) => ({
-    label: month.label,
-    value: loans.filter((loan) => loan.status === "active" && getMonthKey(loan.nextDueDate) === month.key && isOverdueAt(loan, cutoffDate)).length,
-  }));
+function buildDelinquencySeries(loans, range, payments = state.payments) {
+  return getMonthKeysForDashboardRange(range).map((month) => {
+    const monthEnd = getDashboardMonthEnd(month.key, range);
+    const overdueAtMonthEnd = loans
+      .filter((loan) => loanWasActiveOnDate(loan, monthEnd))
+      .map((loan) => loanSnapshotAtDate(loan, monthEnd, payments))
+      .filter((loan) => isOverdueAt(loan, monthEnd)).length;
+    return {
+      label: month.label,
+      value: overdueAtMonthEnd,
+    };
+  });
+}
+
+function getDashboardMonthEnd(monthKey, range) {
+  const [year, month] = String(monthKey).split("-").map(Number);
+  const monthEnd = toISODate(new Date(year, month, 0));
+  if (range?.end && startOfDay(monthEnd) > startOfDay(range.end)) return range.end;
+  return monthEnd;
 }
 
 function renderStackedMonthChart(container, data, firstKey, secondKey) {
@@ -3597,18 +3610,21 @@ function renderStackedMonthChart(container, data, firstKey, secondKey) {
     .join("");
 }
 
-function renderSimpleBarChart(container, data) {
+function renderSimpleBarChart(container, data, valueType = "money") {
   const max = Math.max(...data.map((item) => item.value), 1);
   container.innerHTML = data
-    .map((item) => `
-      <div class="summary-bar-item">
-        <div class="summary-bar-track" title="${typeof item.value === "number" ? money(item.value) : item.value}">
-          <span class="summary-bar-fill single-fill" style="height:${Math.max((item.value / max) * 100, item.value ? 7 : 0)}%"></span>
+    .map((item) => {
+      const formattedValue = valueType === "money" ? money(item.value) : escapeHTML(roundMoney(item.value));
+      return `
+        <div class="summary-bar-item">
+          <div class="summary-bar-track" title="${formattedValue}">
+            <span class="summary-bar-fill single-fill" style="height:${Math.max((item.value / max) * 100, item.value ? 7 : 0)}%"></span>
+          </div>
+          <strong>${escapeHTML(item.label)}</strong>
+          <span>${formattedValue}</span>
         </div>
-        <strong>${escapeHTML(item.label)}</strong>
-        <span>${typeof item.value === "number" && item.value > 20 ? money(item.value) : escapeHTML(roundMoney(item.value))}</span>
-      </div>
-    `)
+      `;
+    })
     .join("");
 }
 
@@ -3884,8 +3900,8 @@ function buildSummaryChartsSheet(dashboard) {
       ...dashboard.charts.months.map((item) => [excelCellData(item.label, "Text"), excelCellData(money(item.capital), "MoneyText"), excelCellData(money(item.interest), "MoneyText"), excelCellData(money(item.capital + item.interest), "MoneyText")]),
       excelSpacerRow(),
       excelSectionRow("PRESTAMOS OTORGADOS POR MES", 3),
-      excelHeaderRow(["Mes", "Prestamos creados"]),
-      ...dashboard.charts.loansByMonth.map((item) => [excelCellData(item.label, "Text"), excelCellData(item.value, "Number")]),
+      excelHeaderRow(["Mes", "Monto otorgado"]),
+      ...dashboard.charts.loansByMonth.map((item) => [excelCellData(item.label, "Text"), excelCellData(money(item.value), "MoneyText")]),
       excelSpacerRow(),
       excelSectionRow("CARTERA POR ESTADO", 3),
       excelHeaderRow(["Estado", "Cantidad"]),

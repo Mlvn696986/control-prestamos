@@ -56,6 +56,18 @@ svg {
   display: none !important;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .auth-screen {
   min-height: 100vh;
   display: grid;
@@ -87,6 +99,37 @@ svg {
 .brand-lockup.compact {
   align-items: flex-start;
   margin-bottom: 30px;
+}
+
+.brand-logo-lockup {
+  display: block;
+  margin-bottom: 26px;
+}
+
+.brand-logo {
+  display: block;
+  object-fit: contain;
+}
+
+.brand-logo-auth {
+  width: min(100%, 430px);
+  max-height: 180px;
+  margin: 0 auto;
+}
+
+.brand-sidebar-lockup {
+  flex-direction: column;
+  gap: 12px;
+}
+
+.brand-logo-sidebar {
+  width: 100%;
+  max-width: 210px;
+  max-height: 92px;
+  padding: 9px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 167, 111, 0.35);
+  border-radius: 8px;
 }
 
 .brand-lockup strong,
