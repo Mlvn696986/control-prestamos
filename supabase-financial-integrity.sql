@@ -27,6 +27,16 @@ alter table plan_requests add column if not exists updated_at timestamptz defaul
 create index if not exists plan_requests_provider_subscription_idx
 on plan_requests(provider, provider_subscription_id);
 
+grant usage on schema public to service_role;
+grant select, insert, update, delete on profiles to service_role;
+grant select, insert, update, delete on subscriptions to service_role;
+grant select, insert, update, delete on clients to service_role;
+grant select, insert, update, delete on loans to service_role;
+grant select, insert, update, delete on payments to service_role;
+grant select, insert, update, delete on capital_movements to service_role;
+grant select, insert, update, delete on plan_requests to service_role;
+grant select, insert, update, delete on user_backups to service_role;
+
 alter table loans add column if not exists operation_type text;
 alter table loans add column if not exists parent_loan_id uuid;
 alter table loans alter column next_due_date drop not null;

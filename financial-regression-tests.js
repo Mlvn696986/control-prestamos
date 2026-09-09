@@ -875,6 +875,9 @@ assertFileIncludes(workerCode, "external_reference", "Pagos: Mercado Pago debe g
 assertFileIncludes(workerCode, "back_url", "Pagos: el regreso desde Mercado Pago no debe activar plan.");
 assertFileIncludes(sqlCode, "provider_subscription_id", "Pagos: SQL debe guardar el ID de suscripcion/pago del proveedor.");
 assertFileIncludes(sqlCode, "plan_requests_provider_subscription_idx", "Pagos: SQL debe indexar busqueda de webhook por proveedor.");
+assertFileIncludes(sqlCode, "grant select, insert, update, delete on plan_requests to service_role", "Pagos: service_role debe poder escribir plan_requests desde el Worker.");
+assertFileIncludes(sqlCode, "grant select, insert, update, delete on subscriptions to service_role", "Pagos: service_role debe poder activar subscriptions desde el Worker.");
 assertFileIncludes(schemaCode, "provider_status text", "Pagos: esquema base debe incluir estado del proveedor.");
+assertFileIncludes(schemaCode, "grant usage on schema public to service_role", "Pagos: service_role debe tener uso del esquema public.");
 
 console.log("Pruebas financieras OK");

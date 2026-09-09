@@ -1117,6 +1117,7 @@ on loans(user_id, client_id)
 where operation_type = 'principal';
 
 grant usage on schema public to anon, authenticated;
+grant usage on schema public to service_role;
 grant select, insert, update, delete on profiles to authenticated;
 grant select, insert, update, delete on subscriptions to authenticated;
 grant select, insert, update, delete on clients to authenticated;
@@ -1125,6 +1126,14 @@ grant select, insert, update, delete on payments to authenticated;
 grant select, insert, update, delete on capital_movements to authenticated;
 grant select, insert, update, delete on plan_requests to authenticated;
 grant select, insert, update, delete on user_backups to authenticated;
+grant select, insert, update, delete on profiles to service_role;
+grant select, insert, update, delete on subscriptions to service_role;
+grant select, insert, update, delete on clients to service_role;
+grant select, insert, update, delete on loans to service_role;
+grant select, insert, update, delete on payments to service_role;
+grant select, insert, update, delete on capital_movements to service_role;
+grant select, insert, update, delete on plan_requests to service_role;
+grant select, insert, update, delete on user_backups to service_role;
 
 -- Despues de ejecutar este archivo, activa tu cuenta admin cambiando el correo:
 -- update profiles
