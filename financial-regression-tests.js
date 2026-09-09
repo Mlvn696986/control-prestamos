@@ -880,6 +880,7 @@ assertFileIncludes(stylesCode, ".billing-terms-note", "Pagos: la nota legal de s
 assertFileIncludes(htmlCode, 'id="termsDialog"', "Legal: debe existir modal de Terminos y Condiciones.");
 assertFileIncludes(htmlCode, "sidebar-legal", "Legal: debe existir acceso a terminos en la barra lateral.");
 assertFileIncludes(htmlCode, 'data-open-claims', "Legal: debe existir acceso lateral al Libro de Reclamaciones.");
+assertFileIncludes(htmlCode, 'assets/libro-reclamaciones.png', "Legal: el acceso lateral debe usar la imagen del Libro de Reclamaciones.");
 assertFileIncludes(htmlCode, 'id="claimsDialog"', "Legal: debe existir modal de Libro de Reclamaciones.");
 assertFileIncludes(htmlCode, 'id="claimBookForm"', "Legal: debe existir formulario de Libro de Reclamaciones.");
 assertFileIncludes(htmlCode, "Mz. E Lote 33 Urb. Tres Orizontes", "Libro de Reclamaciones: debe mostrar direccion del proveedor.");
@@ -898,6 +899,7 @@ assertFileIncludes(htmlCode, "hasta 29 dias calendario", "Legal: los terminos de
 assertFileIncludes(htmlCode, 'id="authTermsAccept"', "Legal: registro debe pedir aceptacion de terminos.");
 assertFileIncludes(appCode, "Debes aceptar los Terminos y Condiciones", "Legal: registro debe bloquear si no acepta terminos.");
 assertFileIncludes(stylesCode, ".legal-panel", "Legal: el documento debe tener estilo propio.");
+assertFileIncludes(stylesCode, "width: min(94vw, 1040px)", "Legal: el modal de terminos debe ser mas ancho para lectura comoda.");
 assertFileIncludes(stylesCode, ".sidebar-legal", "Legal: el acceso lateral debe tener estilo profesional.");
 assertFileIncludes(sqlCode, "provider_subscription_id", "Pagos: SQL debe guardar el ID de suscripcion/pago del proveedor.");
 assertFileIncludes(sqlCode, "plan_requests_provider_subscription_idx", "Pagos: SQL debe indexar busqueda de webhook por proveedor.");
