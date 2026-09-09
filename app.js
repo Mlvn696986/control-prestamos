@@ -21,7 +21,13 @@ const PLAN_CATALOG = {
     price: "S/ 0",
     clientLimit: 10,
     description: "Para probar la plataforma y empezar con una cartera pequena.",
-    features: ["Hasta 10 clientes", "Registro de prestamos", "Cobros mensuales", "Dashboard basico"],
+    features: [
+      "Hasta 10 clientes",
+      "Registro de prestamos y ampliaciones",
+      "Control de cobros e historial",
+      "Resumen con indicadores de cartera",
+      "Exportacion a Excel y respaldo de datos",
+    ],
   },
   basic: {
     id: "basic",
@@ -29,7 +35,13 @@ const PLAN_CATALOG = {
     price: "S/ 29",
     clientLimit: 100,
     description: "Para prestamistas que ya trabajan con una cartera activa.",
-    features: ["Hasta 100 clientes", "Historial de cobros", "Reportes de cartera", "Soporte por correo"],
+    features: [
+      "Hasta 100 clientes",
+      "Registro de prestamos y ampliaciones",
+      "Control de cobros e historial",
+      "Resumen con indicadores de cartera",
+      "Exportacion a Excel y respaldo de datos",
+    ],
   },
   pro: {
     id: "pro",
@@ -37,7 +49,13 @@ const PLAN_CATALOG = {
     price: "S/ 59",
     clientLimit: null,
     description: "Para negocios que necesitan crecer sin limite de clientes.",
-    features: ["Clientes ilimitados", "Reportes avanzados", "Prioridad de soporte", "Preparado para automatizaciones"],
+    features: [
+      "Clientes ilimitados",
+      "Registro de prestamos y ampliaciones",
+      "Control de cobros e historial",
+      "Resumen con indicadores de cartera",
+      "Exportacion a Excel y respaldo de datos",
+    ],
   },
 };
 
