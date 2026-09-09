@@ -108,15 +108,14 @@ async function handleCheckout(request, env) {
 async function handleMercadoPagoWebhook(request, env) {
   requireEnv(env, "MERCADOPAGO_ACCESS_TOKEN");
   requireEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
+  requireEnv(env, "MERCADOPAGO_WEBHOOK_SECRET");
 
   const url = new URL(request.url);
   const body = await request.json().catch(() => ({}));
 
-  if (env.MERCADOPAGO_WEBHOOK_SECRET) {
-    const isValid = await verifyMercadoPagoSignature(request, url, body, env.MERCADOPAGO_WEBHOOK_SECRET);
-    if (!isValid) {
-      throw httpError("Firma de Mercado Pago invalida.", 401);
-    }
+  const isValid = await verifyMercadoPagoSignature(request, url, body, env.MERCADOPAGO_WEBHOOK_SECRET);
+  if (!isValid) {
+    throw httpError("Firma de Mercado Pago invalida.", 401);
   }
 
   const topic = String(url.searchParams.get("topic") || url.searchParams.get("type") || body.topic || body.type || "").toLowerCase();

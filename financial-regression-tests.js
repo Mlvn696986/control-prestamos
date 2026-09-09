@@ -863,6 +863,7 @@ assertFileIncludes(appCode, "checkoutUrl", "Pagos: el frontend debe redirigir al
 assertFileIncludes(workerCode, "/api/billing/mercadopago/webhook", "Pagos: falta endpoint de webhook de Mercado Pago.");
 assertFileIncludes(workerCode, "MERCADOPAGO_ACCESS_TOKEN", "Pagos: el Worker debe usar token privado de Mercado Pago.");
 assertFileIncludes(workerCode, "SUPABASE_SERVICE_ROLE_KEY", "Pagos: el Worker debe activar planes con service role, no desde navegador.");
+assertFileIncludes(workerCode, 'requireEnv(env, "MERCADOPAGO_WEBHOOK_SECRET")', "Pagos: el webhook debe exigir clave secreta de Mercado Pago.");
 assertFileIncludes(workerCode, "verifyMercadoPagoSignature", "Pagos: el webhook debe poder validar la firma de Mercado Pago.");
 assertFileIncludes(workerCode, 'url.searchParams.get("data_id")', "Pagos: el webhook debe aceptar data_id de Mercado Pago.");
 assertFileIncludes(workerCode, "/v1/payments/", "Pagos: el webhook debe consultar el pago confirmado a Mercado Pago.");
