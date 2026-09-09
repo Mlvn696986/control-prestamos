@@ -801,8 +801,16 @@ assertFileIncludes(htmlCode, 'placeholder="Vuelve a escribir tu contraseña" aut
 assertFileIncludes(appCode, "validateSignupPasswords", "Registro: debe validar coincidencia de contraseñas antes de crear cuenta.");
 assertFileIncludes(stylesCode, ".field-feedback", "Registro: el mensaje de coincidencia debe tener estilo propio.");
 assertCondition(!appCode.includes("confirmPassword:"), "Registro: Confirmar contraseña no debe enviarse a metadata ni Supabase.");
+assertFileIncludes(htmlCode, 'id="googleAuthButton"', "Google Auth: debe existir el boton de acceso con Google.");
+assertFileIncludes(appCode, 'signInWithOAuth({', "Google Auth: debe usar OAuth de Supabase.");
+assertFileIncludes(appCode, 'provider: "google"', "Google Auth: el proveedor debe ser Google.");
+assertFileIncludes(appCode, "redirectTo: window.location.origin", "Google Auth: debe volver al dominio actual.");
+assertFileIncludes(htmlCode, 'id="completeProfileDialog"', "Google Auth: debe existir modal para completar perfil.");
+assertFileIncludes(htmlCode, 'id="completeBusinessName"', "Google Auth: el modal debe pedir nombre del negocio.");
+assertFileIncludes(appCode, "pendingProfileCompletion", "Google Auth: debe detectar cuentas nuevas con perfil pendiente.");
+assertFileIncludes(appCode, "openCompleteProfileDialog", "Google Auth: debe abrir el modal de perfil pendiente.");
 assertFileIncludes(appCode, "business_name: businessName || \"Mi negocio\"", "Registro: el nombre del negocio debe guardarse en metadata de Auth.");
-assertFileIncludes(appCode, "metadata.business_name || metadata.businessName || \"Mi negocio\"", "Carga de perfil: debe recuperar nombre del negocio desde metadata si falta profile.");
+assertFileIncludes(appCode, "metadata.business_name || metadata.businessName || \"\"", "Carga de perfil: debe recuperar nombre del negocio desde metadata si falta profile.");
 assertFileIncludes(cloudflareBuildCode, 'const publicDirs = ["assets"]', "Cloudflare: el build debe copiar la carpeta assets.");
 assertFileIncludes(cloudflareBuildCode, "fs.cpSync", "Cloudflare: el build debe copiar assets de forma recursiva.");
 assertFileIncludes(appCode, '<span class="status-pill ok">Capital disponible</span>', "Resumen superior: la tarjeta derecha debe mostrar Capital disponible.");

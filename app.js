@@ -63,6 +63,7 @@ const saas = {
   mode: "local",
   loading: true,
   passwordRecovery: false,
+  pendingProfileCompletion: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -81,11 +82,21 @@ const elements = {
   authNotice: $("#authNotice"),
   authPasswordLabelText: $("#authPasswordLabelText"),
   authSubmitText: $("#authSubmitText"),
+  googleAuthButton: $("#googleAuthButton"),
+  googleAuthText: $("#googleAuthText"),
   forgotPassword: $("#forgotPassword"),
   forgotPasswordDialog: $("#forgotPasswordDialog"),
   forgotPasswordForm: $("#forgotPasswordForm"),
   forgotPasswordEmail: $("#forgotPasswordEmail"),
   forgotPasswordNotice: $("#forgotPasswordNotice"),
+  completeProfileDialog: $("#completeProfileDialog"),
+  completeProfileForm: $("#completeProfileForm"),
+  completeProfileNotice: $("#completeProfileNotice"),
+  completeBusinessName: $("#completeBusinessName"),
+  completeOwnerName: $("#completeOwnerName"),
+  completeCurrency: $("#completeCurrency"),
+  completeProfileLogout: $("#completeProfileLogout"),
+  completeProfileSubmit: $("#completeProfileSubmit"),
   passwordSuccessDialog: $("#passwordSuccessDialog"),
   passwordSuccessClose: $("#passwordSuccessClose"),
   signupSuccessDialog: $("#signupSuccessDialog"),
@@ -236,6 +247,9 @@ function bindEvents() {
   elements.registerForm.addEventListener("submit", handleRegister);
   elements.authPassword.addEventListener("input", updateConfirmPasswordFeedback);
   elements.authConfirmPassword.addEventListener("input", updateConfirmPasswordFeedback);
+  elements.googleAuthButton.addEventListener("click", handleGoogleAuth);
+  elements.completeProfileForm.addEventListener("submit", handleCompleteProfileSubmit);
+  elements.completeProfileLogout.addEventListener("click", handleCompleteProfileLogout);
   elements.clientForm.addEventListener("submit", handleClientSubmit);
   elements.editForm.addEventListener("submit", handleEditSubmit);
   elements.paymentForm.addEventListener("submit", handlePaymentSubmit);
@@ -614,6 +628,8 @@ function setAuthMode(mode) {
   elements.authPasswordLabelText.textContent = isRecovery ? "Nueva contrasena" : "Contrasena";
   elements.authPassword.placeholder = isRecovery ? "Minimo 6 caracteres nuevos" : "Minimo 6 caracteres";
   elements.authSubmitText.textContent = isRecovery ? "Guardar nueva contrasena" : isLogin ? "Iniciar sesion" : "Crear mi plataforma";
+  elements.googleAuthButton.classList.toggle("is-hidden", isRecovery);
+  elements.googleAuthText.textContent = isLogin ? "Iniciar sesion con Google" : "Crear cuenta con Google";
   setAuthNotice(
     isRecovery
       ? "Escribe tu nueva contrasena para recuperar el acceso."
@@ -638,6 +654,89 @@ function setAuthNotice(message, variant = "info") {
     return;
   }
   elements.authNotice.textContent = message || "";
+}
+
+async function handleGoogleAuth() {
+  if (!saas.client) {
+    setAuthNotice("Google estara disponible cuando Supabase este configurado.");
+    return;
+  }
+  setButtonBusy(elements.googleAuthButton, true, "Conectando con Google...");
+  try {
+    const { error } = await saas.client.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) throw error;
+  } catch (error) {
+    setButtonBusy(elements.googleAuthButton, false);
+    setAuthNotice(error.message || "No se pudo iniciar con Google.");
+  }
+}
+
+function isGoogleSession(session) {
+  const user = session?.user;
+  return Boolean(
+    user?.app_metadata?.provider === "google" || (user?.identities || []).some((identity) => identity.provider === "google")
+  );
+}
+
+function openCompleteProfileDialog() {
+  const pending = saas.pendingProfileCompletion;
+  if (!pending || elements.completeProfileDialog.open) return;
+  elements.completeProfileNotice.textContent = "Escribe el nombre de tu negocio para terminar la configuracion de ERMIF.";
+  elements.completeBusinessName.value = "";
+  elements.completeOwnerName.value = pending.ownerName || "";
+  elements.completeCurrency.value = pending.currency || "PEN";
+  elements.completeProfileDialog.showModal();
+  elements.completeBusinessName.focus();
+}
+
+async function handleCompleteProfileSubmit(event) {
+  event.preventDefault();
+  const pending = saas.pendingProfileCompletion;
+  const businessName = elements.completeBusinessName.value.trim();
+  const ownerName = elements.completeOwnerName.value.trim();
+  const currency = elements.completeCurrency.value;
+  if (!pending || !saas.session?.user) return;
+  if (!businessName) {
+    elements.completeProfileNotice.textContent = "Escribe el nombre de tu negocio para continuar.";
+    elements.completeBusinessName.focus();
+    return;
+  }
+  if (!ownerName) {
+    elements.completeProfileNotice.textContent = "Escribe tu nombre para continuar.";
+    elements.completeOwnerName.focus();
+    return;
+  }
+
+  setButtonBusy(elements.completeProfileSubmit, true, "Guardando...");
+  try {
+    await ensureCloudAccount(saas.session.user.id, {
+      email: pending.email || saas.session.user.email,
+      businessName,
+      ownerName,
+      currency,
+    });
+    saas.pendingProfileCompletion = null;
+    elements.completeProfileDialog.close();
+    await loadCloudState();
+    render();
+  } catch (error) {
+    elements.completeProfileNotice.textContent = error.message || "No se pudo completar tu cuenta.";
+  } finally {
+    setButtonBusy(elements.completeProfileSubmit, false);
+  }
+}
+
+async function handleCompleteProfileLogout() {
+  saas.pendingProfileCompletion = null;
+  elements.completeProfileDialog.close();
+  await saas.client?.auth.signOut();
+  state = createEmptyState();
+  render();
 }
 
 function updateConfirmPasswordFeedback() {
@@ -771,14 +870,28 @@ async function loadCloudState() {
 
   if (!profileResult.data) {
     const metadata = saas.session.user.user_metadata || {};
+    const businessName = metadata.business_name || metadata.businessName || "";
+    const ownerName = metadata.owner_name || metadata.ownerName || metadata.full_name || metadata.name || "";
+    if (isGoogleSession(saas.session) && !businessName.trim()) {
+      saas.pendingProfileCompletion = {
+        userId,
+        email: saas.session.user.email,
+        ownerName,
+        currency: metadata.currency || "PEN",
+      };
+      state = createEmptyState();
+      return;
+    }
     await ensureCloudAccount(userId, {
       email: saas.session.user.email,
-      businessName: metadata.business_name || metadata.businessName || "Mi negocio",
-      ownerName: metadata.owner_name || metadata.ownerName || "Prestamista",
+      businessName: businessName || saas.session.user.email || "Mi negocio",
+      ownerName: ownerName || "Prestamista",
       currency: metadata.currency || "PEN",
     });
     return loadCloudState();
   }
+
+  saas.pendingProfileCompletion = null;
 
   const capitalMovementsResult = await loadCloudCapitalMovements(userId);
 
@@ -2013,6 +2126,7 @@ function render() {
   if (!state.user) {
     elements.authScreen.classList.remove("is-hidden");
     elements.appShell.classList.add("is-hidden");
+    openCompleteProfileDialog();
     return;
   }
 

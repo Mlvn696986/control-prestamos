@@ -20,6 +20,10 @@
             <button id="showLogin" class="auth-mode" type="button">Iniciar sesion</button>
           </div>
           <div id="authNotice" class="auth-notice"></div>
+          <button id="googleAuthButton" class="google-auth-button" type="button">
+            <span class="google-auth-icon" aria-hidden="true">G</span>
+            <span id="googleAuthText">Continuar con Google</span>
+          </button>
           <label>
             Correo electronico
             <input id="authEmail" name="email" type="email" placeholder="tu@email.com" required />
@@ -797,6 +801,37 @@
           <input id="forgotPasswordEmail" name="forgotPasswordEmail" type="email" placeholder="tu@email.com" required />
         </label>
         <button class="primary-button" type="submit">Enviar enlace</button>
+      </form>
+    </dialog>
+
+    <dialog id="completeProfileDialog" class="modal">
+      <form id="completeProfileForm" method="dialog" class="modal-panel form-grid">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Cuenta Google</p>
+            <h3>Completa tu cuenta</h3>
+          </div>
+        </div>
+        <div id="completeProfileNotice" class="auth-notice">Escribe el nombre de tu negocio para terminar la configuracion de ERMIF.</div>
+        <label>
+          Nombre del negocio
+          <input id="completeBusinessName" name="completeBusinessName" type="text" placeholder="Ej. Prestamos Lopez" required />
+        </label>
+        <label>
+          Tu nombre
+          <input id="completeOwnerName" name="completeOwnerName" type="text" placeholder="Ej. Juan Lopez" required />
+        </label>
+        <label>
+          Moneda
+          <select id="completeCurrency" name="completeCurrency" class="notranslate" translate="no">
+            <option value="PEN" translate="no">PEN - Soles</option>
+            <option value="USD" translate="no">USD - Dolares</option>
+          </select>
+        </label>
+        <div class="modal-actions">
+          <button id="completeProfileLogout" class="ghost-button" type="button">Cerrar sesion</button>
+          <button id="completeProfileSubmit" class="primary-button" type="submit">Guardar y continuar</button>
+        </div>
       </form>
     </dialog>
 

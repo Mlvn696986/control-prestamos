@@ -494,6 +494,44 @@ h3 {
   line-height: 1.35;
 }
 
+.google-auth-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  color: var(--ink);
+  background: #ffffff;
+  border: 1px solid rgba(6, 24, 38, 0.16);
+  border-radius: 8px;
+  font-weight: 900;
+  box-shadow: 0 8px 22px rgba(6, 24, 38, 0.06);
+}
+
+.google-auth-button:hover {
+  border-color: rgba(0, 167, 111, 0.42);
+  color: var(--accent-strong);
+}
+
+.google-auth-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: #ffffff;
+  background: #4285f4;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.modal-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .capital-hint {
   margin: 0;
   padding: 10px 12px;
@@ -2703,6 +2741,10 @@ input.field-success {
   .topbar-actions,
   .item-actions {
     justify-content: stretch;
+  }
+
+  .modal-actions {
+    grid-template-columns: 1fr;
   }
 
   .summary-hero,
