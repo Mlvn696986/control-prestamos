@@ -591,6 +591,28 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(0, 167, 111, 0.18);
 }
 
+.field-feedback {
+  min-height: 15px;
+  color: rgba(217, 45, 32, 0.86);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.field-feedback.is-valid {
+  color: var(--accent-strong);
+}
+
+input.field-error {
+  border-color: rgba(217, 45, 32, 0.72);
+  box-shadow: 0 0 0 3px rgba(217, 45, 32, 0.12);
+}
+
+input.field-success {
+  border-color: rgba(0, 167, 111, 0.72);
+  box-shadow: 0 0 0 3px rgba(0, 167, 111, 0.12);
+}
+
 .compact-input {
   max-width: 190px;
   min-height: 38px;

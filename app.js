@@ -74,6 +74,9 @@ const elements = {
   registerForm: $("#registerForm"),
   authEmail: $("#authEmail"),
   authPassword: $("#authPassword"),
+  authConfirmPassword: $("#authConfirmPassword"),
+  authConfirmPasswordLabel: $("#authConfirmPasswordLabel"),
+  authConfirmPasswordMessage: $("#authConfirmPasswordMessage"),
   authMode: $("#authMode"),
   authNotice: $("#authNotice"),
   authPasswordLabelText: $("#authPasswordLabelText"),
@@ -231,6 +234,8 @@ async function init() {
 
 function bindEvents() {
   elements.registerForm.addEventListener("submit", handleRegister);
+  elements.authPassword.addEventListener("input", updateConfirmPasswordFeedback);
+  elements.authConfirmPassword.addEventListener("input", updateConfirmPasswordFeedback);
   elements.clientForm.addEventListener("submit", handleClientSubmit);
   elements.editForm.addEventListener("submit", handleEditSubmit);
   elements.paymentForm.addEventListener("submit", handlePaymentSubmit);
@@ -597,8 +602,14 @@ function setAuthMode(mode) {
   $("#businessName").closest("label").classList.toggle("is-hidden", isLogin || isRecovery);
   $("#ownerName").closest("label").classList.toggle("is-hidden", isLogin || isRecovery);
   $("#currency").closest("label").classList.toggle("is-hidden", isLogin || isRecovery);
+  elements.authConfirmPasswordLabel.classList.toggle("is-hidden", isLogin || isRecovery);
   $("#businessName").required = !isLogin && !isRecovery;
   $("#ownerName").required = !isLogin && !isRecovery;
+  elements.authConfirmPassword.required = !isLogin && !isRecovery;
+  if (isLogin || isRecovery) {
+    elements.authConfirmPassword.value = "";
+  }
+  updateConfirmPasswordFeedback();
   elements.forgotPassword.classList.toggle("is-hidden", !isLogin);
   elements.authPasswordLabelText.textContent = isRecovery ? "Nueva contrasena" : "Contrasena";
   elements.authPassword.placeholder = isRecovery ? "Minimo 6 caracteres nuevos" : "Minimo 6 caracteres";
@@ -627,6 +638,36 @@ function setAuthNotice(message, variant = "info") {
     return;
   }
   elements.authNotice.textContent = message || "";
+}
+
+function updateConfirmPasswordFeedback() {
+  const message = getConfirmPasswordMessage(false);
+  renderConfirmPasswordFeedback(message);
+}
+
+function validateSignupPasswords() {
+  const message = getConfirmPasswordMessage(true);
+  renderConfirmPasswordFeedback(message);
+  return message === "Las contraseñas coinciden.";
+}
+
+function getConfirmPasswordMessage(forceRequired) {
+  if (elements.authMode.value !== "signup") return "";
+  const password = elements.authPassword.value;
+  const confirmPassword = elements.authConfirmPassword.value;
+  if (!confirmPassword) return forceRequired ? "Vuelve a escribir tu contraseña." : "";
+  if (password.length < 6) return "";
+  if (password !== confirmPassword) return "Las contraseñas no coinciden.";
+  return "Las contraseñas coinciden.";
+}
+
+function renderConfirmPasswordFeedback(message) {
+  const isSuccess = message === "Las contraseñas coinciden.";
+  const isError = Boolean(message) && !isSuccess;
+  elements.authConfirmPasswordMessage.textContent = message;
+  elements.authConfirmPasswordMessage.classList.toggle("is-valid", isSuccess);
+  elements.authConfirmPassword.classList.toggle("field-error", isError);
+  elements.authConfirmPassword.classList.toggle("field-success", isSuccess);
 }
 
 function showSignupSuccessThenLogin() {
@@ -1348,6 +1389,11 @@ async function handleRegister(event) {
   const businessName = $("#businessName").value.trim();
   const ownerName = $("#ownerName").value.trim();
   const currency = $("#currency").value;
+
+  if (mode === "signup" && !validateSignupPasswords()) {
+    elements.authConfirmPassword.focus();
+    return;
+  }
 
   if (mode === "recovery") {
     if (password.length < 6) {

@@ -26,7 +26,12 @@
           </label>
           <label id="authPasswordLabel">
             <span id="authPasswordLabelText">Contrasena</span>
-            <input id="authPassword" name="password" type="password" minlength="6" placeholder="Minimo 6 caracteres" required />
+            <input id="authPassword" name="password" type="password" minlength="6" placeholder="Minimo 6 caracteres" autocomplete="new-password" required />
+          </label>
+          <label id="authConfirmPasswordLabel">
+            Confirmar contraseña
+            <input id="authConfirmPassword" name="confirmPassword" type="password" minlength="6" placeholder="Vuelve a escribir tu contraseña" autocomplete="new-password" required />
+            <small id="authConfirmPasswordMessage" class="field-feedback" aria-live="polite"></small>
           </label>
           <button id="forgotPassword" class="text-button is-hidden" type="button">Olvide mi contrasena</button>
           <label>

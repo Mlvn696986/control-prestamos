@@ -209,6 +209,27 @@ function buildTestDashboard(operation = "all") {
   });
 }
 
+elements.authMode.value = "signup";
+elements.authPassword.value = "abcdef";
+elements.authConfirmPassword.value = "abcdef";
+assertEqual(getConfirmPasswordMessage(true), "Las contraseñas coinciden.", "Confirmar contraseña prueba 1: valores iguales deben coincidir.");
+assertEqual(validateSignupPasswords(), true, "Confirmar contraseña prueba 1: debe permitir continuar si coinciden.");
+elements.authConfirmPassword.value = "abcdeg";
+assertEqual(getConfirmPasswordMessage(true), "Las contraseñas no coinciden.", "Confirmar contraseña prueba 2: valores diferentes deben mostrar error.");
+assertEqual(validateSignupPasswords(), false, "Confirmar contraseña prueba 2: debe bloquear si no coinciden.");
+elements.authConfirmPassword.value = "";
+assertEqual(getConfirmPasswordMessage(true), "Vuelve a escribir tu contraseña.", "Confirmar contraseña prueba 3: valor vacio debe solicitar confirmacion.");
+assertEqual(validateSignupPasswords(), false, "Confirmar contraseña prueba 3: debe bloquear si esta vacio.");
+elements.authPassword.value = "abc";
+elements.authConfirmPassword.value = "abc";
+assertEqual(getConfirmPasswordMessage(true), "", "Confirmar contraseña prueba 4: password corto no debe mostrar exito.");
+assertEqual(validateSignupPasswords(), false, "Confirmar contraseña prueba 4: debe bloquear si no cumple minimo.");
+elements.authPassword.value = "abcdef";
+elements.authConfirmPassword.value = "abcdeg";
+assertEqual(validateSignupPasswords(), false, "Confirmar contraseña prueba 5: inicialmente debe bloquear si esta diferente.");
+elements.authConfirmPassword.value = "abcdef";
+assertEqual(validateSignupPasswords(), true, "Confirmar contraseña prueba 5: al corregir debe permitir continuar.");
+
 resetTestState({
   clients: [testClient("reglas")],
   loans: [
@@ -774,6 +795,12 @@ assertFileIncludes(appCode, "Registra hasta 10 clientes gratis, prueba el sistem
 assertFileIncludes(appCode, "auth-notice-premium", "Registro: la nota informativa debe activar el estilo premium.");
 assertFileIncludes(stylesCode, ".auth-notice-premium", "Registro: la nota informativa debe tener estilo premium.");
 assertFileIncludes(stylesCode, ".auth-notice-icon", "Registro: la nota informativa debe incluir un icono discreto.");
+assertFileIncludes(htmlCode, 'id="authConfirmPassword"', "Registro: debe existir el campo Confirmar contraseña.");
+assertFileIncludes(htmlCode, 'name="confirmPassword" type="password"', "Registro: Confirmar contraseña debe ser type password.");
+assertFileIncludes(htmlCode, 'placeholder="Vuelve a escribir tu contraseña" autocomplete="new-password"', "Registro: Confirmar contraseña debe tener placeholder y autocomplete correctos.");
+assertFileIncludes(appCode, "validateSignupPasswords", "Registro: debe validar coincidencia de contraseñas antes de crear cuenta.");
+assertFileIncludes(stylesCode, ".field-feedback", "Registro: el mensaje de coincidencia debe tener estilo propio.");
+assertCondition(!appCode.includes("confirmPassword:"), "Registro: Confirmar contraseña no debe enviarse a metadata ni Supabase.");
 assertFileIncludes(appCode, "business_name: businessName || \"Mi negocio\"", "Registro: el nombre del negocio debe guardarse en metadata de Auth.");
 assertFileIncludes(appCode, "metadata.business_name || metadata.businessName || \"Mi negocio\"", "Carga de perfil: debe recuperar nombre del negocio desde metadata si falta profile.");
 assertFileIncludes(cloudflareBuildCode, 'const publicDirs = ["assets"]', "Cloudflare: el build debe copiar la carpeta assets.");
