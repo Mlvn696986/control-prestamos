@@ -2097,6 +2097,12 @@ input.field-success {
   font-weight: 800;
 }
 
+.legal-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 6px;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
