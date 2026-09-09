@@ -2632,66 +2632,6 @@ input.field-success {
   margin-top: 5px;
 }
 
-.primary-button,
-.danger-button,
-.ghost-button,
-.ghost-button.danger,
-.google-auth-button,
-.info-button,
-.delete-button,
-.status-pill,
-.comparison-badge,
-.client-tab.active,
-.auth-mode.active,
-.nav-tab:hover,
-.nav-tab.active,
-.summary-compare-button.active,
-.summary-scroll-next,
-.summary-scroll-next:hover {
-  color: var(--ink);
-  background: #ffffff;
-  border: 1px solid var(--line);
-  box-shadow: 0 8px 18px rgba(6, 24, 38, 0.08);
-}
-
-.panel > .section-heading:first-child .eyebrow,
-.modal-panel > .section-heading:first-child .eyebrow,
-.metric-card span,
-.auth-notice-icon,
-.info-dot,
-.square-action span,
-.success-icon,
-.plan-card {
-  color: var(--ink);
-  background: #ffffff;
-  border: 1px solid var(--line);
-  box-shadow: 0 8px 18px rgba(6, 24, 38, 0.08);
-}
-
-.plan-card span,
-.plan-card strong,
-.plan-card small,
-.sidebar .plan-card span,
-.sidebar .plan-card strong,
-.sidebar .plan-card small {
-  color: var(--ink);
-}
-
-.primary-button:hover,
-.danger-button:hover,
-.ghost-button:hover,
-.google-auth-button:hover,
-.info-button:hover,
-.delete-button:hover,
-.client-tab.active:hover,
-.auth-mode.active:hover,
-.nav-tab:hover,
-.summary-compare-button.active:hover {
-  color: var(--ink);
-  background: #ffffff;
-  border-color: rgba(6, 24, 38, 0.24);
-}
-
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;
