@@ -291,6 +291,10 @@ h3 {
   white-space: nowrap;
 }
 
+#viewTitle {
+  margin-top: 12px;
+}
+
 .topbar-actions,
 .section-heading,
 .field-row,
