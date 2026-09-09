@@ -765,9 +765,13 @@ assertCondition(!stylesCode.includes(".summary-compact-card strong"), "Resumen: 
 assertFileIncludes(htmlCode, "<h3>Indicadores:</h3>", "Resumen: el titulo de Indicadores debe incluir dos puntos.");
 assertFileIncludes(htmlCode, "Mantén presionada una tarjeta y arrástrala para ordenar los indicadores como prefieras.", "Resumen: debe explicar como ordenar indicadores arrastrando.");
 assertFileIncludes(stylesCode, ".section-helper", "Resumen: el texto de ayuda debe tener estilo propio.");
-assertFileIncludes(htmlCode, 'src="assets/ermi-logo.png"', "Marca: el login y la barra lateral deben usar el logo ERMI.");
+assertFileIncludes(htmlCode, 'src="assets/ermif-logo.png"', "Marca: el login debe usar el logo completo ERMIF.");
+assertFileIncludes(htmlCode, 'src="assets/ermif-mark.png"', "Marca: la barra lateral debe usar el simbolo compacto ERMIF.");
+assertFileIncludes(htmlCode, '<span id="ownerLabel" class="is-hidden">Prestamista</span>', "Sidebar: Prestamista no debe mostrarse visualmente debajo del nombre del negocio.");
 assertFileIncludes(stylesCode, ".brand-logo-auth", "Marca: el logo del login debe tener estilo propio.");
 assertFileIncludes(stylesCode, ".brand-logo-sidebar", "Marca: el logo lateral debe tener estilo propio.");
+assertFileIncludes(appCode, "business_name: businessName || \"Mi negocio\"", "Registro: el nombre del negocio debe guardarse en metadata de Auth.");
+assertFileIncludes(appCode, "metadata.business_name || metadata.businessName || \"Mi negocio\"", "Carga de perfil: debe recuperar nombre del negocio desde metadata si falta profile.");
 assertFileIncludes(cloudflareBuildCode, 'const publicDirs = ["assets"]', "Cloudflare: el build debe copiar la carpeta assets.");
 assertFileIncludes(cloudflareBuildCode, "fs.cpSync", "Cloudflare: el build debe copiar assets de forma recursiva.");
 assertFileIncludes(appCode, '<span class="status-pill ok">Capital disponible</span>', "Resumen superior: la tarjeta derecha debe mostrar Capital disponible.");

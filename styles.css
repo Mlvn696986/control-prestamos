@@ -117,19 +117,29 @@ svg {
   margin: 0 auto;
 }
 
-.brand-sidebar-lockup {
-  flex-direction: column;
-  gap: 12px;
+.brand-lockup.compact.brand-sidebar-lockup {
+  align-items: center;
+  gap: 10px;
 }
 
 .brand-logo-sidebar {
-  width: 100%;
-  max-width: 210px;
-  max-height: 92px;
-  padding: 9px;
+  width: 46px;
+  height: 46px;
+  padding: 6px;
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(0, 167, 111, 0.35);
   border-radius: 8px;
+}
+
+.brand-sidebar-lockup > div {
+  min-width: 0;
+}
+
+.brand-sidebar-lockup strong {
+  max-width: 168px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .brand-lockup strong,

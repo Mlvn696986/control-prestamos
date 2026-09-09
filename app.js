@@ -717,11 +717,12 @@ async function loadCloudState() {
   if (firstError?.error) throw firstError.error;
 
   if (!profileResult.data) {
+    const metadata = saas.session.user.user_metadata || {};
     await ensureCloudAccount(userId, {
       email: saas.session.user.email,
-      businessName: saas.session.user.email || "Mi negocio",
-      ownerName: "Prestamista",
-      currency: "PEN",
+      businessName: metadata.business_name || metadata.businessName || "Mi negocio",
+      ownerName: metadata.owner_name || metadata.ownerName || "Prestamista",
+      currency: metadata.currency || "PEN",
     });
     return loadCloudState();
   }
@@ -1380,7 +1381,17 @@ async function handleRegister(event) {
       saas.session = data.session;
       await loadCloudState();
     } else {
-      const { data, error } = await saas.client.auth.signUp({ email, password });
+      const { data, error } = await saas.client.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            business_name: businessName || "Mi negocio",
+            owner_name: ownerName || "Prestamista",
+            currency,
+          },
+        },
+      });
       if (error) throw error;
       saas.session = data.session;
       if (!data.user) {
@@ -1391,7 +1402,7 @@ async function handleRegister(event) {
         showSignupSuccessThenLogin();
         return;
       }
-      await ensureCloudAccount(data.user.id, { businessName, ownerName, currency });
+      await ensureCloudAccount(data.user.id, { email, businessName, ownerName, currency });
       await saas.client.auth.signOut();
       showSignupSuccessThenLogin();
       return;
