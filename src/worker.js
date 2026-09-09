@@ -61,7 +61,6 @@ async function handleCheckout(request, env) {
     throw httpError("El plan seleccionado no esta disponible para pago automatico.", 400);
   }
 
-  const profile = await getUserProfile(env, user.id);
   const now = new Date().toISOString();
   const requestRecord = await supabaseInsert(env, "plan_requests", {
     user_id: user.id,
@@ -78,7 +77,7 @@ async function handleCheckout(request, env) {
     body: {
       reason: `ERMIF - Plan ${plan.label}`,
       external_reference: requestRecord.id,
-      payer_email: profile.email || user.email,
+      payer_email: user.email,
       back_url: `${publicBaseUrl}/?billing=return`,
       auto_recurring: {
         frequency: 1,
@@ -268,11 +267,6 @@ async function getAuthenticatedUser(request, env) {
   }
 
   return response.json();
-}
-
-async function getUserProfile(env, userId) {
-  const rows = await supabaseSelect(env, `profiles?id=eq.${encodeURIComponent(userId)}&select=email`);
-  return rows[0] || {};
 }
 
 async function supabaseSelect(env, path) {
