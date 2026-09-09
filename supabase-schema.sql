@@ -15,7 +15,11 @@ create table if not exists subscriptions (
   status text not null default 'active',
   client_limit integer default 10,
   started_at timestamptz default now(),
-  expires_at timestamptz
+  expires_at timestamptz,
+  provider text,
+  provider_subscription_id text,
+  provider_status text,
+  updated_at timestamptz default now()
 );
 
 create table if not exists clients (
@@ -77,6 +81,12 @@ create table if not exists plan_requests (
   requested_plan text not null,
   status text not null default 'pending',
   message text,
+  provider text,
+  provider_subscription_id text,
+  provider_status text,
+  checkout_url text,
+  paid_at timestamptz,
+  updated_at timestamptz default now(),
   created_at timestamptz default now()
 );
 
@@ -89,7 +99,17 @@ create table if not exists user_backups (
 
 alter table profiles add column if not exists email text;
 alter table profiles add column if not exists is_admin boolean not null default false;
+alter table subscriptions add column if not exists provider text;
+alter table subscriptions add column if not exists provider_subscription_id text;
+alter table subscriptions add column if not exists provider_status text;
+alter table subscriptions add column if not exists updated_at timestamptz default now();
 alter table subscriptions alter column client_limit drop not null;
+alter table plan_requests add column if not exists provider text;
+alter table plan_requests add column if not exists provider_subscription_id text;
+alter table plan_requests add column if not exists provider_status text;
+alter table plan_requests add column if not exists checkout_url text;
+alter table plan_requests add column if not exists paid_at timestamptz;
+alter table plan_requests add column if not exists updated_at timestamptz default now();
 alter table loans add column if not exists interest_mode text not null default 'monthly';
 alter table loans add column if not exists operation_type text;
 alter table loans add column if not exists parent_loan_id uuid references loans(id) on delete set null;
@@ -1064,6 +1084,9 @@ begin
     alter table payments add constraint payments_client_same_user foreign key (client_id, user_id) references clients(id, user_id) on delete cascade not valid;
   end if;
 end $$;
+
+create index if not exists plan_requests_provider_subscription_idx
+on plan_requests(provider, provider_subscription_id);
 
 alter table subscriptions validate constraint subscriptions_client_limit_nonnegative;
 alter table loans validate constraint loans_amount_nonnegative;

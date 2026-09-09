@@ -75,18 +75,34 @@ http://localhost:3000/index.html
 - Si las claves estan pegadas, aparece registro/login real.
 - El plan gratis permite hasta 10 clientes.
 
-## 5. Siguiente paso para vender
+## 5. Pagos automaticos con Mercado Pago
 
-Cuando esta base funcione, el siguiente paso es conectar pagos:
+El sistema ya tiene un flujo seguro para pagos automaticos:
 
-- Stripe para venta internacional.
-- Mercado Pago para Peru o Latinoamerica.
+- El cliente hace clic en **Solicitar plan**.
+- La web crea un checkout en Mercado Pago desde el Worker de Cloudflare.
+- El regreso del cliente a `ermif.com` no activa ningun plan.
+- El plan se activa solo cuando Mercado Pago confirma el pago por webhook.
 
-La tabla `subscriptions` ya esta preparada para cambiar planes y limites.
+Configura estos secretos en Cloudflare Workers:
+
+```bash
+wrangler secret put MERCADOPAGO_ACCESS_TOKEN
+wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+wrangler secret put MERCADOPAGO_WEBHOOK_SECRET
+```
+
+En Mercado Pago, configura esta URL de webhook:
+
+```text
+https://ermif.com/api/billing/mercadopago/webhook
+```
+
+En Supabase SQL Editor, ejecuta `supabase-financial-integrity.sql` para crear las columnas `provider`, `provider_subscription_id`, `provider_status`, `checkout_url` y `paid_at`.
 
 ## 6. Aprobar un plan manualmente
 
-Mientras no haya pasarela de pago, puedes cambiar un usuario de plan desde el panel **Admin** de tu web.
+Si necesitas corregir una cuenta de forma administrativa, puedes cambiar un usuario de plan desde el panel **Admin** de tu web.
 
 Tambien puedes hacerlo desde Supabase:
 
@@ -99,5 +115,3 @@ En **Table Editor > subscriptions**, edita la fila del usuario:
 Las solicitudes de los usuarios quedan en:
 
 `plan_requests`
-
-Cuando conectemos Mercado Pago o Stripe, este cambio se hara automaticamente despues del pago.

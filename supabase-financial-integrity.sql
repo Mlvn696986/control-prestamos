@@ -13,6 +13,20 @@ create table if not exists capital_movements (
   created_at timestamptz default now()
 );
 
+alter table subscriptions add column if not exists provider text;
+alter table subscriptions add column if not exists provider_subscription_id text;
+alter table subscriptions add column if not exists provider_status text;
+alter table subscriptions add column if not exists updated_at timestamptz default now();
+alter table plan_requests add column if not exists provider text;
+alter table plan_requests add column if not exists provider_subscription_id text;
+alter table plan_requests add column if not exists provider_status text;
+alter table plan_requests add column if not exists checkout_url text;
+alter table plan_requests add column if not exists paid_at timestamptz;
+alter table plan_requests add column if not exists updated_at timestamptz default now();
+
+create index if not exists plan_requests_provider_subscription_idx
+on plan_requests(provider, provider_subscription_id);
+
 alter table loans add column if not exists operation_type text;
 alter table loans add column if not exists parent_loan_id uuid;
 alter table loans alter column next_due_date drop not null;

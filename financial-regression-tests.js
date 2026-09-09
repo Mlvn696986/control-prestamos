@@ -7,6 +7,8 @@ const sqlCode = fs.readFileSync("supabase-financial-integrity.sql", "utf8");
 const schemaCode = fs.readFileSync("supabase-schema.sql", "utf8");
 const stylesCode = fs.readFileSync("styles.css", "utf8");
 const cloudflareBuildCode = fs.readFileSync("scripts/build-cloudflare.js", "utf8");
+const wranglerCode = fs.readFileSync("wrangler.jsonc", "utf8");
+const workerCode = fs.readFileSync("src/worker.js", "utf8");
 const localStorageStore = new Map();
 
 function createElement() {
@@ -854,5 +856,22 @@ assertCondition(!htmlCode.includes("summaryOperation"), "Resumen: el filtro visu
 assertFileIncludes(appCode, 'operation: "all"', "Resumen: al retirar el filtro visual, la operacion interna debe quedar en Todos.");
 assertCondition(!appCode.includes("summaryCustomStart.value = getCalendarMonthRange"), "Resumen: Desde no debe llenarse automaticamente con el mes actual.");
 assertCondition(!appCode.includes("summaryCustomEnd.value = getCalendarMonthRange"), "Resumen: Hasta no debe llenarse automaticamente con el mes actual.");
+assertFileIncludes(wranglerCode, '"main": "src/worker.js"', "Pagos: Cloudflare debe usar Worker para endpoints seguros.");
+assertFileIncludes(wranglerCode, '"binding": "ASSETS"', "Pagos: Worker debe servir los assets estaticos con binding.");
+assertFileIncludes(appCode, 'fetch("/api/billing/checkout"', "Pagos: el frontend debe iniciar checkout desde el Worker.");
+assertFileIncludes(appCode, "checkoutUrl", "Pagos: el frontend debe redirigir al enlace de Mercado Pago.");
+assertFileIncludes(workerCode, "/api/billing/mercadopago/webhook", "Pagos: falta endpoint de webhook de Mercado Pago.");
+assertFileIncludes(workerCode, "MERCADOPAGO_ACCESS_TOKEN", "Pagos: el Worker debe usar token privado de Mercado Pago.");
+assertFileIncludes(workerCode, "SUPABASE_SERVICE_ROLE_KEY", "Pagos: el Worker debe activar planes con service role, no desde navegador.");
+assertFileIncludes(workerCode, "verifyMercadoPagoSignature", "Pagos: el webhook debe poder validar la firma de Mercado Pago.");
+assertFileIncludes(workerCode, "/v1/payments/", "Pagos: el webhook debe consultar el pago confirmado a Mercado Pago.");
+assertFileIncludes(workerCode, "APPROVED_PAYMENT_STATUSES", "Pagos: solo estados aprobados deben activar plan.");
+assertFileIncludes(workerCode, 'status: "active"', "Pagos: el plan se activa desde el webhook.");
+assertFileIncludes(workerCode, "client_limit: plan.clientLimit", "Pagos: el webhook debe aplicar el limite del plan.");
+assertFileIncludes(workerCode, "external_reference", "Pagos: Mercado Pago debe guardar referencia de la solicitud.");
+assertFileIncludes(workerCode, "back_url", "Pagos: el regreso desde Mercado Pago no debe activar plan.");
+assertFileIncludes(sqlCode, "provider_subscription_id", "Pagos: SQL debe guardar el ID de suscripcion/pago del proveedor.");
+assertFileIncludes(sqlCode, "plan_requests_provider_subscription_idx", "Pagos: SQL debe indexar busqueda de webhook por proveedor.");
+assertFileIncludes(schemaCode, "provider_status text", "Pagos: esquema base debe incluir estado del proveedor.");
 
 console.log("Pruebas financieras OK");

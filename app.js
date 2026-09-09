@@ -1133,6 +1133,35 @@ async function createPlanRequest(requestedPlan, message) {
   if (error) throw error;
 }
 
+async function createPlanCheckout(requestedPlan, message) {
+  if (!isCloudMode()) {
+    throw new Error("Debes iniciar sesion para solicitar un plan.");
+  }
+
+  const response = await fetch("/api/billing/checkout", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${saas.session.access_token}`,
+    },
+    body: JSON.stringify({
+      planId: requestedPlan,
+      message,
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || "No se pudo iniciar el pago.");
+  }
+
+  if (!data.checkoutUrl) {
+    throw new Error("No se recibio el enlace de pago.");
+  }
+
+  return data.checkoutUrl;
+}
+
 async function reloadAfterCloudError() {
   if (!isCloudMode()) return;
   await loadCloudState();
@@ -4770,7 +4799,7 @@ function openPlanRequestDialog(planId) {
 
   elements.requestedPlan.value = plan.id;
   elements.planRequestTitle.textContent = `Solicitar plan ${plan.label}`;
-  elements.planRequestSummary.textContent = `${plan.label}: ${plan.price}/mes. Limite: ${getClientLimitLabel(plan)} clientes.`;
+  elements.planRequestSummary.textContent = `${plan.label}: ${plan.price}/mes. Paga con Mercado Pago y tu plan se activara cuando el pago sea confirmado.`;
   elements.planRequestMessage.value = `Quiero activar el plan ${plan.label} para mi cuenta.`;
   elements.planRequestDialog.showModal();
 }
@@ -4782,11 +4811,11 @@ async function handlePlanRequestSubmit(event) {
   if (!plan) return;
 
   try {
-    await createPlanRequest(requestedPlan, elements.planRequestMessage.value.trim());
+    const checkoutUrl = await createPlanCheckout(requestedPlan, elements.planRequestMessage.value.trim());
     elements.planRequestDialog.close();
-    window.alert("Solicitud enviada. Luego podras conectar pagos para activar planes automaticamente.");
+    window.location.href = checkoutUrl;
   } catch (error) {
-    window.alert(error.message || "No se pudo enviar la solicitud del plan.");
+    window.alert(error.message || "No se pudo iniciar el pago del plan.");
   }
 }
 
