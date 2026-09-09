@@ -368,7 +368,7 @@ async function verifyMercadoPagoSignature(request, url, body, secret) {
     return false;
   }
 
-  const manifest = `id:${dataId};request-id:${requestId};ts:${timestamp};`;
+  const manifest = `id:${String(dataId).toLowerCase()};request-id:${requestId};ts:${timestamp};`;
   const expected = await hmacSha256Hex(secret, manifest);
   return timingSafeEqual(expected, signature);
 }
@@ -392,6 +392,7 @@ function timingSafeEqual(a, b) {
 function getWebhookResourceId(url, body) {
   return (
     url.searchParams.get("data.id") ||
+    url.searchParams.get("data_id") ||
     url.searchParams.get("id") ||
     body?.data?.id ||
     body?.resource?.id ||
