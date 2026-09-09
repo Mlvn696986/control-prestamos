@@ -191,6 +191,7 @@ const elements = {
   requestedPlan: $("#requestedPlan"),
   planRequestSummary: $("#planRequestSummary"),
   planRequestMessage: $("#planRequestMessage"),
+  planTermsAccept: $("#planTermsAccept"),
   summaryHeroMeta: $("#summaryHeroMeta"),
   summaryHealth: $("#summaryHealth"),
   summaryCustomStart: $("#summaryCustomStart"),
@@ -4801,6 +4802,7 @@ function openPlanRequestDialog(planId) {
   elements.planRequestTitle.textContent = `Solicitar plan ${plan.label}`;
   elements.planRequestSummary.textContent = `${plan.label}: ${plan.price}/mes. Paga con Mercado Pago y tu plan se activara cuando el pago sea confirmado.`;
   elements.planRequestMessage.value = `Quiero activar el plan ${plan.label} para mi cuenta.`;
+  elements.planTermsAccept.checked = false;
   elements.planRequestDialog.showModal();
 }
 
@@ -4809,6 +4811,11 @@ async function handlePlanRequestSubmit(event) {
   const requestedPlan = elements.requestedPlan.value;
   const plan = PLAN_CATALOG[requestedPlan];
   if (!plan) return;
+
+  if (!elements.planTermsAccept.checked) {
+    window.alert("Debes aceptar los terminos y el cobro mensual para continuar.");
+    return;
+  }
 
   try {
     const checkoutUrl = await createPlanCheckout(requestedPlan, elements.planRequestMessage.value.trim());

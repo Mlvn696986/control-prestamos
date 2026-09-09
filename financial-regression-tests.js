@@ -873,6 +873,10 @@ assertFileIncludes(workerCode, 'status: "active"', "Pagos: el plan se activa des
 assertFileIncludes(workerCode, "client_limit: plan.clientLimit", "Pagos: el webhook debe aplicar el limite del plan.");
 assertFileIncludes(workerCode, "external_reference", "Pagos: Mercado Pago debe guardar referencia de la solicitud.");
 assertFileIncludes(workerCode, "back_url", "Pagos: el regreso desde Mercado Pago no debe activar plan.");
+assertFileIncludes(htmlCode, 'id="planTermsAccept"', "Pagos: debe existir casilla para aceptar terminos antes del checkout.");
+assertFileIncludes(htmlCode, "Acepto los terminos de uso", "Pagos: el modal debe mostrar aceptacion de terminos y cobro mensual.");
+assertFileIncludes(appCode, "Debes aceptar los terminos y el cobro mensual", "Pagos: debe bloquear checkout si no se aceptan terminos.");
+assertFileIncludes(stylesCode, ".billing-terms-note", "Pagos: la nota legal de suscripcion debe tener estilo propio.");
 assertFileIncludes(sqlCode, "provider_subscription_id", "Pagos: SQL debe guardar el ID de suscripcion/pago del proveedor.");
 assertFileIncludes(sqlCode, "plan_requests_provider_subscription_idx", "Pagos: SQL debe indexar busqueda de webhook por proveedor.");
 assertFileIncludes(sqlCode, "grant select, insert, update, delete on plan_requests to service_role", "Pagos: service_role debe poder escribir plan_requests desde el Worker.");

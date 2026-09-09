@@ -766,6 +766,15 @@
         </div>
         <input id="requestedPlan" type="hidden" />
         <div id="planRequestSummary" class="payment-summary"></div>
+        <div class="billing-terms-note">
+          <p>
+            Tus pagos se procesan de forma segura con Mercado Pago. Al continuar, aceptas el cobro mensual del plan seleccionado y confirmas que puedes cancelar tu suscripcion cuando quieras.
+          </p>
+          <label class="billing-terms-check">
+            <input id="planTermsAccept" type="checkbox" required />
+            <span>Acepto los terminos de uso, la politica de privacidad y el cobro mensual de mi suscripcion.</span>
+          </label>
+        </div>
         <label>
           Mensaje
           <textarea id="planRequestMessage" rows="3" placeholder="Quiero activar este plan para mi cuenta."></textarea>
