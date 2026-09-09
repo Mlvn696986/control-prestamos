@@ -727,6 +727,15 @@ input.field-success {
   border-color: rgba(255, 176, 0, 0.36);
 }
 
+.sidebar #resetDemo {
+  color: var(--ink);
+  background: #ffffff;
+}
+
+.sidebar .plan-card strong {
+  color: #ffffff;
+}
+
 .ghost-button:hover {
   border-color: var(--accent);
   color: var(--accent);
