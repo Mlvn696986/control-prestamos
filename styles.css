@@ -498,6 +498,41 @@ h3 {
   line-height: 1.35;
 }
 
+.legal-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: rgba(6, 24, 38, 0.78);
+  font-size: 0.86rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.legal-check input {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  accent-color: var(--accent);
+}
+
+.inline-link {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  color: var(--accent-strong);
+  background: transparent;
+  font: inherit;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.inline-link:hover {
+  color: var(--ink);
+}
+
 .google-auth-button {
   display: inline-flex;
   align-items: center;
@@ -2030,6 +2065,36 @@ input.field-success {
   height: 17px;
   margin-top: 1px;
   accent-color: var(--accent);
+}
+
+.legal-panel {
+  width: min(92vw, 760px);
+  max-height: min(86vh, 820px);
+  overflow: auto;
+}
+
+.legal-copy {
+  display: grid;
+  gap: 11px;
+  color: rgba(6, 24, 38, 0.78);
+  font-size: 0.93rem;
+  line-height: 1.45;
+}
+
+.legal-copy h4 {
+  margin: 8px 0 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.legal-copy p {
+  margin: 0;
+}
+
+.legal-date {
+  padding-top: 6px;
+  color: var(--muted);
+  font-weight: 800;
 }
 
 .status-pill {

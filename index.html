@@ -61,6 +61,14 @@
             </select>
           </label>
           <input id="authMode" type="hidden" value="signup" />
+          <label id="authTermsLabel" class="legal-check">
+            <input id="authTermsAccept" type="checkbox" required />
+            <span>
+              Acepto los
+              <button class="inline-link" type="button" data-open-terms>Terminos y Condiciones</button>
+              de ERMIF.
+            </span>
+          </label>
           <button class="primary-button" type="submit">
             <span id="authSubmitText">Crear mi plataforma</span>
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -772,7 +780,11 @@
           </p>
           <label class="billing-terms-check">
             <input id="planTermsAccept" type="checkbox" required />
-            <span>Acepto los terminos de uso, la politica de privacidad y el cobro mensual de mi suscripcion.</span>
+            <span>
+              Acepto los
+              <button class="inline-link" type="button" data-open-terms>Terminos y Condiciones</button>
+              y el cobro mensual de mi suscripcion.
+            </span>
           </label>
         </div>
         <label>
@@ -878,6 +890,60 @@
           <p class="eyebrow">Cuenta creada</p>
           <h3>Muchas gracias</h3>
           <p>Tu cuenta fue creada con exito.</p>
+        </div>
+      </section>
+    </dialog>
+
+    <dialog id="termsDialog" class="modal">
+      <section class="modal-panel legal-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Documento legal</p>
+            <h3>Terminos y Condiciones</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+
+        <div class="legal-copy">
+          <p><strong>Nombre comercial:</strong> ERMIF</p>
+          <p><strong>Titular:</strong> HOYOS BUENO MELVIN</p>
+          <p><strong>RUC:</strong> 10735063818</p>
+          <p><strong>Domicilio fiscal:</strong> Mz. E Lote 33 Urb. Tres Orizontes, San Martin de Porres, Lima, Lima.</p>
+          <p><strong>Correo de soporte:</strong> MLVN696986@GMAIL.COM</p>
+
+          <h4>1. Servicio</h4>
+          <p>ERMIF es una plataforma digital de gestion inteligente de prestamos que permite registrar clientes, prestamos, ampliaciones, cobros, capital, indicadores y respaldos de informacion.</p>
+
+          <h4>2. Cuenta de usuario</h4>
+          <p>El usuario es responsable de registrar informacion verdadera, mantener segura su cuenta y usar el sistema conforme a la ley peruana. ERMIF puede limitar o suspender cuentas ante uso indebido, fraude o incumplimiento de estos terminos.</p>
+
+          <h4>3. Planes y limites</h4>
+          <p>El plan Gratis permite registrar hasta 10 clientes. El plan Basico permite hasta 50 clientes. El plan Pro permite clientes ilimitados, sujeto al uso razonable del servicio y a la disponibilidad tecnica de la plataforma.</p>
+
+          <h4>4. Pagos y suscripciones</h4>
+          <p>Los planes de pago se cobran de forma mensual mediante Mercado Pago u otro proveedor habilitado. El plan se activa solo cuando el proveedor de pago confirme la transaccion. Los precios pueden incluir impuestos aplicables segun la normativa tributaria vigente.</p>
+
+          <h4>5. Reembolsos y cancelaciones</h4>
+          <p>El usuario puede solicitar reembolso hasta 29 dias calendario despues de adquirir su plan. Pasado ese plazo, los meses posteriores no seran reembolsables. La cancelacion evita renovaciones futuras, pero no genera devolucion automatica de periodos ya vencidos.</p>
+
+          <h4>6. Soporte</h4>
+          <p>El horario de soporte es de 8:00 a. m. a 6:00 p. m. Las consultas se atienden por el correo de soporte indicado, segun disponibilidad operativa.</p>
+
+          <h4>7. Datos e informacion del usuario</h4>
+          <p>El usuario conserva la responsabilidad sobre los datos que registra en la plataforma. ERMIF aplica medidas razonables de seguridad, pero el usuario debe cuidar sus credenciales y verificar la exactitud de su informacion financiera.</p>
+
+          <h4>8. Responsabilidad</h4>
+          <p>ERMIF es una herramienta de gestion. No otorga prestamos, no actua como entidad financiera y no reemplaza asesoria legal, contable o tributaria. El usuario es responsable de sus operaciones comerciales, tributarias y contractuales.</p>
+
+          <h4>9. Libro de Reclamaciones</h4>
+          <p>Los usuarios pueden presentar quejas o reclamos mediante el canal de Libro de Reclamaciones que ERMIF habilite en la plataforma o por el correo de soporte mientras se implementa el formulario virtual.</p>
+
+          <h4>10. Legislacion aplicable</h4>
+          <p>Estos terminos se rigen por las leyes de la Republica del Peru. Cualquier controversia sera atendida conforme a la normativa peruana aplicable.</p>
+
+          <p class="legal-date">Ultima actualizacion: 09 de septiembre de 2026.</p>
         </div>
       </section>
     </dialog>

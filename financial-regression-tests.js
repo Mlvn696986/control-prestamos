@@ -874,9 +874,17 @@ assertFileIncludes(workerCode, "client_limit: plan.clientLimit", "Pagos: el webh
 assertFileIncludes(workerCode, "external_reference", "Pagos: Mercado Pago debe guardar referencia de la solicitud.");
 assertFileIncludes(workerCode, "back_url", "Pagos: el regreso desde Mercado Pago no debe activar plan.");
 assertFileIncludes(htmlCode, 'id="planTermsAccept"', "Pagos: debe existir casilla para aceptar terminos antes del checkout.");
-assertFileIncludes(htmlCode, "Acepto los terminos de uso", "Pagos: el modal debe mostrar aceptacion de terminos y cobro mensual.");
+assertFileIncludes(htmlCode, "el cobro mensual de mi suscripcion", "Pagos: el modal debe mostrar aceptacion de terminos y cobro mensual.");
 assertFileIncludes(appCode, "Debes aceptar los terminos y el cobro mensual", "Pagos: debe bloquear checkout si no se aceptan terminos.");
 assertFileIncludes(stylesCode, ".billing-terms-note", "Pagos: la nota legal de suscripcion debe tener estilo propio.");
+assertFileIncludes(htmlCode, 'id="termsDialog"', "Legal: debe existir modal de Terminos y Condiciones.");
+assertFileIncludes(htmlCode, "HOYOS BUENO MELVIN", "Legal: los terminos deben incluir titular legal.");
+assertFileIncludes(htmlCode, "10735063818", "Legal: los terminos deben incluir RUC correcto.");
+assertFileIncludes(htmlCode, "MLVN696986@GMAIL.COM", "Legal: los terminos deben incluir correo de soporte.");
+assertFileIncludes(htmlCode, "hasta 29 dias calendario", "Legal: los terminos deben reflejar la politica de reembolso.");
+assertFileIncludes(htmlCode, 'id="authTermsAccept"', "Legal: registro debe pedir aceptacion de terminos.");
+assertFileIncludes(appCode, "Debes aceptar los Terminos y Condiciones", "Legal: registro debe bloquear si no acepta terminos.");
+assertFileIncludes(stylesCode, ".legal-panel", "Legal: el documento debe tener estilo propio.");
 assertFileIncludes(sqlCode, "provider_subscription_id", "Pagos: SQL debe guardar el ID de suscripcion/pago del proveedor.");
 assertFileIncludes(sqlCode, "plan_requests_provider_subscription_idx", "Pagos: SQL debe indexar busqueda de webhook por proveedor.");
 assertFileIncludes(sqlCode, "grant select, insert, update, delete on plan_requests to service_role", "Pagos: service_role debe poder escribir plan_requests desde el Worker.");

@@ -99,6 +99,8 @@ const elements = {
   authMode: $("#authMode"),
   authNotice: $("#authNotice"),
   authPasswordLabelText: $("#authPasswordLabelText"),
+  authTermsLabel: $("#authTermsLabel"),
+  authTermsAccept: $("#authTermsAccept"),
   authSubmitText: $("#authSubmitText"),
   googleAuthButton: $("#googleAuthButton"),
   googleAuthText: $("#googleAuthText"),
@@ -118,6 +120,7 @@ const elements = {
   passwordSuccessDialog: $("#passwordSuccessDialog"),
   passwordSuccessClose: $("#passwordSuccessClose"),
   signupSuccessDialog: $("#signupSuccessDialog"),
+  termsDialog: $("#termsDialog"),
   showSignup: $("#showSignup"),
   showLogin: $("#showLogin"),
   businessLabel: $("#businessLabel"),
@@ -303,6 +306,9 @@ function bindEvents() {
   elements.forgotPassword.addEventListener("click", handleForgotPassword);
   elements.forgotPasswordForm.addEventListener("submit", handleForgotPasswordSubmit);
   elements.passwordSuccessClose.addEventListener("click", () => elements.passwordSuccessDialog.close());
+  $$("[data-open-terms]").forEach((button) => {
+    button.addEventListener("click", () => elements.termsDialog.showModal());
+  });
   elements.adminRefresh.addEventListener("click", refreshAdminPanel);
   elements.adminIntegrityCheck.addEventListener("click", openIntegrityDialog);
   elements.interestInfoButton.addEventListener("click", () => elements.interestInfoDialog.showModal());
@@ -636,11 +642,14 @@ function setAuthMode(mode) {
   $("#ownerName").closest("label").classList.toggle("is-hidden", isLogin || isRecovery);
   $("#currency").closest("label").classList.toggle("is-hidden", isLogin || isRecovery);
   elements.authConfirmPasswordLabel.classList.toggle("is-hidden", isLogin || isRecovery);
+  elements.authTermsLabel.classList.toggle("is-hidden", isLogin || isRecovery);
   $("#businessName").required = !isLogin && !isRecovery;
   $("#ownerName").required = !isLogin && !isRecovery;
   elements.authConfirmPassword.required = !isLogin && !isRecovery;
+  elements.authTermsAccept.required = !isLogin && !isRecovery;
   if (isLogin || isRecovery) {
     elements.authConfirmPassword.value = "";
+    elements.authTermsAccept.checked = false;
   }
   updateConfirmPasswordFeedback();
   elements.forgotPassword.classList.toggle("is-hidden", !isLogin);
@@ -1553,6 +1562,12 @@ async function handleRegister(event) {
 
   if (mode === "signup" && !validateSignupPasswords()) {
     elements.authConfirmPassword.focus();
+    return;
+  }
+
+  if (mode === "signup" && !elements.authTermsAccept.checked) {
+    setAuthNotice("Debes aceptar los Terminos y Condiciones para crear tu cuenta.");
+    elements.authTermsAccept.focus();
     return;
   }
 
