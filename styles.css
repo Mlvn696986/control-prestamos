@@ -204,7 +204,7 @@ h3 {
 }
 
 .eyebrow {
-  color: var(--gold);
+  color: var(--ink);
   font-size: 0.82rem;
   font-weight: 800;
   letter-spacing: 0;
@@ -749,7 +749,7 @@ input.field-success {
 
 .delete-button {
   padding: 0 10px;
-  color: #7a4f00;
+  color: var(--ink);
   background: rgba(255, 176, 0, 0.1);
   border: 1px solid rgba(255, 176, 0, 0.45);
 }
@@ -849,7 +849,7 @@ input.field-success {
 .ghost-button.danger {
   width: 100%;
   margin-top: 26px;
-  color: var(--danger);
+  color: var(--ink);
   background: rgba(255, 176, 0, 0.08);
 }
 
@@ -903,7 +903,7 @@ input.field-success {
 }
 
 .plan-card strong {
-  color: var(--gold);
+  color: var(--ink);
   font-size: 1rem;
 }
 
@@ -2002,12 +2002,12 @@ input.field-success {
 }
 
 .status-pill.warn {
-  color: #7a5200;
+  color: var(--ink);
   background: var(--warn-soft);
 }
 
 .status-pill.danger {
-  color: var(--danger);
+  color: var(--ink);
   background: var(--danger-soft);
 }
 
