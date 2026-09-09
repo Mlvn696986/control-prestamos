@@ -629,7 +629,7 @@ function setAuthMode(mode) {
   elements.authPassword.placeholder = isRecovery ? "Minimo 6 caracteres nuevos" : "Minimo 6 caracteres";
   elements.authSubmitText.textContent = isRecovery ? "Guardar nueva contrasena" : isLogin ? "Iniciar sesion" : "Crear mi plataforma";
   elements.googleAuthButton.classList.toggle("is-hidden", isRecovery);
-  elements.googleAuthText.textContent = isLogin ? "Iniciar sesion con Google" : "Crear cuenta con Google";
+  elements.googleAuthText.textContent = "Continuar con Google";
   setAuthNotice(
     isRecovery
       ? "Escribe tu nueva contrasena para recuperar el acceso."

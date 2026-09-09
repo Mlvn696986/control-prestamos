@@ -498,32 +498,35 @@ h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 0 14px;
-  color: var(--ink);
-  background: #ffffff;
-  border: 1px solid rgba(6, 24, 38, 0.16);
-  border-radius: 8px;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 18px;
+  color: #ffffff;
+  background: #24242b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   font-weight: 900;
-  box-shadow: 0 8px 22px rgba(6, 24, 38, 0.06);
+  box-shadow: 0 12px 28px rgba(6, 24, 38, 0.12);
 }
 
 .google-auth-button:hover {
-  border-color: rgba(0, 167, 111, 0.42);
-  color: var(--accent-strong);
+  color: #ffffff;
+  background: #1f2026;
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .google-auth-icon {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  color: #ffffff;
-  background: #4285f4;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 900;
+  width: 18px;
+  height: 18px;
+}
+
+.google-auth-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .modal-actions {
