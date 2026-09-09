@@ -403,6 +403,61 @@ create trigger trg_enforce_loan_financial_rules
 before insert or update on loans
 for each row execute function public.enforce_loan_financial_rules();
 
+create or replace function public.enforce_client_plan_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_client_limit integer;
+  v_current_clients integer;
+begin
+  if current_setting('app.restoring_snapshot', true) = 'on' then
+    return new;
+  end if;
+
+  if new.user_id is null or (new.user_id <> auth.uid() and not public.is_admin()) then
+    raise exception 'Usuario no autorizado.';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext(new.user_id::text)::bigint);
+
+  select subscriptions.client_limit
+  into v_client_limit
+  from subscriptions
+  where subscriptions.user_id = new.user_id
+    and subscriptions.status = 'active'
+  order by subscriptions.started_at desc nulls last
+  limit 1
+  for update;
+
+  if not found then
+    v_client_limit := 10;
+  end if;
+
+  if v_client_limit is null then
+    return new;
+  end if;
+
+  select count(*)
+  into v_current_clients
+  from clients
+  where clients.user_id = new.user_id;
+
+  if v_current_clients >= v_client_limit then
+    raise exception 'Tu plan permite hasta % clientes. Actualiza tu plan para registrar mas.', v_client_limit;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_enforce_client_plan_limit on clients;
+create trigger trg_enforce_client_plan_limit
+before insert on clients
+for each row execute function public.enforce_client_plan_limit();
+
 create or replace function public.create_client_with_loan(
   p_client_id uuid,
   p_name text,

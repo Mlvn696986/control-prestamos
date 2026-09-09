@@ -93,7 +93,7 @@ Tambien puedes hacerlo desde Supabase:
 En **Table Editor > subscriptions**, edita la fila del usuario:
 
 - Gratis: `plan = free`, `client_limit = 10`
-- Basico: `plan = basic`, `client_limit = 100`
+- Basico: `plan = basic`, `client_limit = 50`
 - Pro: `plan = pro`, `client_limit = null`
 
 Las solicitudes de los usuarios quedan en:

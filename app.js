@@ -33,10 +33,10 @@ const PLAN_CATALOG = {
     id: "basic",
     label: "Basico",
     price: "S/ 29",
-    clientLimit: 100,
+    clientLimit: 50,
     description: "Para prestamistas que ya trabajan con una cartera activa.",
     features: [
-      "Hasta 100 clientes",
+      "Hasta 50 clientes",
       "Registro de prestamos y ampliaciones",
       "Control de cobros e historial",
       "Resumen con indicadores de cartera",

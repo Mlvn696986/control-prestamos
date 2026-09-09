@@ -230,6 +230,15 @@ assertEqual(validateSignupPasswords(), false, "Confirmar contraseña prueba 5: i
 elements.authConfirmPassword.value = "abcdef";
 assertEqual(validateSignupPasswords(), true, "Confirmar contraseña prueba 5: al corregir debe permitir continuar.");
 
+assertEqual(PLAN_CATALOG.free.clientLimit, 10, "Planes: Gratis debe limitar a 10 clientes.");
+assertEqual(PLAN_CATALOG.basic.clientLimit, 50, "Planes: Basico debe limitar a 50 clientes.");
+assertEqual(PLAN_CATALOG.pro.clientLimit, null, "Planes: Pro debe permitir clientes ilimitados.");
+assertEqual(PLAN_CATALOG.free.features.length, 5, "Planes: Gratis debe mostrar 5 puntos.");
+assertEqual(PLAN_CATALOG.basic.features.length, 5, "Planes: Basico debe mostrar 5 puntos.");
+assertEqual(PLAN_CATALOG.pro.features.length, 5, "Planes: Pro debe mostrar 5 puntos.");
+assertEqual(PLAN_CATALOG.free.features.slice(1).join("|"), PLAN_CATALOG.basic.features.slice(1).join("|"), "Planes: los beneficios de Gratis y Basico deben coincidir excepto cantidad de clientes.");
+assertEqual(PLAN_CATALOG.basic.features.slice(1).join("|"), PLAN_CATALOG.pro.features.slice(1).join("|"), "Planes: los beneficios de Basico y Pro deben coincidir excepto cantidad de clientes.");
+
 resetTestState({
   clients: [testClient("reglas")],
   loans: [
@@ -756,6 +765,14 @@ assertFileIncludes(sqlCode, "Este periodo ya fue cobrado o el prestamo ya avanzo
 assertFileIncludes(sqlCode, "next_due_date = case when v_new_remaining = 0 then null else v_next_due end", "Test 9: RPC debe dejar next_due_date null al cerrar.");
 assertFileIncludes(sqlCode, "calculate_available_capital", "Test 8: servidor debe validar capital disponible desde una funcion central.");
 assertCondition(!sqlCode.includes("El cliente supera el limite de S/1,000"), "Regla actual: servidor no debe bloquear por limite S/1,000 por cliente.");
+assertFileIncludes(sqlCode, "create or replace function public.enforce_client_plan_limit", "Planes: servidor debe validar limite de clientes por plan.");
+assertFileIncludes(sqlCode, "create trigger trg_enforce_client_plan_limit", "Planes: falta trigger servidor para bloquear exceso de clientes.");
+assertFileIncludes(sqlCode, "v_current_clients >= v_client_limit", "Planes: el trigger debe bloquear cuando llega al limite de clientes.");
+assertFileIncludes(sqlCode, "pg_advisory_xact_lock", "Planes: el limite de clientes debe protegerse contra doble registro simultaneo.");
+assertFileIncludes(schemaCode, "create or replace function public.enforce_client_plan_limit", "Esquema base debe incluir validacion servidor de limite de clientes.");
+assertFileIncludes(schemaCode, "create trigger trg_enforce_client_plan_limit", "Esquema base debe incluir trigger servidor de limite de clientes.");
+assertCondition(!appCode.includes("clientLimit: 100"), "Planes: Basico ya no debe quedar configurado en 100 clientes.");
+assertCondition(!appCode.includes("Hasta 100 clientes"), "Planes: el texto de Basico ya no debe decir 100 clientes.");
 assertFileIncludes(sqlCode, "loans_amount_nonnegative", "Prueba G: falta constraint de monto de prestamo no negativo.");
 assertFileIncludes(sqlCode, "payments_capital_paid_nonnegative", "Prueba G: falta constraint de capital pagado no negativo.");
 assertFileIncludes(sqlCode, "payments_interest_paid_nonnegative", "Prueba G: falta constraint de interes pagado no negativo.");
