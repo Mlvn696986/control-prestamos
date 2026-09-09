@@ -6,6 +6,7 @@ const htmlCode = fs.readFileSync("index.html", "utf8");
 const sqlCode = fs.readFileSync("supabase-financial-integrity.sql", "utf8");
 const schemaCode = fs.readFileSync("supabase-schema.sql", "utf8");
 const stylesCode = fs.readFileSync("styles.css", "utf8");
+const cloudflareBuildCode = fs.readFileSync("scripts/build-cloudflare.js", "utf8");
 const localStorageStore = new Map();
 
 function createElement() {
@@ -767,6 +768,8 @@ assertFileIncludes(stylesCode, ".section-helper", "Resumen: el texto de ayuda de
 assertFileIncludes(htmlCode, 'src="assets/ermi-logo.png"', "Marca: el login y la barra lateral deben usar el logo ERMI.");
 assertFileIncludes(stylesCode, ".brand-logo-auth", "Marca: el logo del login debe tener estilo propio.");
 assertFileIncludes(stylesCode, ".brand-logo-sidebar", "Marca: el logo lateral debe tener estilo propio.");
+assertFileIncludes(cloudflareBuildCode, 'const publicDirs = ["assets"]', "Cloudflare: el build debe copiar la carpeta assets.");
+assertFileIncludes(cloudflareBuildCode, "fs.cpSync", "Cloudflare: el build debe copiar assets de forma recursiva.");
 assertFileIncludes(appCode, '<span class="status-pill ok">Capital disponible</span>', "Resumen superior: la tarjeta derecha debe mostrar Capital disponible.");
 assertFileIncludes(appCode, "<strong>${money(dashboard.metrics.availableCapital)}</strong>", "Resumen superior: la tarjeta derecha debe usar capital disponible.");
 assertFileIncludes(appCode, "<small>Monto que debe figurar en tu tarjeta</small>", "Resumen superior: el mensaje bajo el valor debe ser el texto solicitado.");
