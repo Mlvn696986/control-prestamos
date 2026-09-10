@@ -3,6 +3,8 @@ const BACKUP_STORAGE_KEY = "prestamos-control-backups-v1";
 const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const MAX_BACKUPS = 7;
 const FREE_CLIENT_LIMIT = 10;
+const CANONICAL_APP_ORIGIN = "https://ermif.com";
+const LEGACY_APP_HOSTS = new Set(["reliable-kleicha-4c46be.netlify.app"]);
 const INDICATOR_ORDER_STORAGE_KEY = "prestamos-dashboard-indicator-order-v1";
 const OPERATION_TYPES = {
   principal: "principal",
@@ -271,8 +273,23 @@ const icons = {
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>',
 };
 
-if (!window.__PRESTAMOS_TEST__) {
+if (!window.__PRESTAMOS_TEST__ && !redirectLegacyHost()) {
   init();
+}
+
+function redirectLegacyHost() {
+  if (window.location.protocol !== "http:" && window.location.protocol !== "https:") {
+    return false;
+  }
+
+  const host = window.location.hostname.toLowerCase();
+  if (!LEGACY_APP_HOSTS.has(host) && !host.endsWith(".netlify.app")) {
+    return false;
+  }
+
+  const targetUrl = `${CANONICAL_APP_ORIGIN}${window.location.pathname}${window.location.search}${window.location.hash}`;
+  window.location.replace(targetUrl);
+  return true;
 }
 
 async function init() {

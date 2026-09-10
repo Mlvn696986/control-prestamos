@@ -837,6 +837,10 @@ assertFileIncludes(appCode, "business_name: businessName || \"Mi negocio\"", "Re
 assertFileIncludes(appCode, "metadata.business_name || metadata.businessName || \"\"", "Carga de perfil: debe recuperar nombre del negocio desde metadata si falta profile.");
 assertFileIncludes(cloudflareBuildCode, 'const publicDirs = ["assets"]', "Cloudflare: el build debe copiar la carpeta assets.");
 assertFileIncludes(cloudflareBuildCode, "fs.cpSync", "Cloudflare: el build debe copiar assets de forma recursiva.");
+assertFileIncludes(appCode, 'CANONICAL_APP_ORIGIN = "https://ermif.com"', "Dominio: la app debe tener ermif.com como origen canonico.");
+assertFileIncludes(appCode, "redirectLegacyHost", "Dominio: la app debe redirigir hosts antiguos al dominio canonico.");
+assertFileIncludes(appCode, "reliable-kleicha-4c46be.netlify.app", "Dominio: debe cubrir el antiguo despliegue de Netlify.");
+assertFileIncludes(appCode, 'host.endsWith(".netlify.app")', "Dominio: cualquier host Netlify heredado debe salir hacia ermif.com.");
 assertFileIncludes(appCode, '<span class="status-pill ok">Capital disponible</span>', "Resumen superior: la tarjeta derecha debe mostrar Capital disponible.");
 assertFileIncludes(appCode, "<strong>${money(dashboard.metrics.availableCapital)}</strong>", "Resumen superior: la tarjeta derecha debe usar capital disponible.");
 assertFileIncludes(appCode, "<small>Monto que debe figurar en tu tarjeta</small>", "Resumen superior: el mensaje bajo el valor debe ser el texto solicitado.");
