@@ -338,22 +338,32 @@ h3 {
   margin-bottom: 6px;
 }
 
-.topbar > div:first-child {
+.topbar-meta {
   flex: 0 0 auto;
 }
 
-#todayLabel {
-  display: block;
+.topbar-date-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: max-content;
   min-width: max-content;
-  font-size: 1.25rem;
+  min-height: 38px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 167, 111, 0.28);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 8px 22px rgba(6, 24, 38, 0.08);
+  color: var(--ink);
+  font-size: 0.95rem;
   font-weight: 900;
-  line-height: 1.15;
+  line-height: 1;
   white-space: nowrap;
 }
 
 #viewTitle {
-  margin-top: 12px;
+  margin: 0;
 }
 
 .topbar-actions,

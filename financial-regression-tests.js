@@ -847,6 +847,10 @@ assertFileIncludes(appCode, "elements.exportExcelButton?.addEventListener", "Top
 assertFileIncludes(appCode, 'dataMenu: $(".data-menu")', "Topbar: JS debe tener referencia al menu Seguridad de datos.");
 assertFileIncludes(appCode, '!event.target.closest(".data-menu")', "Topbar: Seguridad de datos debe cerrarse al hacer clic fuera del menu.");
 assertFileIncludes(appCode, 'elements.dataMenu.removeAttribute("open")', "Topbar: el clic externo debe cerrar el menu Seguridad de datos.");
+assertFileIncludes(htmlCode, 'class="topbar-date-pill" id="todayLabel"', "Topbar: la fecha debe mostrarse como una capsula tipo boton.");
+assertFileIncludes(htmlCode, '<h2 id="viewTitle" class="sr-only">Resumen</h2>', "Topbar: el titulo de vista debe quedar oculto visualmente.");
+assertFileIncludes(appCode, "formatTopbarDate", "Topbar: la fecha debe usar un formato propio.");
+assertFileIncludes(appCode, '["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]', "Topbar: el mes de septiembre debe mostrarse como SEP.");
 assertFileIncludes(appCode, '<span class="status-pill ok">Capital disponible</span>', "Resumen superior: la tarjeta derecha debe mostrar Capital disponible.");
 assertFileIncludes(appCode, "<strong>${money(dashboard.metrics.availableCapital)}</strong>", "Resumen superior: la tarjeta derecha debe usar capital disponible.");
 assertFileIncludes(appCode, "<small>Monto que debe figurar en tu tarjeta</small>", "Resumen superior: el mensaje bajo el valor debe ser el texto solicitado.");

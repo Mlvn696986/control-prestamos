@@ -2355,7 +2355,7 @@ function render() {
   elements.businessLabel.textContent = state.user.businessName;
   elements.ownerLabel.textContent = state.user.ownerName;
   elements.planInlineStatus.textContent = getPlanInlineStatusText();
-  elements.todayLabel.textContent = formatDate(todayISO()).replace(/\s+/g, "\u00a0");
+  elements.todayLabel.textContent = `📅 ${formatTopbarDate(todayISO())}`;
 
   renderDashboard();
   renderClients();
@@ -5863,6 +5863,12 @@ function formatDate(dateString) {
     month: "short",
     year: "numeric",
   }).format(parseLocalDate(dateString));
+}
+
+function formatTopbarDate(dateString) {
+  const date = parseLocalDate(dateString);
+  const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+  return `${String(date.getDate()).padStart(2, "0")} ${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 function toNumber(value) {
