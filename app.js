@@ -2446,7 +2446,7 @@ function buildPaymentPeriodSummary(loan, scheduledDueDate = loan?.nextDueDate, p
 }
 
 function getPaymentsForLoanPeriod(loanId, scheduledDueDate, payments = state.payments) {
-  return (payments || []).filter((payment) => payment.loanId === loanId && payment.scheduledDueDate === scheduledDueDate);
+  return getLoanPayments(loanId, payments).filter((payment) => payment.scheduledDueDate === scheduledDueDate);
 }
 
 function getPaymentPeriodStatus({ periodClosed, interestPaid, capitalPaid }) {
@@ -2545,12 +2545,14 @@ function buildDashboardData(options = {}) {
   const loans = scopeLoans.filter((loan) => loanWasInPortfolioDuringRange(loan, range));
   const payments = scopePayments.filter((payment) => dateInRange(payment.date, range));
   const paymentsToRangeEnd = scopePayments.filter((payment) => startOfDay(payment.date) <= startOfDay(range.end));
+  const scopePaymentsByLoanId = buildPaymentsByLoanId(scopePayments);
+  const paymentsToRangeEndByLoanId = buildPaymentsByLoanId(paymentsToRangeEnd);
   const capitalMovementsInPeriod = (state.capitalMovements || []).filter((movement) => dateInRange(movement.date, range));
   const activeLoans = scopeLoans
-    .filter((loan) => loanWasActiveOnDate(loan, range.end))
+    .filter((loan) => loanWasActiveOnDate(loan, range.end, scopePaymentsByLoanId))
     .map((loan) => {
-      const snapshot = loanSnapshotAtDate(loan, range.end, scopePayments);
-      return { ...snapshot, expectedInterest: getLoanExpectedInterest(snapshot, paymentsToRangeEnd) };
+      const snapshot = loanSnapshotAtDate(loan, range.end, scopePaymentsByLoanId);
+      return { ...snapshot, expectedInterest: getLoanExpectedInterest(snapshot, paymentsToRangeEndByLoanId) };
     });
   const overdueLoans = activeLoans.filter((loan) => isOverdueAt(loan, range.end));
   const todayLoans = scopeLoans.filter((loan) => loan.status === "active" && loan.nextDueDate === todayISO()).sort(sortLoansByDueDate);
@@ -2990,19 +2992,22 @@ function loanWasInPortfolioDuringRange(loan, range) {
   return !closedDate || startOfDay(closedDate) >= startOfDay(range.start);
 }
 
-function loanWasActiveOnDate(loan, dateString) {
+function loanWasActiveOnDate(loan, dateString, payments = state.payments) {
   if (!loan?.startDate || startOfDay(loan.startDate) > startOfDay(dateString)) return false;
   const closedDate = getLoanClosedDate(loan);
   if (closedDate && startOfDay(closedDate) <= startOfDay(dateString)) return false;
-  return getLoanBalanceAtDate(loan, dateString) > 0;
+  return getLoanBalanceAtDate(loan, dateString, payments) > 0;
 }
 
 function loanSnapshotAtDate(loan, dateString, payments = state.payments) {
+  const remainingCapital = getLoanBalanceAtDate(loan, dateString, payments);
+  const isClosed = remainingCapital <= 0;
   return {
     ...loan,
-    remainingCapital: getLoanBalanceAtDate(loan, dateString, payments),
-    status: "active",
-    closedAt: null,
+    remainingCapital,
+    nextDueDate: isClosed ? null : getLoanHistoricalNextDueDate(loan, dateString, payments),
+    status: isClosed ? "closed" : "active",
+    closedAt: isClosed ? getLoanHistoricalClosedAt(loan, dateString, payments) : null,
   };
 }
 
@@ -3010,11 +3015,73 @@ function getLoanBalanceAtDate(loan, dateString, payments = state.payments) {
   if (!loan?.startDate || startOfDay(loan.startDate) > startOfDay(dateString)) return 0;
   const closedDate = getLoanClosedDate(loan);
   if (closedDate && startOfDay(closedDate) <= startOfDay(dateString)) return 0;
-  const capitalPaidAfterDate = payments
-    .filter((payment) => payment.loanId === loan.id && startOfDay(payment.date) > startOfDay(dateString))
+  const capitalPaidAfterDate = getLoanPayments(loan.id, payments)
+    .filter((payment) => payment.date && startOfDay(payment.date) > startOfDay(dateString))
     .reduce((total, payment) => total + Number(payment.capitalPaid || 0), 0);
   const reconstructedBalance = Number(loan.remainingCapital || 0) + capitalPaidAfterDate;
   return Math.min(Math.max(roundMoney(reconstructedBalance), 0), Number(loan.amount || 0));
+}
+
+function getLoanHistoricalNextDueDate(loan, cutoffDate, payments = state.payments) {
+  if (!loan?.startDate || startOfDay(loan.startDate) > startOfDay(cutoffDate)) return null;
+  if (startOfDay(cutoffDate) >= startOfDay(todayISO())) return loan.nextDueDate || null;
+  const loanPayments = getLoanPayments(loan.id, payments).slice().sort(comparePaymentsChronologically);
+  const appliedPayments = loanPayments.filter((payment) => payment.date && startOfDay(payment.date) <= startOfDay(cutoffDate));
+  const futurePayments = loanPayments.filter((payment) => payment.date && startOfDay(payment.date) > startOfDay(cutoffDate));
+  const latestPayment = appliedPayments.at(-1);
+
+  if (latestPayment) {
+    if (latestPayment.nextDueDateAfter) return latestPayment.nextDueDateAfter;
+    const nextPayment = futurePayments.find((payment) => payment.scheduledDueDate);
+    return nextPayment?.scheduledDueDate || loan.nextDueDate || null;
+  }
+
+  const firstKnownPayment = loanPayments.find((payment) => payment.scheduledDueDate);
+  if (
+    firstKnownPayment?.scheduledDueDate &&
+    firstKnownPayment.scheduledDueDate === firstKnownPayment.date &&
+    loan.nextDueDate &&
+    startOfDay(loan.nextDueDate) < startOfDay(firstKnownPayment.scheduledDueDate)
+  ) {
+    return loan.nextDueDate;
+  }
+  return firstKnownPayment?.scheduledDueDate || loan.nextDueDate || null;
+}
+
+function getLoanHistoricalClosedAt(loan, cutoffDate, payments = state.payments) {
+  const closedDate = getLoanClosedDate(loan);
+  if (closedDate && startOfDay(closedDate) <= startOfDay(cutoffDate)) return loan.closedAt || closedDate;
+  const closingPayment = getLoanPayments(loan.id, payments)
+    .filter((payment) => payment.date && startOfDay(payment.date) <= startOfDay(cutoffDate) && Number(payment.remainingCapitalAfter || 0) <= 0)
+    .slice()
+    .sort(comparePaymentsChronologically)
+    .at(-1);
+  return closingPayment?.date || null;
+}
+
+function getLoanPayments(loanId, payments = state.payments) {
+  if (!loanId) return [];
+  if (payments instanceof Map) return payments.get(loanId) || [];
+  return (payments || []).filter((payment) => payment.loanId === loanId);
+}
+
+function buildPaymentsByLoanId(payments = state.payments) {
+  const map = new Map();
+  (payments || []).forEach((payment) => {
+    if (!payment.loanId) return;
+    if (!map.has(payment.loanId)) map.set(payment.loanId, []);
+    map.get(payment.loanId).push(payment);
+  });
+  map.forEach((items) => items.sort(comparePaymentsChronologically));
+  return map;
+}
+
+function comparePaymentsChronologically(left, right) {
+  return (
+    startOfDay(left.date || "9999-12-31") - startOfDay(right.date || "9999-12-31") ||
+    new Date(left.createdAt || 0) - new Date(right.createdAt || 0) ||
+    String(left.id || "").localeCompare(String(right.id || ""))
+  );
 }
 
 function getLoanClosedDate(loan) {
@@ -3096,11 +3163,13 @@ function validateLoanFinancialLimits(clientId, amount, currentLoan = null) {
 
 function buildCapitalPositionAtDate(dateString, loans = state.loans, payments = state.payments, capitalMovements = state.capitalMovements || []) {
   const end = startOfDay(dateString || todayISO());
+  const paymentList = payments instanceof Map ? Array.from(payments.values()).flat() : payments || [];
   const movementsToDate = (capitalMovements || []).filter((movement) => startOfDay(movement.date) <= end);
-  const paymentsToDate = (payments || []).filter((payment) => startOfDay(payment.date) <= end);
+  const paymentsToDate = paymentList.filter((payment) => startOfDay(payment.date) <= end);
+  const paymentsByLoanId = payments instanceof Map ? payments : buildPaymentsByLoanId(paymentList);
   const activeLoansAtDate = (loans || [])
-    .filter((loan) => loanWasActiveOnDate(loan, dateString || todayISO()))
-    .map((loan) => loanSnapshotAtDate(loan, dateString || todayISO(), payments || []));
+    .filter((loan) => loanWasActiveOnDate(loan, dateString || todayISO(), paymentsByLoanId))
+    .map((loan) => loanSnapshotAtDate(loan, dateString || todayISO(), paymentsByLoanId));
   const capitalDeposited = sum(movementsToDate.filter((movement) => movement.type === "deposit"), "amount");
   const capitalWithdrawn = sum(movementsToDate.filter((movement) => movement.type === "withdrawal"), "amount");
   const compoundedProfit = sum(paymentsToDate, "interestPaid");
@@ -4112,11 +4181,12 @@ function buildLoanMonthSeries(loans, range) {
 }
 
 function buildDelinquencySeries(loans, range, payments = state.payments) {
+  const paymentsByLoanId = buildPaymentsByLoanId(payments);
   return getMonthKeysForDashboardRange(range).map((month) => {
     const monthEnd = getDashboardMonthEnd(month.key, range);
     const overdueAtMonthEnd = loans
-      .filter((loan) => loanWasActiveOnDate(loan, monthEnd))
-      .map((loan) => loanSnapshotAtDate(loan, monthEnd, payments))
+      .filter((loan) => loanWasActiveOnDate(loan, monthEnd, paymentsByLoanId))
+      .map((loan) => loanSnapshotAtDate(loan, monthEnd, paymentsByLoanId))
       .filter((loan) => isOverdueAt(loan, monthEnd)).length;
     return {
       label: month.label,
@@ -5862,15 +5932,15 @@ function calculateFirstPeriodInterest(capital, monthlyRate, startDate, dueDate) 
 }
 
 function isFirstInterestPeriod(loan, payments = state.payments) {
-  return !(payments || []).some((payment) => payment.loanId === loan?.id);
+  return !getLoanPayments(loan?.id, payments).length;
 }
 
 function getInterestPeriodDays(loan, payments = state.payments) {
   if (normalizeInterestMode(loan?.interestMode) !== "daily") return 1;
-  const latestPayment = (payments || [])
-    .filter((payment) => payment.loanId === loan.id && payment.scheduledDueDate)
+  const latestPayment = getLoanPayments(loan.id, payments)
+    .filter((payment) => payment.scheduledDueDate)
     .slice()
-    .sort((a, b) => new Date(a.scheduledDueDate) - new Date(b.scheduledDueDate))
+    .sort((a, b) => new Date(a.scheduledDueDate) - new Date(b.scheduledDueDate) || comparePaymentsChronologically(a, b))
     .at(-1);
   const periodStart = latestPayment?.scheduledDueDate || loan.startDate;
   return Math.max(daysBetween(periodStart, loan.nextDueDate), 1);

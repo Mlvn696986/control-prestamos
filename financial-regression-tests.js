@@ -307,6 +307,98 @@ assert(rateMarkup.includes("Cobro quincenal: 5%"), "Tasa visual: la tabla debe m
 assert(!rateMarkup.includes("Interes: 10% quincenal"), "Tasa visual: no debe mostrar el texto confuso anterior.");
 
 resetTestState({
+  clients: [testClient("hist-next")],
+  loans: [
+    testLoan({ id: "hist-next-loan", clientId: "hist-next", amount: 1000, remainingCapital: 1000, startDate: "2026-01-01", nextDueDate: "2026-04-01" }),
+  ],
+  payments: [
+    testPayment({ id: "hist-next-p1", loanId: "hist-next-loan", clientId: "hist-next", date: "2026-02-01", scheduledDueDate: "2026-02-01", interestPaid: 100, nextDueDateAfter: "2026-03-01" }),
+    testPayment({ id: "hist-next-p2", loanId: "hist-next-loan", clientId: "hist-next", date: "2026-03-01", scheduledDueDate: "2026-03-01", interestPaid: 100, nextDueDateAfter: "2026-04-01" }),
+  ],
+});
+let historicalSnapshot = loanSnapshotAtDate(state.loans[0], "2026-01-15", state.payments);
+assertEqual(historicalSnapshot.nextDueDate, "2026-02-01", "Historico 1: antes del primer pago debe usar el primer scheduledDueDate, no el nextDueDate actual.");
+historicalSnapshot = loanSnapshotAtDate(state.loans[0], "2026-02-15", state.payments);
+assertEqual(historicalSnapshot.nextDueDate, "2026-03-01", "Historico 2: despues del primer pago debe usar nextDueDateAfter.");
+historicalSnapshot = loanSnapshotAtDate(state.loans[0], "2026-03-15", state.payments);
+assertEqual(historicalSnapshot.nextDueDate, "2026-04-01", "Historico 3: despues del segundo pago debe usar el siguiente nextDueDateAfter.");
+
+resetTestState({
+  clients: [testClient("hist-atraso")],
+  loans: [
+    testLoan({ id: "hist-atraso-loan", clientId: "hist-atraso", amount: 1000, remainingCapital: 1000, startDate: "2026-05-15", nextDueDate: "2026-07-15" }),
+  ],
+  payments: [
+    testPayment({ id: "hist-atraso-p1", loanId: "hist-atraso-loan", clientId: "hist-atraso", date: "2026-06-20", scheduledDueDate: "2026-06-15", interestPaid: 100, nextDueDateAfter: "2026-07-15" }),
+  ],
+});
+historicalSnapshot = loanSnapshotAtDate(state.loans[0], "2026-06-18", state.payments);
+assertEqual(historicalSnapshot.nextDueDate, "2026-06-15", "Historico atraso: antes del pago tardio debe conservar la fecha vencida.");
+assertEqual(isOverdueAt(historicalSnapshot, "2026-06-18"), true, "Historico atraso: el prestamo debe estar vencido antes del pago tardio.");
+historicalSnapshot = loanSnapshotAtDate(state.loans[0], "2026-06-20", state.payments);
+assertEqual(historicalSnapshot.nextDueDate, "2026-07-15", "Historico atraso: el dia del pago ya debe usar el siguiente cobro.");
+assertEqual(isOverdueAt(historicalSnapshot, "2026-06-20"), false, "Historico atraso: el dia del pago ya no debe figurar vencido.");
+
+resetTestState({
+  clients: [testClient("hist-cierre")],
+  loans: [
+    testLoan({ id: "hist-cierre-loan", clientId: "hist-cierre", amount: 1000, remainingCapital: 0, startDate: "2026-07-20", nextDueDate: null, status: "closed", closedAt: "2026-08-20" }),
+  ],
+  payments: [
+    testPayment({ id: "hist-cierre-p1", loanId: "hist-cierre-loan", clientId: "hist-cierre", date: "2026-08-20", scheduledDueDate: "2026-08-20", interestPaid: 100, capitalPaid: 1000, remainingCapitalAfter: 0, nextDueDateAfter: null }),
+  ],
+});
+historicalSnapshot = loanSnapshotAtDate(state.loans[0], "2026-08-19", state.payments);
+assertEqual(historicalSnapshot.status, "active", "Historico cierre: antes del cierre debe seguir activo.");
+assertMoney(historicalSnapshot.remainingCapital, 1000, "Historico cierre: antes del cierre debe reconstruir el capital pendiente.");
+assertEqual(historicalSnapshot.nextDueDate, "2026-08-20", "Historico cierre: antes del cierre debe mostrar el vencimiento vigente.");
+historicalSnapshot = loanSnapshotAtDate(state.loans[0], "2026-08-20", state.payments);
+assertEqual(historicalSnapshot.status, "closed", "Historico cierre: el dia del pago total debe aparecer cerrado.");
+assertMoney(historicalSnapshot.remainingCapital, 0, "Historico cierre: el dia del cierre debe quedar en cero.");
+assertEqual(historicalSnapshot.nextDueDate, null, "Historico cierre: un prestamo cerrado no debe tener proxima fecha.");
+
+[
+  { mode: "biweekly", startDate: "2026-06-01", firstDue: "2026-06-16", secondDue: "2026-07-01", queryDate: "2026-06-20" },
+  { mode: "weekly", startDate: "2026-06-01", firstDue: "2026-06-08", secondDue: "2026-06-15", queryDate: "2026-06-09" },
+  { mode: "daily", startDate: "2026-06-01", firstDue: "2026-06-02", secondDue: "2026-06-03", queryDate: "2026-06-02" },
+].forEach((item) => {
+  const loan = testLoan({ id: "hist-" + item.mode, clientId: "hist-modos", amount: 500, remainingCapital: 500, interestMode: item.mode, startDate: item.startDate, nextDueDate: item.secondDue });
+  const payments = [
+    testPayment({ id: "hist-" + item.mode + "-p1", loanId: loan.id, clientId: "hist-modos", date: item.firstDue, scheduledDueDate: item.firstDue, interestPaid: 10, nextDueDateAfter: item.secondDue }),
+  ];
+  const snapshot = loanSnapshotAtDate(loan, item.queryDate, payments);
+  assertEqual(snapshot.nextDueDate, item.secondDue, "Historico " + item.mode + ": debe usar payments.nextDueDateAfter sin depender de la modalidad.");
+});
+
+const legacyLoan = testLoan({ id: "hist-legacy", clientId: "hist-legacy", amount: 500, remainingCapital: 500, startDate: "2026-01-01", nextDueDate: "2026-04-01" });
+const legacyPayments = [
+  testPayment({ id: "hist-legacy-p1", loanId: "hist-legacy", clientId: "hist-legacy", date: "2026-02-01", scheduledDueDate: "2026-02-01", interestPaid: 50, nextDueDateAfter: null }),
+  testPayment({ id: "hist-legacy-p2", loanId: "hist-legacy", clientId: "hist-legacy", date: "2026-03-01", scheduledDueDate: "2026-03-01", interestPaid: 50, nextDueDateAfter: "2026-04-01" }),
+];
+assertEqual(getLoanHistoricalNextDueDate(legacyLoan, "2026-02-15", legacyPayments), "2026-03-01", "Historico legacy: si falta nextDueDateAfter debe usar el siguiente scheduledDueDate.");
+
+resetTestState({
+  clients: [testClient("hist-dashboard")],
+  loans: [
+    testLoan({ id: "hist-dashboard-loan", clientId: "hist-dashboard", amount: 1000, remainingCapital: 1000, startDate: "2026-05-15", nextDueDate: "2026-09-15" }),
+  ],
+  payments: [
+    testPayment({ id: "hist-dashboard-p1", loanId: "hist-dashboard-loan", clientId: "hist-dashboard", date: "2026-07-05", scheduledDueDate: "2026-06-15", interestPaid: 100, nextDueDateAfter: "2026-07-15" }),
+    testPayment({ id: "hist-dashboard-p2", loanId: "hist-dashboard-loan", clientId: "hist-dashboard", date: "2026-07-15", scheduledDueDate: "2026-07-15", interestPaid: 100, nextDueDateAfter: "2026-08-15" }),
+    testPayment({ id: "hist-dashboard-p3", loanId: "hist-dashboard-loan", clientId: "hist-dashboard", date: "2026-08-15", scheduledDueDate: "2026-08-15", interestPaid: 100, nextDueDateAfter: "2026-09-15" }),
+  ],
+});
+dashboard = buildDashboardData({ filters: { customStart: "2026-06-01", customEnd: "2026-06-30", compare: "none", operation: "all" }, skipComparison: true });
+assertEqual(dashboard.activeLoans[0].nextDueDate, "2026-06-15", "Dashboard historico: al 30/06 debe usar el vencimiento historico, no 15/09 actual.");
+assertEqual(dashboard.metrics.overdueLoans, 1, "Dashboard historico: prestamos vencidos debe usar snapshot historico.");
+assertMoney(dashboard.metrics.overdueAmount, 1000, "Dashboard historico: monto vencido debe usar snapshot historico.");
+assertEqual(dashboard.metrics.lateClients, 1, "Dashboard historico: clientes atrasados debe usar snapshot historico.");
+assertMoney(dashboard.metrics.capitalRisk, 1000, "Dashboard historico: capital en riesgo debe usar snapshot historico.");
+assertMoney(dashboard.metrics.delinquencyRate, 100, "Dashboard historico: porcentaje de morosidad debe usar snapshot historico.");
+assertEqual(dashboard.charts.statusSegments.find((segment) => segment.label === "Vencidos")?.value, 1, "Dashboard historico: cartera por estado debe usar snapshot historico.");
+assertEqual(dashboard.charts.delinquency[0]?.value, 1, "Dashboard historico: tendencia de morosidad debe usar snapshot historico.");
+
+resetTestState({
   clients: [testClient("sin-limite")],
   loans: [
     testLoan({ id: "sin-limite-main", clientId: "sin-limite", amount: 700, remainingCapital: 700, startDate: "2026-08-01", nextDueDate: "2026-09-01", operationType: "principal" }),
