@@ -874,6 +874,7 @@ assertFileIncludes(appCode, "setDashboardPreviousMonthComparison", "Resumen: fal
 assertFileIncludes(appCode, 'elements.summaryCompare.value = "previousMonth"', "Resumen: el boton debe activar previousMonth.");
 assertFileIncludes(appCode, 'elements.summaryComparePreviousMonth.addEventListener("click"', "Resumen: el boton debe estar conectado al clic.");
 assertFileIncludes(appCode, "elements.summaryCustomStart.value = addMonthsKeepingDay(today, getDayOfMonth(today), -1)", "Resumen: el boton debe iniciar en el mismo dia del mes anterior.");
+assertCondition(!htmlCode.includes("Restablecer orden"), "Resumen: el boton Restablecer orden no debe mostrarse en Indicadores.");
 assertCondition(!htmlCode.includes("summaryOperation"), "Resumen: el filtro visual Tipo de operacion no debe seguir en el HTML.");
 assertFileIncludes(appCode, 'operation: "all"', "Resumen: al retirar el filtro visual, la operacion interna debe quedar en Todos.");
 assertCondition(!appCode.includes("summaryCustomStart.value = getCalendarMonthRange"), "Resumen: Desde no debe llenarse automaticamente con el mes actual.");
