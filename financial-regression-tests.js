@@ -906,6 +906,7 @@ assertFileIncludes(appCode, "Debes aceptar los Terminos y Condiciones", "Legal: 
 assertFileIncludes(stylesCode, ".legal-panel", "Legal: el documento debe tener estilo propio.");
 assertFileIncludes(stylesCode, "width: min(94vw, 1040px)", "Legal: el modal de terminos debe ser mas ancho para lectura comoda.");
 assertFileIncludes(stylesCode, ".sidebar-legal", "Legal: el acceso lateral debe tener estilo profesional.");
+assertFileIncludes(stylesCode, "margin-top: auto", "Legal: el bloque lateral debe quedar pegado a la parte inferior del sidebar.");
 assertFileIncludes(sqlCode, "provider_subscription_id", "Pagos: SQL debe guardar el ID de suscripcion/pago del proveedor.");
 assertFileIncludes(sqlCode, "plan_requests_provider_subscription_idx", "Pagos: SQL debe indexar busqueda de webhook por proveedor.");
 assertFileIncludes(sqlCode, "grant select, insert, update, delete on plan_requests to service_role", "Pagos: service_role debe poder escribir plan_requests desde el Worker.");

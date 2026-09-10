@@ -238,6 +238,8 @@ h3 {
   z-index: 30;
   width: var(--sidebar-width);
   height: 100vh;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   padding: 22px;
   color: #ffffff;
@@ -273,7 +275,8 @@ h3 {
   display: grid;
   justify-items: start;
   gap: 9px;
-  margin-top: 82px;
+  margin-top: auto;
+  padding-top: 48px;
 }
 
 .sidebar-legal button {
@@ -2914,9 +2917,15 @@ input.field-success {
     width: auto;
     height: auto;
     min-height: auto;
+    display: block;
     overflow: visible;
     border-right: 0;
     border-bottom: 1px solid var(--line);
+  }
+
+  .sidebar-legal {
+    margin-top: 36px;
+    padding-top: 0;
   }
 
   .workspace {
