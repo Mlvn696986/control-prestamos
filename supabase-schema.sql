@@ -28,6 +28,9 @@ create table if not exists clients (
   user_id uuid not null references auth.users(id) on delete cascade,
   name text not null,
   phone text,
+  document_type text,
+  document_number text,
+  address text,
   note text,
   created_at timestamptz default now()
 );
@@ -126,10 +129,83 @@ create table if not exists claim_book_entries (
   provider_email text not null,
   provider_phone text not null,
   status text not null default 'received' check (status in ('received', 'in_review', 'answered', 'closed')),
+  due_at timestamptz,
   response text,
   responded_at timestamptz,
+  closed_at timestamptz,
+  retention_until timestamptz,
+  legal_hold boolean not null default true,
+  due_date_estimated boolean not null default true,
+  received_email_status text not null default 'pending_configuration',
+  received_email_sent_at timestamptz,
+  received_email_error text,
+  response_email_status text not null default 'pending_configuration',
+  response_email_sent_at timestamptz,
+  response_email_error text,
+  response_version integer not null default 0,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
+);
+
+create table if not exists claim_book_events (
+  id uuid primary key default gen_random_uuid(),
+  claim_id uuid not null references claim_book_entries(id) on delete cascade,
+  actor_user_id uuid references auth.users(id) on delete set null,
+  event_type text not null,
+  previous_status text,
+  new_status text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists privacy_requests (
+  id uuid primary key default gen_random_uuid(),
+  request_code text not null unique,
+  submitted_user_id uuid references auth.users(id) on delete set null,
+  request_type text not null,
+  subject_role text not null,
+  requester_name text not null,
+  requester_email text not null,
+  document_type text,
+  document_number text,
+  detail text not null,
+  status text not null default 'received',
+  submitted_at timestamptz not null default now(),
+  due_at timestamptz not null,
+  response text,
+  responded_at timestamptz,
+  policy_version text,
+  retention_until timestamptz,
+  legal_hold boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists account_deletion_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  email text,
+  request_code text not null unique,
+  status text not null default 'received',
+  requested_at timestamptz not null default now(),
+  scheduled_deletion_at timestamptz,
+  processed_at timestamptz,
+  reason text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists email_outbox (
+  id uuid primary key default gen_random_uuid(),
+  event_key text not null unique,
+  recipient text not null,
+  subject text not null,
+  payload jsonb not null default '{}'::jsonb,
+  status text not null default 'pending_configuration',
+  sent_at timestamptz,
+  last_error text,
+  attempts integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists user_backups (
@@ -141,6 +217,10 @@ create table if not exists user_backups (
 
 alter table profiles add column if not exists email text;
 alter table profiles add column if not exists is_admin boolean not null default false;
+alter table profiles add column if not exists terms_version text;
+alter table profiles add column if not exists terms_accepted_at timestamptz;
+alter table profiles add column if not exists privacy_policy_version text;
+alter table profiles add column if not exists privacy_accepted_at timestamptz;
 alter table subscriptions add column if not exists provider text;
 alter table subscriptions add column if not exists provider_subscription_id text;
 alter table subscriptions add column if not exists provider_status text;
@@ -155,6 +235,9 @@ alter table plan_requests add column if not exists paid_at timestamptz;
 alter table plan_requests add column if not exists current_period_end timestamptz;
 alter table plan_requests add column if not exists updated_at timestamptz default now();
 alter table loans add column if not exists interest_mode text not null default 'monthly';
+alter table clients add column if not exists document_type text;
+alter table clients add column if not exists document_number text;
+alter table clients add column if not exists address text;
 alter table loans add column if not exists operation_type text;
 alter table loans add column if not exists parent_loan_id uuid references loans(id) on delete set null;
 alter table loans alter column next_due_date drop not null;
@@ -196,6 +279,10 @@ alter table payments enable row level security;
 alter table capital_movements enable row level security;
 alter table plan_requests enable row level security;
 alter table claim_book_entries enable row level security;
+alter table claim_book_events enable row level security;
+alter table privacy_requests enable row level security;
+alter table account_deletion_requests enable row level security;
+alter table email_outbox enable row level security;
 alter table user_backups enable row level security;
 
 create or replace function public.is_admin()
@@ -253,6 +340,12 @@ drop policy if exists "payments admin data" on payments;
 drop policy if exists "capital movements admin data" on capital_movements;
 drop policy if exists "plan requests admin data" on plan_requests;
 drop policy if exists "claim book entries admin data" on claim_book_entries;
+drop policy if exists "claim book events admin select" on claim_book_events;
+drop policy if exists "privacy requests own select" on privacy_requests;
+drop policy if exists "privacy requests admin select" on privacy_requests;
+drop policy if exists "account deletion requests own select" on account_deletion_requests;
+drop policy if exists "account deletion requests admin select" on account_deletion_requests;
+drop policy if exists "email outbox admin select" on email_outbox;
 drop policy if exists "user backups admin data" on user_backups;
 
 create policy "profiles own select"
@@ -342,6 +435,30 @@ on claim_book_entries for select
 using (public.is_admin())
 ;
 
+create policy "claim book events admin select"
+on claim_book_events for select
+using (public.is_admin());
+
+create policy "privacy requests own select"
+on privacy_requests for select
+using (submitted_user_id is not null and auth.uid() = submitted_user_id);
+
+create policy "privacy requests admin select"
+on privacy_requests for select
+using (public.is_admin());
+
+create policy "account deletion requests own select"
+on account_deletion_requests for select
+using (auth.uid() = user_id);
+
+create policy "account deletion requests admin select"
+on account_deletion_requests for select
+using (public.is_admin());
+
+create policy "email outbox admin select"
+on email_outbox for select
+using (public.is_admin());
+
 create policy "user backups own select"
 on user_backups for select
 using (auth.uid() = user_id);
@@ -369,21 +486,32 @@ begin
 
   v_email := nullif(trim(coalesce(auth.jwt() ->> 'email', p_email, '')), '');
 
-  insert into profiles (id, email, business_name, owner_name, currency, is_admin)
+  insert into profiles (
+    id, email, business_name, owner_name, currency, is_admin,
+    terms_version, terms_accepted_at, privacy_policy_version, privacy_accepted_at
+  )
   values (
     v_user_id,
     v_email,
     coalesce(nullif(trim(p_business_name), ''), 'Mi negocio'),
     coalesce(nullif(trim(p_owner_name), ''), 'Prestamista'),
     coalesce(nullif(trim(p_currency), ''), 'PEN'),
-    false
+    false,
+    '2026-09-10',
+    now(),
+    '2026-09-10',
+    now()
   )
   on conflict (id) do update
   set
     email = coalesce(excluded.email, profiles.email),
     business_name = excluded.business_name,
     owner_name = excluded.owner_name,
-    currency = excluded.currency
+    currency = excluded.currency,
+    terms_version = coalesce(profiles.terms_version, excluded.terms_version),
+    terms_accepted_at = coalesce(profiles.terms_accepted_at, excluded.terms_accepted_at),
+    privacy_policy_version = coalesce(profiles.privacy_policy_version, excluded.privacy_policy_version),
+    privacy_accepted_at = coalesce(profiles.privacy_accepted_at, excluded.privacy_accepted_at)
   returning * into v_profile;
 
   insert into subscriptions (user_id, plan, status, client_limit, started_at, updated_at)
@@ -1711,6 +1839,10 @@ revoke all on payments from anon, authenticated;
 revoke all on capital_movements from anon, authenticated;
 revoke all on plan_requests from anon, authenticated;
 revoke all on claim_book_entries from anon, authenticated;
+revoke all on claim_book_events from anon, authenticated;
+revoke all on privacy_requests from anon, authenticated;
+revoke all on account_deletion_requests from anon, authenticated;
+revoke all on email_outbox from anon, authenticated;
 revoke all on user_backups from anon, authenticated;
 
 grant select on profiles to authenticated;
@@ -1722,6 +1854,10 @@ grant select on payments to authenticated;
 grant select on capital_movements to authenticated;
 grant select on plan_requests to authenticated;
 grant select on claim_book_entries to authenticated;
+grant select on claim_book_events to authenticated;
+grant select on privacy_requests to authenticated;
+grant select on account_deletion_requests to authenticated;
+grant select on email_outbox to authenticated;
 grant select on user_backups to authenticated;
 grant select, insert, update, delete on profiles to service_role;
 grant select, insert, update, delete on subscriptions to service_role;
@@ -1731,6 +1867,10 @@ grant select, insert, update, delete on payments to service_role;
 grant select, insert, update, delete on capital_movements to service_role;
 grant select, insert, update, delete on plan_requests to service_role;
 grant select, insert, update, delete on claim_book_entries to service_role;
+grant select, insert, update, delete on claim_book_events to service_role;
+grant select, insert, update, delete on privacy_requests to service_role;
+grant select, insert, update, delete on account_deletion_requests to service_role;
+grant select, insert, update, delete on email_outbox to service_role;
 grant select, insert, update, delete on user_backups to service_role;
 
 -- Despues de ejecutar este archivo, activa tu cuenta admin cambiando el correo:

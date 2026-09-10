@@ -66,6 +66,8 @@
             <span>
               Acepto los
               <button class="inline-link" type="button" data-open-terms>Terminos y Condiciones</button>
+              y declaro haber leido la
+              <button class="inline-link" type="button" data-open-privacy>Politica de Privacidad</button>
               de ERMIF.
             </span>
           </label>
@@ -80,6 +82,8 @@
 
         <div class="auth-legal-links" aria-label="Documentos legales">
           <button class="inline-link" type="button" data-open-claims>Libro de Reclamaciones</button>
+          <span aria-hidden="true">/</span>
+          <button class="inline-link" type="button" data-open-privacy>Politica de Privacidad</button>
           <span aria-hidden="true">/</span>
           <button class="inline-link" type="button" data-open-terms>Terminos y Condiciones</button>
         </div>
@@ -123,6 +127,8 @@
 
         <div class="sidebar-legal">
           <button class="sidebar-terms-link" type="button" data-open-terms>Terminos y Condiciones</button>
+          <button class="sidebar-terms-link" type="button" data-open-privacy>Politica de Privacidad</button>
+          <button class="sidebar-terms-link" type="button" data-open-privacy-request>Privacidad y mis datos</button>
           <button class="sidebar-claim-image-button" type="button" data-open-claims aria-label="Abrir Libro de Reclamaciones">
             <img src="assets/libro-reclamaciones.png" alt="Libro de Reclamaciones" />
           </button>
@@ -494,6 +500,43 @@
           <section class="panel admin-panel">
             <div class="section-heading">
               <div>
+                <p class="eyebrow">Reclamos</p>
+                <h3>Libro de Reclamaciones</h3>
+              </div>
+              <div class="admin-filter-tabs" id="adminClaimFilters" aria-label="Filtrar reclamos">
+                <button class="admin-filter active" type="button" data-claim-filter="all">Todos</button>
+                <button class="admin-filter" type="button" data-claim-filter="pending">Pendientes</button>
+                <button class="admin-filter" type="button" data-claim-filter="due_soon">Por vencer</button>
+                <button class="admin-filter" type="button" data-claim-filter="overdue">Vencidos</button>
+                <button class="admin-filter" type="button" data-claim-filter="answered">Respondidos</button>
+                <button class="admin-filter" type="button" data-claim-filter="closed">Cerrados</button>
+              </div>
+            </div>
+            <div id="adminClaimsList" class="admin-list empty-target"></div>
+          </section>
+
+          <section class="panel admin-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Privacidad</p>
+                <h3>Solicitudes de datos y eliminacion</h3>
+              </div>
+            </div>
+            <div class="admin-legal-grid">
+              <div>
+                <h4>Derechos ARCO</h4>
+                <div id="adminPrivacyList" class="admin-list empty-target"></div>
+              </div>
+              <div>
+                <h4>Eliminacion de cuenta</h4>
+                <div id="adminDeletionList" class="admin-list empty-target"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel admin-panel">
+            <div class="section-heading">
+              <div>
                 <p class="eyebrow">Usuarios</p>
                 <h3>Cuentas registradas</h3>
               </div>
@@ -613,6 +656,25 @@
         </label>
         <div class="field-row">
           <label>
+            Tipo de documento
+            <select id="clientDocumentType">
+              <option value="">No indicado</option>
+              <option value="DNI">DNI</option>
+              <option value="CE">Carnet de extranjeria</option>
+              <option value="PASAPORTE">Pasaporte</option>
+            </select>
+          </label>
+          <label>
+            Numero de documento
+            <input id="clientDocumentNumber" type="text" maxlength="20" inputmode="text" />
+          </label>
+        </div>
+        <label>
+          Direccion
+          <input id="clientAddress" type="text" maxlength="240" />
+        </label>
+        <div class="field-row">
+          <label>
             Monto original prestado
             <input id="clientLoanAmount" type="number" min="1" step="0.01" required />
           </label>
@@ -718,6 +780,25 @@
         <label>
           Telefono
           <input id="editClientPhone" type="tel" />
+        </label>
+        <div class="field-row">
+          <label>
+            Tipo de documento
+            <select id="editClientDocumentType">
+              <option value="">No indicado</option>
+              <option value="DNI">DNI</option>
+              <option value="CE">Carnet de extranjeria</option>
+              <option value="PASAPORTE">Pasaporte</option>
+            </select>
+          </label>
+          <label>
+            Numero de documento
+            <input id="editClientDocumentNumber" type="text" maxlength="20" inputmode="text" />
+          </label>
+        </div>
+        <label>
+          Direccion
+          <input id="editClientAddress" type="text" maxlength="240" />
         </label>
         <div class="field-row">
           <label>
@@ -1124,6 +1205,206 @@
         <div class="modal-actions">
           <button class="ghost-button" type="button" data-close-dialog>Regresar</button>
           <button id="claimBookSubmit" class="primary-button" type="submit">Registrar hoja</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="privacyDialog" class="modal">
+      <section class="modal-panel legal-panel privacy-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Privacidad</p>
+            <h3>Politica de Privacidad</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+
+        <div class="legal-copy">
+          <p><strong>Nombre comercial:</strong> ERMIF</p>
+          <p><strong>Titular:</strong> HOYOS BUENO MELVIN</p>
+          <p><strong>RUC:</strong> 10735063818</p>
+          <p><strong>Contacto de privacidad, soporte, reclamos y derechos ARCO:</strong> MLVN696986@GMAIL.COM</p>
+
+          <h4>1. Alcance</h4>
+          <p>Esta politica explica como ERMIF trata datos personales propios de sus usuarios y como procesa tecnicamente los datos que cada prestamista registra sobre sus clientes para usar la plataforma.</p>
+
+          <h4>2. Datos propios de usuarios ERMIF</h4>
+          <p>ERMIF puede tratar nombre, correo, negocio, informacion de cuenta, suscripcion, soporte, reclamos, solicitudes de privacidad y datos necesarios para operar el servicio.</p>
+
+          <h4>3. Datos de clientes registrados por prestamistas</h4>
+          <p>El prestamista determina la finalidad de los datos de sus clientes. ERMIF actua como proveedor tecnologico y procesa nombres, telefono, documento, direccion, notas, prestamos, saldos, tasas, fechas, pagos e historial financiero solo para prestar el servicio al usuario.</p>
+
+          <h4>4. Finalidades</h4>
+          <p>Los datos se usan para prestar el servicio, operar la plataforma, brindar soporte, proteger la seguridad, cumplir obligaciones legales, atender reclamos y gestionar derechos sobre datos personales. ERMIF no usa estos datos para publicidad ni marketing.</p>
+
+          <h4>5. Datos necesarios y opcionales</h4>
+          <p>Correo, cuenta y datos operativos basicos son necesarios para usar ERMIF. En la cartera del prestamista, telefono, documento, direccion y notas pueden ser opcionales segun la gestion del usuario y el principio de minimizacion.</p>
+
+          <h4>6. Proveedores tecnologicos</h4>
+          <p>Supabase se usa para base de datos, autenticacion y servicios asociados segun configuracion. El backend/hosting actual sirve la aplicacion y rutas seguras. Google participa solo si el usuario elige iniciar sesion con Google. Mercado Pago procesa suscripciones y pagos de ERMIF.</p>
+
+          <h4>7. Bancos de datos y ANPD</h4>
+          <p>Los bancos de datos de ERMIF aun no han sido inscritos ante la ANPD. Esta situacion requiere tramite externo del titular. No se afirma que exista codigo RNPDP vigente.</p>
+
+          <h4>8. Transferencias</h4>
+          <p>La region fisica de Supabase no esta confirmada en este proyecto. Por ello, cualquier flujo transfronterizo queda marcado como REQUIERE VERIFICACION DEL TITULAR antes de declararlo como confirmado.</p>
+
+          <h4>9. Conservacion</h4>
+          <p>Los datos necesarios se conservan mientras la cuenta este activa. Tras cierre normal puede existir una ventana de recuperacion de 30 dias. El Libro de Reclamaciones y evidencias se conservan como minimo 2 anos desde su presentacion. Informacion tributaria o contable: REQUIERE CONFIRMACION CONTABLE/LEGAL.</p>
+
+          <h4>10. Seguridad</h4>
+          <p>ERMIF aplica autenticacion, separacion por usuario, reglas RLS, respaldos y rutas backend para operaciones sensibles. No debe publicarse la service role key en frontend.</p>
+
+          <h4>11. Derechos del titular</h4>
+          <p>El titular puede solicitar informacion, acceso, rectificacion, cancelacion u oposicion. Los plazos se gestionan separadamente del Libro de Reclamaciones: informacion 8 dias, acceso 20 dias, rectificacion/cancelacion/oposicion 10 dias, sujeto a verificacion normativa aplicable.</p>
+
+          <h4>12. Ejercicio de derechos y eliminacion</h4>
+          <p>Las solicitudes pueden presentarse desde "Privacidad y mis datos" o al correo indicado. La cancelacion de suscripcion, el cierre de cuenta y la cancelacion de datos son procesos distintos.</p>
+
+          <h4>13. Cookies y decisiones automatizadas</h4>
+          <p>ERMIF usa almacenamiento tecnico del navegador para sesion, preferencias y respaldos locales cuando corresponde. No se documentan decisiones automatizadas legales sobre titulares de datos.</p>
+
+          <h4>14. Cambios</h4>
+          <p>ERMIF podra actualizar esta politica. Las nuevas versiones indicaran fecha de actualizacion y se mostraran antes o durante el uso del servicio cuando sea necesario.</p>
+
+          <p class="legal-date">Ultima actualizacion: 10 de septiembre de 2026.</p>
+          <div class="legal-actions">
+            <button class="ghost-button" type="button" data-open-privacy-request>Privacidad y mis datos</button>
+            <button class="ghost-button" type="button" data-close-dialog>Regresar</button>
+          </div>
+        </div>
+      </section>
+    </dialog>
+
+    <dialog id="privacyRequestDialog" class="modal">
+      <form id="privacyRequestForm" method="dialog" class="modal-panel legal-panel claim-book-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Privacidad</p>
+            <h3>Privacidad y mis datos</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <p class="claim-book-notice legal-inline-note">
+          Este formulario es para datos personales. No reemplaza el Libro de Reclamaciones ni cancela automaticamente una suscripcion activa.
+        </p>
+        <div class="legal-actions">
+          <button class="ghost-button" type="button" data-open-account-deletion>Solicitar eliminacion de mi cuenta</button>
+        </div>
+        <div id="privacyRequestNotice" class="auth-notice is-hidden" role="status"></div>
+        <div class="form-grid claim-form-grid">
+          <label>
+            Tipo de solicitud
+            <select id="privacyRequestType" required>
+              <option value="informacion">Informacion</option>
+              <option value="acceso">Acceso</option>
+              <option value="rectificacion">Rectificacion</option>
+              <option value="cancelacion">Cancelacion</option>
+              <option value="oposicion">Oposicion</option>
+            </select>
+          </label>
+          <label>
+            Relacion con ERMIF
+            <select id="privacyRequestSubjectRole" required>
+              <option value="ermif_user">Usuario de ERMIF</option>
+              <option value="borrower">Cliente registrado por un prestamista</option>
+              <option value="other">Otro titular de datos</option>
+            </select>
+          </label>
+          <label>
+            Nombres y apellidos
+            <input id="privacyRequesterName" type="text" maxlength="180" required />
+          </label>
+          <label>
+            Correo de respuesta
+            <input id="privacyRequesterEmail" type="email" maxlength="160" required />
+          </label>
+          <label>
+            Tipo de documento
+            <select id="privacyDocumentType">
+              <option value="DNI">DNI</option>
+              <option value="CE">Carnet de extranjeria</option>
+              <option value="PASAPORTE">Pasaporte</option>
+              <option value="OTRO">Otro</option>
+            </select>
+          </label>
+          <label>
+            Numero de documento
+            <input id="privacyDocumentNumber" type="text" maxlength="20" />
+          </label>
+          <label class="claim-field-wide">
+            Detalle de la solicitud
+            <textarea id="privacyRequestDetail" rows="4" maxlength="1200" required></textarea>
+          </label>
+        </div>
+        <label class="legal-check">
+          <input id="privacyTruthAccept" type="checkbox" required />
+          <span>Declaro que soy el titular o representante autorizado y que la informacion enviada es verdadera.</span>
+        </label>
+        <div id="privacyRequestResult" class="claim-result is-hidden" aria-live="polite"></div>
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" data-close-dialog>Regresar</button>
+          <button id="privacyRequestSubmit" class="primary-button" type="submit">Registrar solicitud</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="accountDeletionDialog" class="modal">
+      <form id="accountDeletionForm" method="dialog" class="modal-panel legal-panel claim-book-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Cuenta</p>
+            <h3>Solicitar eliminacion de mi cuenta</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <p class="claim-book-notice legal-inline-note">
+          Esta solicitud inicia un proceso de baja. ERMIF no borra inmediatamente reclamos, evidencias ni informacion que deba conservarse por obligacion legal.
+        </p>
+        <div id="accountDeletionNotice" class="auth-notice is-hidden" role="status"></div>
+        <label>
+          Motivo opcional
+          <textarea id="accountDeletionReason" rows="3" maxlength="500"></textarea>
+        </label>
+        <label class="legal-check">
+          <input id="accountDeletionConfirm" type="checkbox" required />
+          <span>Entiendo que cancelar mi suscripcion, cerrar mi cuenta y ejercer derechos sobre datos son procesos diferentes.</span>
+        </label>
+        <div id="accountDeletionResult" class="claim-result is-hidden" aria-live="polite"></div>
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" data-close-dialog>Regresar</button>
+          <button id="accountDeletionSubmit" class="danger-button" type="submit">Enviar solicitud</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="adminClaimDialog" class="modal">
+      <form id="adminClaimForm" method="dialog" class="modal-panel legal-panel claim-admin-detail">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Expediente</p>
+            <h3 id="adminClaimTitle">Reclamo</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div id="adminClaimDetail" class="claim-detail-grid"></div>
+        <label>
+          Respuesta al consumidor
+          <textarea id="adminClaimResponse" rows="5" maxlength="2500" required></textarea>
+        </label>
+        <div id="adminClaimNotice" class="auth-notice is-hidden" role="status"></div>
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" data-admin-claim-status="in_review">Marcar en revision</button>
+          <button class="ghost-button" type="button" data-admin-claim-status="closed">Cerrar expediente</button>
+          <button id="adminClaimRespond" class="primary-button" type="submit">Enviar respuesta</button>
         </div>
       </form>
     </dialog>

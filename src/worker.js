@@ -21,6 +21,21 @@ const APPROVED_PAYMENT_STATUSES = new Set(["approved", "accredited", "processed"
 const ACTIVE_PROVIDER_STATUSES = new Set(["authorized", "active"]);
 const PAST_DUE_PROVIDER_STATUSES = new Set(["pending", "paused", "in_process", "in_mediation", "rejected"]);
 const CANCELLED_PROVIDER_STATUSES = new Set(["cancelled", "canceled", "refunded", "charged_back", "chargeback", "expired"]);
+const CLAIM_RESPONSE_BUSINESS_DAYS = 15;
+const CLAIM_RETENTION_YEARS = 2;
+const ACCOUNT_DELETION_RECOVERY_DAYS = 30;
+const PERU_TIME_ZONE = "America/Lima";
+const PERU_NON_WORKING_DAYS = new Set([]);
+const CLAIM_DUE_DATE_IS_ESTIMATED = true;
+const PRIVACY_REQUEST_RESPONSE_DAYS = {
+  informacion: 8,
+  acceso: 20,
+  rectificacion: 10,
+  cancelacion: 10,
+  oposicion: 10,
+};
+const CLAIM_STATUSES = new Set(["received", "in_review", "answered", "closed"]);
+const PRIVACY_REQUEST_TYPES = new Set(["informacion", "acceso", "rectificacion", "cancelacion", "oposicion"]);
 
 export default {
   async fetch(request, env) {
@@ -41,6 +56,28 @@ export default {
 
       if (url.pathname === "/api/reclamaciones" && request.method === "POST") {
         return await handleClaimBookSubmit(request, env);
+      }
+
+      if (url.pathname === "/api/privacidad/solicitudes" && request.method === "POST") {
+        return await handlePrivacyRequestSubmit(request, env);
+      }
+
+      if (url.pathname === "/api/cuenta/solicitar-eliminacion" && request.method === "POST") {
+        return await handleAccountDeletionRequest(request, env);
+      }
+
+      if (url.pathname === "/api/admin/legal" && request.method === "GET") {
+        return await handleAdminLegalList(request, env);
+      }
+
+      const adminClaimResponseMatch = url.pathname.match(/^\/api\/admin\/reclamaciones\/([^/]+)\/respond$/);
+      if (adminClaimResponseMatch && request.method === "POST") {
+        return await handleAdminClaimResponse(request, env, adminClaimResponseMatch[1]);
+      }
+
+      const adminClaimStatusMatch = url.pathname.match(/^\/api\/admin\/reclamaciones\/([^/]+)\/status$/);
+      if (adminClaimStatusMatch && request.method === "POST") {
+        return await handleAdminClaimStatus(request, env, adminClaimStatusMatch[1]);
       }
 
       if (url.pathname.startsWith("/api/")) {
@@ -128,12 +165,224 @@ async function handleClaimBookSubmit(request, env) {
   const body = await request.json().catch(() => ({}));
   const user = await getOptionalAuthenticatedUser(request, env);
   const row = normalizeClaimBookEntry(body, user?.id);
-  const saved = await supabaseInsert(env, "claim_book_entries", row);
+  await enforcePublicSubmissionRateLimit(env, "claim_book_entries", "email", row.email);
+  const saved = await insertClaimBookEntry(env, row);
+  await insertClaimEvent(env, saved.id, user?.id || null, "received", null, "received");
+  const receivedEmail = await queueTransactionalEmail(env, {
+    eventKey: `claim_received:${saved.id}`,
+    recipient: saved.email,
+    subject: `ERMIF - Hemos recibido tu reclamo ${saved.claim_code}`,
+    payload: {
+      claimCode: saved.claim_code,
+      requestType: saved.request_type,
+      createdAt: saved.created_at,
+      dueAt: saved.due_at,
+      requestSummary: saved.request,
+      contactEmail: saved.provider_email,
+    },
+  });
+  await updateClaimEmailEvidence(env, saved.id, "received", receivedEmail);
 
   return json({
     claimCode: saved.claim_code,
     createdAt: saved.created_at,
+    dueAt: saved.due_at,
+    receivedEmailStatus: receivedEmail.status,
   });
+}
+
+async function insertClaimBookEntry(env, row) {
+  try {
+    return await supabaseInsert(env, "claim_book_entries", row);
+  } catch (error) {
+    if (!/due_at|retention_until|legal_hold|email_status|provider_business_name|schema cache|column/i.test(error.message || "")) throw error;
+    const {
+      due_at,
+      retention_until,
+      legal_hold,
+      received_email_status,
+      response_email_status,
+      due_date_estimated,
+      received_email_sent_at,
+      response_email_sent_at,
+      received_email_error,
+      response_email_error,
+      response_version,
+      provider_business_name,
+      provider_legal_name,
+      provider_ruc,
+      provider_address,
+      ...compatibleRow
+    } = row;
+    return supabaseInsert(env, "claim_book_entries", compatibleRow);
+  }
+}
+
+async function handlePrivacyRequestSubmit(request, env) {
+  requireEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
+
+  const body = await request.json().catch(() => ({}));
+  const user = await getOptionalAuthenticatedUser(request, env);
+  const row = normalizePrivacyRequest(body, user?.id);
+  await enforcePublicSubmissionRateLimit(env, "privacy_requests", "requester_email", row.requester_email);
+  const saved = await supabaseInsert(env, "privacy_requests", row);
+  await queueTransactionalEmail(env, {
+    eventKey: `privacy_received:${saved.id}`,
+    recipient: saved.requester_email,
+    subject: `ERMIF - Solicitud de privacidad ${saved.request_code}`,
+    payload: {
+      requestCode: saved.request_code,
+      requestType: saved.request_type,
+      submittedAt: saved.submitted_at,
+      dueAt: saved.due_at,
+      contactEmail: "MLVN696986@GMAIL.COM",
+    },
+  });
+
+  return json({
+    requestCode: saved.request_code,
+    submittedAt: saved.submitted_at,
+    dueAt: saved.due_at,
+  });
+}
+
+async function handleAccountDeletionRequest(request, env) {
+  requireEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
+  const user = await getAuthenticatedUser(request, env);
+  const body = await request.json().catch(() => ({}));
+  const existing = await supabaseSelect(env, `account_deletion_requests?user_id=eq.${encodeURIComponent(user.id)}&select=*&order=requested_at.desc`);
+  const active = existing.find((row) => ["received", "in_review"].includes(row.status));
+  if (active) {
+    return json({
+      requestCode: active.request_code,
+      requestedAt: active.requested_at,
+      scheduledDeletionAt: active.scheduled_deletion_at,
+      status: active.status,
+    });
+  }
+
+  const requestedAt = new Date().toISOString();
+  const scheduledDeletionAt = addDays(requestedAt, ACCOUNT_DELETION_RECOVERY_DAYS);
+  const saved = await supabaseInsert(env, "account_deletion_requests", {
+    user_id: user.id,
+    email: user.email || "",
+    request_code: createLegalCode("DEL"),
+    status: "received",
+    reason: optionalText(body.reason, 500),
+    requested_at: requestedAt,
+    scheduled_deletion_at: scheduledDeletionAt,
+  });
+
+  await queueTransactionalEmail(env, {
+    eventKey: `account_deletion_received:${saved.id}`,
+    recipient: saved.email,
+    subject: `ERMIF - Solicitud de eliminacion de cuenta ${saved.request_code}`,
+    payload: {
+      requestCode: saved.request_code,
+      requestedAt: saved.requested_at,
+      scheduledDeletionAt: saved.scheduled_deletion_at,
+      contactEmail: "MLVN696986@GMAIL.COM",
+    },
+  });
+
+  return json({
+    requestCode: saved.request_code,
+    requestedAt: saved.requested_at,
+    scheduledDeletionAt: saved.scheduled_deletion_at,
+    status: saved.status,
+  });
+}
+
+async function handleAdminLegalList(request, env) {
+  requireEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
+  const user = await getAuthenticatedUser(request, env);
+  await assertAdminUser(env, user.id);
+
+  const [claims, claimEvents, privacyRequests, accountDeletionRequests] = await Promise.all([
+    supabaseSelect(env, "claim_book_entries?select=*&order=created_at.desc"),
+    supabaseSelect(env, "claim_book_events?select=*&order=created_at.asc"),
+    supabaseSelect(env, "privacy_requests?select=*&order=submitted_at.desc"),
+    supabaseSelect(env, "account_deletion_requests?select=*&order=requested_at.desc"),
+  ]);
+  const eventsByClaim = new Map();
+  claimEvents.forEach((event) => {
+    if (!eventsByClaim.has(event.claim_id)) eventsByClaim.set(event.claim_id, []);
+    eventsByClaim.get(event.claim_id).push(event);
+  });
+
+  return json({
+    claims: claims.map((claim) => ({ ...claim, events: eventsByClaim.get(claim.id) || [] })),
+    privacyRequests,
+    accountDeletionRequests,
+  });
+}
+
+async function handleAdminClaimResponse(request, env, claimId) {
+  requireEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
+  const user = await getAuthenticatedUser(request, env);
+  await assertAdminUser(env, user.id);
+
+  const body = await request.json().catch(() => ({}));
+  const response = requiredText(body.response, "Escribe la respuesta al consumidor.", 2500);
+  const claim = await getClaimById(env, claimId);
+  const now = new Date().toISOString();
+  const responseVersion = Number(claim.response_version || 0) + 1;
+
+  const emailResult = await queueTransactionalEmail(env, {
+    eventKey: `claim_response:${claim.id}:${responseVersion}`,
+    recipient: claim.email,
+    subject: `ERMIF - Respuesta a tu reclamo ${claim.claim_code}`,
+    payload: {
+      claimCode: claim.claim_code,
+      requestType: claim.request_type,
+      response,
+      respondedAt: now,
+      contactEmail: claim.provider_email || "MLVN696986@GMAIL.COM",
+    },
+  });
+
+  const updated = await supabaseUpdate(env, "claim_book_entries", `id=eq.${encodeURIComponent(claim.id)}`, {
+    status: "answered",
+    response,
+    response_version: responseVersion,
+    responded_at: now,
+    updated_at: now,
+    response_email_status: emailResult.status,
+    response_email_sent_at: emailResult.status === "sent" ? now : null,
+    response_email_error: emailResult.error || null,
+  });
+  await insertClaimEvent(env, claim.id, user.id, "response", claim.status, "answered");
+
+  return json({
+    claimCode: updated[0]?.claim_code || claim.claim_code,
+    status: "answered",
+    respondedAt: now,
+    responseEmailStatus: emailResult.status,
+  });
+}
+
+async function handleAdminClaimStatus(request, env, claimId) {
+  requireEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
+  const user = await getAuthenticatedUser(request, env);
+  await assertAdminUser(env, user.id);
+
+  const body = await request.json().catch(() => ({}));
+  const status = String(body.status || "").trim();
+  if (!CLAIM_STATUSES.has(status) || status === "answered") {
+    throw httpError("Estado de reclamo no valido para esta accion.", 400);
+  }
+
+  const claim = await getClaimById(env, claimId);
+  const now = new Date().toISOString();
+  const patch = {
+    status,
+    updated_at: now,
+    closed_at: status === "closed" ? now : null,
+  };
+  const updated = await supabaseUpdate(env, "claim_book_entries", `id=eq.${encodeURIComponent(claim.id)}`, patch);
+  await insertClaimEvent(env, claim.id, user.id, status === "closed" ? "closed" : "status_changed", claim.status, status);
+
+  return json({ claimCode: updated[0]?.claim_code || claim.claim_code, status });
 }
 
 async function handleMercadoPagoWebhook(request, env) {
@@ -473,7 +722,7 @@ function withoutCurrentPeriodEnd(row) {
 async function getAuthenticatedUser(request, env) {
   const authorization = request.headers.get("Authorization") || "";
   if (!authorization.startsWith("Bearer ")) {
-    throw httpError("Debes iniciar sesion para solicitar un plan.", 401);
+    throw httpError("Debes iniciar sesion para continuar.", 401);
   }
 
   const response = await fetch(`${getSupabaseUrl(env)}/auth/v1/user`, {
@@ -682,6 +931,11 @@ function normalizeClaimBookEntry(body, userId) {
   if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
     throw httpError("El monto reclamado debe ser cero o mayor.", 400);
   }
+  const documentType = requiredText(body.documentType, "Selecciona el tipo de documento.", 30).toUpperCase();
+  const documentNumber = requiredText(body.documentNumber, "Ingresa el numero de documento.", 20);
+  validateDocument(documentType, documentNumber);
+  const createdAt = new Date().toISOString();
+  const dueAt = calculateClaimDueDate(createdAt);
 
   return {
     claim_code: createClaimCode(),
@@ -690,8 +944,8 @@ function normalizeClaimBookEntry(body, userId) {
     service_name: requiredText(body.serviceName, "Ingresa el servicio contratado.", 120),
     consumer_first_name: requiredText(body.consumerFirstName, "Ingresa tus nombres.", 120),
     consumer_last_name: requiredText(body.consumerLastName, "Ingresa tus apellidos.", 120),
-    document_type: requiredText(body.documentType, "Selecciona el tipo de documento.", 30),
-    document_number: requiredText(body.documentNumber, "Ingresa el numero de documento.", 20),
+    document_type: documentType,
+    document_number: documentNumber,
     email,
     phone: requiredText(body.phone, "Ingresa un telefono o WhatsApp.", 30),
     address: requiredText(body.address, "Ingresa la direccion del consumidor.", 240),
@@ -702,7 +956,199 @@ function normalizeClaimBookEntry(body, userId) {
     status: "received",
     provider_email: "MLVN696986@GMAIL.COM",
     provider_phone: "984096252",
+    due_at: dueAt,
+    retention_until: addYears(createdAt, CLAIM_RETENTION_YEARS),
+    legal_hold: true,
+    received_email_status: "pending_configuration",
+    response_email_status: "pending_configuration",
+    due_date_estimated: CLAIM_DUE_DATE_IS_ESTIMATED,
+    created_at: createdAt,
+    updated_at: createdAt,
   };
+}
+
+function normalizePrivacyRequest(body, userId) {
+  const requestType = String(body.requestType || "").trim().toLowerCase();
+  if (!PRIVACY_REQUEST_TYPES.has(requestType)) {
+    throw httpError("Selecciona un derecho de privacidad valido.", 400);
+  }
+  const requesterEmail = requiredText(body.requesterEmail, "Ingresa el correo de respuesta.", 160).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requesterEmail)) {
+    throw httpError("Ingresa un correo electronico valido.", 400);
+  }
+  const documentType = optionalText(body.documentType, 30)?.toUpperCase() || null;
+  const documentNumber = optionalText(body.documentNumber, 20);
+  validateDocument(documentType, documentNumber);
+  const submittedAt = new Date().toISOString();
+
+  return {
+    request_code: createLegalCode("ARCO"),
+    submitted_user_id: userId || null,
+    request_type: requestType,
+    subject_role: requiredText(body.subjectRole, "Selecciona tu relacion con ERMIF.", 40),
+    requester_name: requiredText(body.requesterName, "Ingresa nombres y apellidos.", 180),
+    requester_email: requesterEmail,
+    document_type: documentType,
+    document_number: documentNumber,
+    detail: requiredText(body.detail, "Describe tu solicitud.", 1200),
+    status: "received",
+    submitted_at: submittedAt,
+    due_at: calculatePrivacyDueDate(submittedAt, requestType),
+    policy_version: optionalText(body.policyVersion, 40) || "2026-09-10",
+    retention_until: addYears(submittedAt, CLAIM_RETENTION_YEARS),
+    legal_hold: true,
+  };
+}
+
+function validateDocument(documentType, documentNumber) {
+  if (!documentType && documentNumber) {
+    throw httpError("Selecciona el tipo de documento.", 400);
+  }
+  if (documentType === "DNI" && documentNumber && !/^\d{8}$/.test(documentNumber)) {
+    throw httpError("El DNI debe tener 8 digitos.", 400);
+  }
+}
+
+function calculateClaimDueDate(createdAt) {
+  return addBusinessDaysInPeru(createdAt, CLAIM_RESPONSE_BUSINESS_DAYS);
+}
+
+function calculatePrivacyDueDate(createdAt, requestType) {
+  return addCalendarDaysInPeru(createdAt, PRIVACY_REQUEST_RESPONSE_DAYS[requestType] || 10);
+}
+
+function addBusinessDaysInPeru(value, businessDays) {
+  const date = toPeruDateOnly(value);
+  let added = 0;
+  while (added < businessDays) {
+    date.setDate(date.getDate() + 1);
+    if (isPeruBusinessDay(date)) added += 1;
+  }
+  date.setHours(23, 59, 59, 0);
+  return date.toISOString();
+}
+
+function addCalendarDaysInPeru(value, days) {
+  const date = toPeruDateOnly(value);
+  date.setDate(date.getDate() + days);
+  date.setHours(23, 59, 59, 0);
+  return date.toISOString();
+}
+
+function toPeruDateOnly(value) {
+  const base = value ? new Date(value) : new Date();
+  const peruParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: PERU_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(base);
+  const parts = Object.fromEntries(peruParts.map((part) => [part.type, part.value]));
+  return new Date(`${parts.year}-${parts.month}-${parts.day}T00:00:00-05:00`);
+}
+
+function isPeruBusinessDay(date) {
+  const day = date.getDay();
+  const iso = date.toISOString().slice(0, 10);
+  return day !== 0 && day !== 6 && !PERU_NON_WORKING_DAYS.has(iso);
+}
+
+function addYears(value, years) {
+  const date = new Date(value);
+  date.setFullYear(date.getFullYear() + years);
+  return date.toISOString();
+}
+
+function addDays(value, days) {
+  const date = new Date(value);
+  date.setDate(date.getDate() + days);
+  return date.toISOString();
+}
+
+async function assertAdminUser(env, userId) {
+  const rows = await supabaseSelect(env, `profiles?id=eq.${encodeURIComponent(userId)}&select=id,is_admin&limit=1`);
+  if (!rows[0]?.is_admin) {
+    throw httpError("Solo un administrador puede gestionar estos expedientes.", 403);
+  }
+}
+
+async function getClaimById(env, claimId) {
+  const rows = await supabaseSelect(env, `claim_book_entries?id=eq.${encodeURIComponent(claimId)}&select=*&limit=1`);
+  if (!rows[0]) throw httpError("Hoja de reclamacion no encontrada.", 404);
+  return rows[0];
+}
+
+async function insertClaimEvent(env, claimId, actorUserId, eventType, previousStatus, newStatus) {
+  try {
+    await supabaseInsert(env, "claim_book_events", {
+      claim_id: claimId,
+      actor_user_id: actorUserId,
+      event_type: eventType,
+      previous_status: previousStatus,
+      new_status: newStatus,
+    });
+  } catch (error) {
+    console.error("Claim event could not be recorded", { message: safeLogMessage(error) });
+  }
+}
+
+async function updateClaimEmailEvidence(env, claimId, kind, emailResult) {
+  const prefix = kind === "response" ? "response" : "received";
+  try {
+    await supabaseUpdate(env, "claim_book_entries", `id=eq.${encodeURIComponent(claimId)}`, {
+      [`${prefix}_email_status`]: emailResult.status,
+      [`${prefix}_email_sent_at`]: emailResult.status === "sent" ? new Date().toISOString() : null,
+      [`${prefix}_email_error`]: emailResult.error || null,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Claim email evidence could not be recorded", { message: safeLogMessage(error) });
+  }
+}
+
+async function queueTransactionalEmail(env, message) {
+  const status = env.EMAIL_TRANSPORT && env.EMAIL_API_KEY ? "pending" : "pending_configuration";
+  let error = status === "pending_configuration" ? "EMAIL_TRANSPORT no configurado." : null;
+  try {
+    await supabaseInsert(env, "email_outbox", {
+      event_key: message.eventKey,
+      recipient: message.recipient,
+      subject: message.subject,
+      payload: message.payload,
+      status,
+      last_error: error,
+    });
+  } catch (outboxError) {
+    error = safeLogMessage(outboxError);
+    console.error("Email outbox could not be recorded", { message: error });
+  }
+  return { status, error };
+}
+
+async function enforcePublicSubmissionRateLimit(env, table, emailColumn, email) {
+  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  try {
+    const rows = await supabaseSelect(
+      env,
+      `${table}?${emailColumn}=eq.${encodeURIComponent(email)}&created_at=gte.${encodeURIComponent(since)}&select=id`
+    );
+    if (rows.length >= 3) {
+      throw httpError("Se registraron varias solicitudes recientemente. Espera unos minutos e intenta nuevamente.", 429);
+    }
+  } catch (error) {
+    if (error.status === 429) throw error;
+    console.error("Rate limit check skipped", { table, message: safeLogMessage(error) });
+  }
+}
+
+function createLegalCode(prefix) {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const suffix = crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
+  return `ERMIF-${prefix}-${date}-${suffix}`;
+}
+
+function safeLogMessage(error) {
+  return String(error?.message || error || "Error").replace(/Bearer\s+[A-Za-z0-9._-]+/g, "Bearer [oculto]").slice(0, 180);
 }
 
 function requiredText(value, message, maxLength) {
@@ -719,7 +1165,7 @@ function optionalText(value, maxLength) {
 
 function createClaimCode() {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const suffix = crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
+  const suffix = crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase();
   return `ERMIF-${date}-${suffix}`;
 }
 

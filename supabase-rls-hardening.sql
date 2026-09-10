@@ -155,6 +155,42 @@ create policy "claim book entries admin select"
 on claim_book_entries for select
 using (public.is_admin());
 
+alter table claim_book_events enable row level security;
+alter table privacy_requests enable row level security;
+alter table account_deletion_requests enable row level security;
+alter table email_outbox enable row level security;
+
+drop policy if exists "claim book events admin select" on claim_book_events;
+drop policy if exists "privacy requests own select" on privacy_requests;
+drop policy if exists "privacy requests admin select" on privacy_requests;
+drop policy if exists "account deletion requests own select" on account_deletion_requests;
+drop policy if exists "account deletion requests admin select" on account_deletion_requests;
+drop policy if exists "email outbox admin select" on email_outbox;
+
+create policy "claim book events admin select"
+on claim_book_events for select
+using (public.is_admin());
+
+create policy "privacy requests own select"
+on privacy_requests for select
+using (submitted_user_id is not null and auth.uid() = submitted_user_id);
+
+create policy "privacy requests admin select"
+on privacy_requests for select
+using (public.is_admin());
+
+create policy "account deletion requests own select"
+on account_deletion_requests for select
+using (auth.uid() = user_id);
+
+create policy "account deletion requests admin select"
+on account_deletion_requests for select
+using (public.is_admin());
+
+create policy "email outbox admin select"
+on email_outbox for select
+using (public.is_admin());
+
 create or replace function public.initialize_user_account(
   p_email text default null,
   p_business_name text default 'Mi negocio',
@@ -318,6 +354,10 @@ revoke all on capital_movements from anon, authenticated;
 revoke all on plan_requests from anon, authenticated;
 revoke all on user_backups from anon, authenticated;
 revoke all on claim_book_entries from anon, authenticated;
+revoke all on claim_book_events from anon, authenticated;
+revoke all on privacy_requests from anon, authenticated;
+revoke all on account_deletion_requests from anon, authenticated;
+revoke all on email_outbox from anon, authenticated;
 
 grant select on profiles to authenticated;
 grant update (business_name, owner_name, currency) on profiles to authenticated;
@@ -329,6 +369,10 @@ grant select on capital_movements to authenticated;
 grant select on plan_requests to authenticated;
 grant select on user_backups to authenticated;
 grant select on claim_book_entries to authenticated;
+grant select on claim_book_events to authenticated;
+grant select on privacy_requests to authenticated;
+grant select on account_deletion_requests to authenticated;
+grant select on email_outbox to authenticated;
 
 grant select, insert, update, delete on profiles to service_role;
 grant select, insert, update, delete on subscriptions to service_role;
@@ -339,3 +383,7 @@ grant select, insert, update, delete on capital_movements to service_role;
 grant select, insert, update, delete on plan_requests to service_role;
 grant select, insert, update, delete on user_backups to service_role;
 grant select, insert, update, delete on claim_book_entries to service_role;
+grant select, insert, update, delete on claim_book_events to service_role;
+grant select, insert, update, delete on privacy_requests to service_role;
+grant select, insert, update, delete on account_deletion_requests to service_role;
+grant select, insert, update, delete on email_outbox to service_role;

@@ -1265,6 +1265,69 @@ input.field-success {
   gap: 8px;
 }
 
+.admin-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.admin-filter {
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admin-filter.active {
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.admin-legal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.admin-legal-grid h4 {
+  margin: 0 0 10px;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.admin-claim-row.is-legal-ok,
+.compact-legal-row.is-legal-ok {
+  border-top-color: var(--accent);
+}
+
+.admin-claim-row.is-legal-warn,
+.compact-legal-row.is-legal-warn {
+  border-top-color: var(--gold);
+}
+
+.admin-claim-row.is-legal-danger,
+.compact-legal-row.is-legal-danger {
+  border-top-color: var(--danger);
+}
+
+.admin-claim-row.is-legal-closed,
+.compact-legal-row.is-legal-closed {
+  border-top-color: var(--muted);
+  opacity: 0.92;
+}
+
+.compact-legal-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .view {
   display: none;
 }
@@ -2283,6 +2346,16 @@ input.field-success {
   width: min(1040px, calc(100vw - 28px));
 }
 
+#privacyDialog,
+#adminClaimDialog {
+  width: min(1040px, calc(100vw - 28px));
+}
+
+#privacyRequestDialog,
+#accountDeletionDialog {
+  width: min(860px, calc(100vw - 28px));
+}
+
 .legal-copy {
   display: grid;
   gap: 11px;
@@ -2317,6 +2390,10 @@ input.field-success {
   width: min(860px, calc(100vw - 28px));
 }
 
+.privacy-panel {
+  width: 100%;
+}
+
 .claims-modal .legal-panel {
   width: 100%;
 }
@@ -2324,6 +2401,12 @@ input.field-success {
 .claim-book-panel {
   display: grid;
   gap: 16px;
+}
+
+.legal-inline-note {
+  display: block;
+  margin: 0;
+  line-height: 1.45;
 }
 
 .claim-book-notice {
@@ -2421,6 +2504,49 @@ input.field-success {
   display: block;
   color: var(--ink);
   font-size: 1rem;
+}
+
+.claim-admin-detail {
+  width: 100%;
+}
+
+.claim-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.claim-detail-item {
+  padding: 11px;
+  background: rgba(6, 24, 38, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.claim-detail-item.wide {
+  grid-column: 1 / -1;
+}
+
+.claim-detail-item strong,
+.claim-detail-item span,
+.claim-detail-item small {
+  display: block;
+}
+
+.claim-detail-item strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.claim-detail-item span,
+.claim-detail-item small {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 750;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .status-pill {
@@ -3284,6 +3410,11 @@ input.field-success {
   }
 
   .admin-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-legal-grid,
+  .claim-detail-grid {
     grid-template-columns: 1fr;
   }
 

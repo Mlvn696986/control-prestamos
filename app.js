@@ -7,6 +7,33 @@ const FREE_CLIENT_LIMIT = 10;
 const CANONICAL_APP_ORIGIN = "https://ermif.com";
 const LEGACY_APP_HOSTS = new Set(["reliable-kleicha-4c46be.netlify.app"]);
 const INDICATOR_ORDER_STORAGE_KEY = "prestamos-dashboard-indicator-order-v1";
+const LEGAL_POLICY_VERSION = "2026-09-10";
+const CLAIM_RESPONSE_BUSINESS_DAYS = 15;
+const CLAIM_RETENTION_YEARS = 2;
+const ACCOUNT_DELETION_RECOVERY_DAYS = 30;
+const PERU_TIME_ZONE = "America/Lima";
+const PERU_NON_WORKING_DAYS = new Set([]);
+const CLAIM_DUE_DATE_IS_ESTIMATED = true;
+const PRIVACY_REQUEST_RESPONSE_DAYS = {
+  informacion: 8,
+  acceso: 20,
+  rectificacion: 10,
+  cancelacion: 10,
+  oposicion: 10,
+};
+const PRIVACY_REQUEST_LABELS = {
+  informacion: "Informacion",
+  acceso: "Acceso",
+  rectificacion: "Rectificacion",
+  cancelacion: "Cancelacion",
+  oposicion: "Oposicion",
+};
+const LEGAL_STATUS_LABELS = {
+  received: "Recibido",
+  in_review: "En revision",
+  answered: "Respondido",
+  closed: "Cerrado",
+};
 const OPERATION_TYPES = {
   principal: "principal",
   ampliacion: "ampliacion",
@@ -82,6 +109,12 @@ let capitalSubmissionInProgress = false;
 let backupCreationInProgress = false;
 let backupStatusCache = null;
 let backupStatusNotice = "";
+let adminClaimFilter = "all";
+let pendingAdminClaimId = null;
+let claimSubmissionInProgress = false;
+let privacyRequestSubmissionInProgress = false;
+let accountDeletionSubmissionInProgress = false;
+let adminClaimResponseSubmissionInProgress = false;
 const saas = {
   client: null,
   session: null,
@@ -128,6 +161,34 @@ const elements = {
   passwordSuccessClose: $("#passwordSuccessClose"),
   signupSuccessDialog: $("#signupSuccessDialog"),
   termsDialog: $("#termsDialog"),
+  privacyDialog: $("#privacyDialog"),
+  privacyRequestDialog: $("#privacyRequestDialog"),
+  privacyRequestForm: $("#privacyRequestForm"),
+  privacyRequestNotice: $("#privacyRequestNotice"),
+  privacyRequestResult: $("#privacyRequestResult"),
+  privacyRequestSubmit: $("#privacyRequestSubmit"),
+  privacyRequestType: $("#privacyRequestType"),
+  privacyRequestSubjectRole: $("#privacyRequestSubjectRole"),
+  privacyRequesterName: $("#privacyRequesterName"),
+  privacyRequesterEmail: $("#privacyRequesterEmail"),
+  privacyDocumentType: $("#privacyDocumentType"),
+  privacyDocumentNumber: $("#privacyDocumentNumber"),
+  privacyRequestDetail: $("#privacyRequestDetail"),
+  privacyTruthAccept: $("#privacyTruthAccept"),
+  accountDeletionDialog: $("#accountDeletionDialog"),
+  accountDeletionForm: $("#accountDeletionForm"),
+  accountDeletionNotice: $("#accountDeletionNotice"),
+  accountDeletionResult: $("#accountDeletionResult"),
+  accountDeletionSubmit: $("#accountDeletionSubmit"),
+  accountDeletionReason: $("#accountDeletionReason"),
+  accountDeletionConfirm: $("#accountDeletionConfirm"),
+  adminClaimDialog: $("#adminClaimDialog"),
+  adminClaimForm: $("#adminClaimForm"),
+  adminClaimTitle: $("#adminClaimTitle"),
+  adminClaimDetail: $("#adminClaimDetail"),
+  adminClaimResponse: $("#adminClaimResponse"),
+  adminClaimNotice: $("#adminClaimNotice"),
+  adminClaimRespond: $("#adminClaimRespond"),
   claimsDialog: $("#claimsDialog"),
   claimBookForm: $("#claimBookForm"),
   claimBookNotice: $("#claimBookNotice"),
@@ -275,6 +336,10 @@ const elements = {
   adminMonthlyRevenue: $("#adminMonthlyRevenue"),
   adminRequestsList: $("#adminRequestsList"),
   adminUserList: $("#adminUserList"),
+  adminClaimsList: $("#adminClaimsList"),
+  adminPrivacyList: $("#adminPrivacyList"),
+  adminDeletionList: $("#adminDeletionList"),
+  adminClaimFilters: $("#adminClaimFilters"),
   adminIntegrityCheck: $("#adminIntegrityCheck"),
   integrityDialog: $("#integrityDialog"),
   integritySummary: $("#integritySummary"),
@@ -370,12 +435,30 @@ function bindEvents() {
   $$("[data-open-terms]").forEach((button) => {
     button.addEventListener("click", () => elements.termsDialog.showModal());
   });
+  $$("[data-open-privacy]").forEach((button) => {
+    button.addEventListener("click", () => elements.privacyDialog.showModal());
+  });
+  $$("[data-open-privacy-request]").forEach((button) => {
+    button.addEventListener("click", openPrivacyRequestDialog);
+  });
+  $$("[data-open-account-deletion]").forEach((button) => {
+    button.addEventListener("click", openAccountDeletionDialog);
+  });
   $$("[data-open-claims]").forEach((button) => {
     button.addEventListener("click", openClaimBookDialog);
   });
   elements.claimBookForm.addEventListener("submit", handleClaimBookSubmit);
+  elements.privacyRequestForm.addEventListener("submit", handlePrivacyRequestSubmit);
+  elements.accountDeletionForm.addEventListener("submit", handleAccountDeletionSubmit);
+  elements.adminClaimForm.addEventListener("submit", handleAdminClaimResponseSubmit);
   elements.adminRefresh.addEventListener("click", refreshAdminPanel);
   elements.adminIntegrityCheck.addEventListener("click", openIntegrityDialog);
+  elements.adminClaimFilters.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-claim-filter]");
+    if (!button) return;
+    adminClaimFilter = button.dataset.claimFilter || "all";
+    renderAdmin();
+  });
   elements.interestInfoButton.addEventListener("click", () => elements.interestInfoDialog.showModal());
   $$("[data-dashboard-filter]").forEach((filter) => {
     filter.addEventListener("input", renderDashboard);
@@ -443,6 +526,8 @@ function bindEvents() {
     const deleteButton = event.target.closest("[data-delete-client]");
     const planButton = event.target.closest("[data-request-plan]");
     const adminPlanButton = event.target.closest("[data-admin-plan]");
+    const adminClaimButton = event.target.closest("[data-admin-claim]");
+    const adminClaimStatusButton = event.target.closest("[data-admin-claim-status]");
     const quickScrollButton = event.target.closest("[data-scroll-quick-list]");
     if (quickScrollButton) {
       scrollQuickCollection(quickScrollButton.dataset.scrollQuickList);
@@ -481,6 +566,16 @@ function bindEvents() {
 
     if (adminPlanButton) {
       updateAdminUserPlan(adminPlanButton.dataset.adminUser, adminPlanButton.dataset.adminPlan, adminPlanButton.dataset.adminRequest);
+      return;
+    }
+
+    if (adminClaimButton) {
+      openAdminClaimDialog(adminClaimButton.dataset.adminClaim);
+      return;
+    }
+
+    if (adminClaimStatusButton) {
+      updateAdminClaimStatus(adminClaimStatusButton.dataset.adminClaimStatus);
     }
   });
 }
@@ -573,6 +668,9 @@ function createEmptyAdminState() {
     loans: [],
     payments: [],
     planRequests: [],
+    claims: [],
+    privacyRequests: [],
+    accountDeletionRequests: [],
     error: "",
   };
 }
@@ -581,11 +679,26 @@ function normalizeState(raw) {
   return {
     user: raw.user || null,
     subscription: raw.subscription || createFreeSubscription(raw.user?.id || "local-user"),
-    clients: Array.isArray(raw.clients) ? raw.clients : [],
+    clients: normalizeClients(raw.clients),
     loans: normalizeLoans(raw.loans),
     payments: Array.isArray(raw.payments) ? raw.payments : [],
     capitalMovements: normalizeCapitalMovements(raw.capitalMovements || raw.capital_movements),
   };
+}
+
+function normalizeClients(clients) {
+  return Array.isArray(clients)
+    ? clients.map((client) => ({
+        ...client,
+        name: String(client.name || "").trim(),
+        phone: client.phone || "",
+        documentType: client.documentType || client.document_type || "",
+        documentNumber: client.documentNumber || client.document_number || "",
+        address: client.address || "",
+        note: client.note || "",
+        createdAt: client.createdAt || client.created_at || new Date().toISOString(),
+      }))
+    : [];
 }
 
 function normalizeCapitalMovements(movements) {
@@ -1088,16 +1201,17 @@ async function loadAdminState() {
     return;
   }
 
-  const [profilesResult, subscriptionsResult, clientsResult, loansResult, paymentsResult, requestsResult] = await Promise.all([
+  const [profilesResult, subscriptionsResult, clientsResult, loansResult, paymentsResult, requestsResult, legalResult] = await Promise.all([
     saas.client.from("profiles").select("*").order("created_at", { ascending: false }),
     saas.client.from("subscriptions").select("*").order("started_at", { ascending: false }),
     saas.client.from("clients").select("*").order("created_at", { ascending: false }),
     saas.client.from("loans").select("*").order("created_at", { ascending: false }),
     saas.client.from("payments").select("*").order("created_at", { ascending: false }),
     saas.client.from("plan_requests").select("*").order("created_at", { ascending: false }),
+    fetchAdminLegalState(),
   ]);
 
-  const firstError = [profilesResult, subscriptionsResult, clientsResult, loansResult, paymentsResult, requestsResult].find(
+  const firstError = [profilesResult, subscriptionsResult, clientsResult, loansResult, paymentsResult, requestsResult, legalResult].find(
     (result) => result.error
   );
   if (firstError?.error) {
@@ -1112,17 +1226,31 @@ async function loadAdminState() {
     loans: loansResult.data || [],
     payments: paymentsResult.data || [],
     planRequests: requestsResult.data || [],
+    claims: legalResult.data?.claims || [],
+    privacyRequests: legalResult.data?.privacyRequests || [],
+    accountDeletionRequests: legalResult.data?.accountDeletionRequests || [],
     error: "",
   };
 }
 
+async function fetchAdminLegalState() {
+  try {
+    const data = await apiFetch("/api/admin/legal", { method: "GET", adminMessage: "Debes iniciar sesion como administrador." });
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
 async function createCloudClientAndLoan(client, loan) {
   if (!isCloudMode()) return;
-  const userId = saas.session.user.id;
-  const { error } = await saas.client.rpc("create_client_with_loan", {
+  const payload = {
     p_client_id: client.id,
     p_name: client.name,
     p_phone: client.phone || "",
+    p_document_type: client.documentType || null,
+    p_document_number: client.documentNumber || null,
+    p_address: client.address || null,
     p_client_note: client.note || "",
     p_loan_id: loan.id,
     p_amount: loan.amount,
@@ -1133,7 +1261,14 @@ async function createCloudClientAndLoan(client, loan) {
     p_due_day: loan.dueDay,
     p_loan_note: loan.note || "",
     p_created_at: loan.createdAt,
-  });
+  };
+  const { error } = await saas.client.rpc("create_client_with_loan", payload);
+  if (isClientLegalFieldSchemaError(error)) {
+    const { p_document_type, p_document_number, p_address, ...compatiblePayload } = payload;
+    const retry = await saas.client.rpc("create_client_with_loan", compatiblePayload);
+    if (retry.error) throw retry.error;
+    return;
+  }
   if (error) throw error;
 }
 
@@ -1158,10 +1293,13 @@ async function createCloudLoan(loan) {
 
 async function updateCloudClientAndLoan(client, loan) {
   if (!isCloudMode()) return;
-  const { error } = await saas.client.rpc("update_client_with_loan", {
+  const payload = {
     p_client_id: client.id,
     p_name: client.name,
     p_phone: client.phone || "",
+    p_document_type: client.documentType || null,
+    p_document_number: client.documentNumber || null,
+    p_address: client.address || null,
     p_client_note: client.note || "",
     p_loan_id: loan?.id || null,
     p_amount: loan ? loan.amount : null,
@@ -1174,7 +1312,14 @@ async function updateCloudClientAndLoan(client, loan) {
     p_loan_note: loan ? loan.note || "" : "",
     p_status: loan ? loan.status : null,
     p_closed_at: loan ? loan.closedAt : null,
-  });
+  };
+  const { error } = await saas.client.rpc("update_client_with_loan", payload);
+  if (isClientLegalFieldSchemaError(error)) {
+    const { p_document_type, p_document_number, p_address, ...compatiblePayload } = payload;
+    const retry = await saas.client.rpc("update_client_with_loan", compatiblePayload);
+    if (retry.error) throw retry.error;
+    return;
+  }
   if (error) throw error;
 }
 
@@ -1238,6 +1383,10 @@ function withoutInterestMode(row) {
 
 function isInterestModeColumnError(error) {
   return Boolean(error && /interest_mode|schema cache/i.test(error.message || ""));
+}
+
+function isClientLegalFieldSchemaError(error) {
+  return Boolean(error && /document_type|document_number|address|schema cache|function public\.create_client_with_loan|function public\.update_client_with_loan/i.test(error.message || ""));
 }
 
 function isCapitalMovementsTableError(error) {
@@ -1347,23 +1496,28 @@ function collectClaimBookPayload() {
 }
 
 async function submitClaimBook(payload) {
-  const headers = {
-    "Content-Type": "application/json",
-  };
+  return apiFetch("/api/reclamaciones", {
+    method: "POST",
+    body: payload,
+    defaultError: "No se pudo registrar la hoja de reclamacion.",
+  });
+}
 
+async function apiFetch(path, options = {}) {
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   if (saas.session?.access_token) {
     headers.Authorization = `Bearer ${saas.session.access_token}`;
   }
 
-  const response = await fetch("/api/reclamaciones", {
-    method: "POST",
+  const response = await fetch(path, {
+    method: options.method || "GET",
     headers,
-    body: JSON.stringify(payload),
+    body: options.body ? JSON.stringify(options.body) : undefined,
   });
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || "No se pudo registrar la hoja de reclamacion.");
+    throw new Error(data.error || options.defaultError || options.adminMessage || "No se pudo completar la operacion.");
   }
 
   return data;
@@ -1371,6 +1525,7 @@ async function submitClaimBook(payload) {
 
 async function handleClaimBookSubmit(event) {
   event.preventDefault();
+  if (claimSubmissionInProgress) return;
 
   if (!elements.claimTruthAccept.checked) {
     window.alert("Debes confirmar que la informacion registrada es verdadera.");
@@ -1379,13 +1534,16 @@ async function handleClaimBookSubmit(event) {
 
   try {
     const payload = collectClaimBookPayload();
+    claimSubmissionInProgress = true;
     elements.claimBookSubmit.disabled = true;
     elements.claimBookSubmit.textContent = "Registrando...";
     setClaimBookNotice("Registrando tu hoja de reclamacion...", "info");
 
     const result = await submitClaimBook(payload);
     const claimCode = result.claimCode || "codigo generado";
-    elements.claimBookResult.textContent = `Hoja registrada correctamente. Codigo de seguimiento: ${claimCode}. Conserva este codigo; ERMIF respondera por escrito al correo indicado en un plazo maximo de 15 dias habiles.`;
+    const dueText = result.dueAt ? ` Fecha limite estimada: ${formatLegalDate(result.dueAt)}.` : "";
+    const emailText = getEmailStatusLabel(result.receivedEmailStatus);
+    elements.claimBookResult.textContent = `Hoja registrada correctamente. Codigo de seguimiento: ${claimCode}.${dueText} Conserva este codigo; ERMIF respondera por escrito al correo indicado. Correo de constancia: ${emailText}.`;
     elements.claimBookResult.classList.remove("is-hidden");
     setClaimBookNotice("Tu hoja fue registrada correctamente.", "success");
     elements.claimBookForm.reset();
@@ -1395,8 +1553,186 @@ async function handleClaimBookSubmit(event) {
     setClaimBookNotice(error.message || "No se pudo registrar la hoja de reclamacion.");
     elements.claimBookSubmit.textContent = "Registrar hoja";
   } finally {
+    claimSubmissionInProgress = false;
     elements.claimBookSubmit.disabled = false;
   }
+}
+
+function openPrivacyRequestDialog() {
+  elements.privacyRequestNotice.classList.add("is-hidden");
+  elements.privacyRequestNotice.textContent = "";
+  elements.privacyRequestResult.classList.add("is-hidden");
+  elements.privacyRequestResult.textContent = "";
+  elements.privacyRequestSubmit.disabled = false;
+  elements.privacyRequestSubmit.textContent = "Registrar solicitud";
+  if (!elements.privacyRequesterEmail.value.trim()) {
+    elements.privacyRequesterEmail.value = state.user?.email || saas.session?.user?.email || "";
+  }
+  elements.privacyRequestDialog.showModal();
+}
+
+function openAccountDeletionDialog() {
+  elements.accountDeletionNotice.classList.add("is-hidden");
+  elements.accountDeletionNotice.textContent = "";
+  elements.accountDeletionResult.classList.add("is-hidden");
+  elements.accountDeletionResult.textContent = "";
+  elements.accountDeletionSubmit.disabled = false;
+  elements.accountDeletionSubmit.textContent = "Enviar solicitud";
+  elements.accountDeletionDialog.showModal();
+}
+
+function setPrivacyRequestNotice(message, variant = "info") {
+  elements.privacyRequestNotice.textContent = message || "";
+  elements.privacyRequestNotice.classList.toggle("is-hidden", !message);
+  elements.privacyRequestNotice.classList.toggle("auth-notice-premium", variant === "success");
+}
+
+function collectPrivacyRequestPayload() {
+  const documentType = elements.privacyDocumentType.value;
+  const documentNumber = elements.privacyDocumentNumber.value.trim();
+  const validation = validateDocumentFields(documentType, documentNumber);
+  if (!validation.ok) throw new Error(validation.message);
+  return {
+    requestType: elements.privacyRequestType.value,
+    subjectRole: elements.privacyRequestSubjectRole.value,
+    requesterName: elements.privacyRequesterName.value.trim(),
+    requesterEmail: elements.privacyRequesterEmail.value.trim(),
+    documentType,
+    documentNumber,
+    detail: elements.privacyRequestDetail.value.trim(),
+    policyVersion: LEGAL_POLICY_VERSION,
+  };
+}
+
+async function handlePrivacyRequestSubmit(event) {
+  event.preventDefault();
+  if (privacyRequestSubmissionInProgress) return;
+  if (!elements.privacyTruthAccept.checked) {
+    window.alert("Debes confirmar que eres el titular o representante autorizado.");
+    return;
+  }
+
+  try {
+    privacyRequestSubmissionInProgress = true;
+    elements.privacyRequestSubmit.disabled = true;
+    elements.privacyRequestSubmit.textContent = "Registrando...";
+    setPrivacyRequestNotice("Registrando solicitud de privacidad...", "info");
+    const result = await apiFetch("/api/privacidad/solicitudes", {
+      method: "POST",
+      body: collectPrivacyRequestPayload(),
+      defaultError: "No se pudo registrar la solicitud de privacidad.",
+    });
+    elements.privacyRequestResult.textContent = `Solicitud registrada. Codigo: ${result.requestCode}. Fecha limite estimada: ${formatLegalDate(result.dueAt)}.`;
+    elements.privacyRequestResult.classList.remove("is-hidden");
+    setPrivacyRequestNotice("Solicitud registrada correctamente.", "success");
+    elements.privacyRequestForm.reset();
+    elements.privacyRequesterEmail.value = state.user?.email || saas.session?.user?.email || "";
+    elements.privacyRequestSubmit.textContent = "Registrar otra solicitud";
+  } catch (error) {
+    setPrivacyRequestNotice(error.message || "No se pudo registrar la solicitud.");
+    elements.privacyRequestSubmit.textContent = "Registrar solicitud";
+  } finally {
+    privacyRequestSubmissionInProgress = false;
+    elements.privacyRequestSubmit.disabled = false;
+  }
+}
+
+async function handleAccountDeletionSubmit(event) {
+  event.preventDefault();
+  if (accountDeletionSubmissionInProgress) return;
+  if (!isCloudMode() || !saas.session?.access_token) {
+    window.alert("Debes iniciar sesion para solicitar la eliminacion de cuenta.");
+    return;
+  }
+  if (!elements.accountDeletionConfirm.checked) {
+    window.alert("Confirma que entiendes la diferencia entre suscripcion, cuenta y datos.");
+    return;
+  }
+
+  try {
+    accountDeletionSubmissionInProgress = true;
+    elements.accountDeletionSubmit.disabled = true;
+    elements.accountDeletionSubmit.textContent = "Enviando...";
+    const result = await apiFetch("/api/cuenta/solicitar-eliminacion", {
+      method: "POST",
+      body: { reason: elements.accountDeletionReason.value.trim() },
+      defaultError: "No se pudo registrar la solicitud de eliminacion.",
+    });
+    elements.accountDeletionResult.textContent = `Solicitud registrada. Codigo: ${result.requestCode}. La fecha programada inicial es ${formatLegalDate(result.scheduledDeletionAt)}.`;
+    elements.accountDeletionResult.classList.remove("is-hidden");
+  } catch (error) {
+    elements.accountDeletionNotice.textContent = error.message || "No se pudo registrar la solicitud.";
+    elements.accountDeletionNotice.classList.remove("is-hidden");
+  } finally {
+    accountDeletionSubmissionInProgress = false;
+    elements.accountDeletionSubmit.disabled = false;
+    elements.accountDeletionSubmit.textContent = "Enviar solicitud";
+  }
+}
+
+function calculateClaimDueDate(createdAt) {
+  return addBusinessDaysInPeru(createdAt, CLAIM_RESPONSE_BUSINESS_DAYS);
+}
+
+function calculatePrivacyDueDate(createdAt, requestType) {
+  return addCalendarDaysInPeru(createdAt, PRIVACY_REQUEST_RESPONSE_DAYS[requestType] || 10);
+}
+
+function addBusinessDaysInPeru(value, businessDays) {
+  const date = toPeruDateOnly(value);
+  let added = 0;
+  while (added < businessDays) {
+    date.setDate(date.getDate() + 1);
+    if (isPeruBusinessDay(date)) added += 1;
+  }
+  date.setHours(23, 59, 59, 0);
+  return date.toISOString();
+}
+
+function addCalendarDaysInPeru(value, days) {
+  const date = toPeruDateOnly(value);
+  date.setDate(date.getDate() + days);
+  date.setHours(23, 59, 59, 0);
+  return date.toISOString();
+}
+
+function toPeruDateOnly(value) {
+  const base = value ? new Date(value) : new Date();
+  const peruParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: PERU_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(base);
+  const parts = Object.fromEntries(peruParts.map((part) => [part.type, part.value]));
+  return new Date(`${parts.year}-${parts.month}-${parts.day}T00:00:00-05:00`);
+}
+
+function isPeruBusinessDay(date) {
+  const day = date.getDay();
+  const iso = date.toISOString().slice(0, 10);
+  return day !== 0 && day !== 6 && !PERU_NON_WORKING_DAYS.has(iso);
+}
+
+function formatLegalDate(value) {
+  if (!value) return "No registrada";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Fecha no disponible";
+  return new Intl.DateTimeFormat("es-PE", {
+    timeZone: PERU_TIME_ZONE,
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function getEmailStatusLabel(status) {
+  return {
+    pending_configuration: "pendiente de configuracion",
+    pending: "pendiente",
+    sent: "enviado",
+    error: "error",
+    skipped: "no configurado",
+  }[status] || "pendiente de configuracion";
 }
 
 async function reloadAfterCloudError() {
@@ -1438,6 +1774,9 @@ function clientFromRow(row) {
     id: row.id,
     name: row.name,
     phone: row.phone || "",
+    documentType: row.document_type || "",
+    documentNumber: row.document_number || "",
+    address: row.address || "",
     note: row.note || "",
     createdAt: row.created_at,
   };
@@ -1503,6 +1842,9 @@ function clientToRow(client, userId) {
     user_id: userId,
     name: client.name,
     phone: client.phone,
+    document_type: client.documentType || null,
+    document_number: client.documentNumber || null,
+    address: client.address || null,
     note: client.note,
     created_at: client.createdAt,
   };
@@ -2199,6 +2541,9 @@ async function handleClientSubmit(event) {
   const selectedClient = isExtension ? getClient(elements.clientNameSelect.value) : null;
   const name = isExtension ? selectedClient?.name || "" : $("#clientName").value.trim();
   const phone = $("#clientPhone").value.trim();
+  const documentType = isExtension ? selectedClient?.documentType || "" : $("#clientDocumentType").value;
+  const documentNumber = isExtension ? selectedClient?.documentNumber || "" : $("#clientDocumentNumber").value.trim();
+  const address = isExtension ? selectedClient?.address || "" : $("#clientAddress").value.trim();
   const amount = toNumber($("#clientLoanAmount").value);
   const startDate = $("#clientLoanStartDate").value;
   const dueDate = $("#clientLoanDueDate").value;
@@ -2206,6 +2551,11 @@ async function handleClientSubmit(event) {
   const monthlyRate = toNumber(rateValue);
   const interestMode = normalizeInterestMode($("#clientLoanInterestMode").value);
   if (!name || !isPositiveMoney(amount) || !startDate || !dueDate) return;
+  const documentValidation = validateDocumentFields(documentType, documentNumber);
+  if (!documentValidation.ok) {
+    window.alert(documentValidation.message);
+    return;
+  }
   if (isExtension && !selectedClient) {
     window.alert("Selecciona el cliente que solicita la ampliacion.");
     return;
@@ -2252,6 +2602,9 @@ async function handleClientSubmit(event) {
         id: clientId,
         name,
         phone,
+        documentType,
+        documentNumber,
+        address,
         note,
         createdAt: new Date().toISOString(),
       };
@@ -2323,6 +2676,9 @@ async function handleEditSubmit(event) {
   const interestMode = normalizeInterestMode($("#editLoanInterestMode").value);
   const note = $("#editClientNote").value.trim();
   const phone = $("#editClientPhone").value.trim();
+  const documentType = $("#editClientDocumentType").value;
+  const documentNumber = $("#editClientDocumentNumber").value.trim();
+  const address = $("#editClientAddress").value.trim();
 
   if (!rateValue) {
     window.alert("Ingresa el interes mensual antes de guardar.");
@@ -2344,6 +2700,11 @@ async function handleEditSubmit(event) {
     const confirmed = window.confirm("Ya existe otro cliente con ese telefono. Deseas guardar de todos modos?");
     if (!confirmed) return;
   }
+  const documentValidation = validateDocumentFields(documentType, documentNumber);
+  if (!documentValidation.ok) {
+    window.alert(documentValidation.message);
+    return;
+  }
 
   const submitButton = event.submitter || elements.editForm.querySelector("button[type='submit']");
   editSubmissionInProgress = true;
@@ -2363,6 +2724,9 @@ async function handleEditSubmit(event) {
 
   client.name = $("#editClientName").value.trim();
   client.phone = phone;
+  client.documentType = documentType;
+  client.documentNumber = documentNumber;
+  client.address = address;
   client.note = note;
 
   let loan = getLoan($("#editLoanId").value);
@@ -5279,6 +5643,281 @@ function renderAdmin() {
     })
     .join("");
   renderEmpty(elements.adminUserList, "No hay usuarios registrados.");
+
+  renderAdminClaimFilters();
+  renderAdminClaims();
+  renderAdminPrivacy();
+}
+
+function renderAdminClaimFilters() {
+  elements.adminClaimFilters?.querySelectorAll?.("[data-claim-filter]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.claimFilter === adminClaimFilter);
+  });
+}
+
+function renderAdminClaims() {
+  if (!elements.adminClaimsList) return;
+  const claims = (adminState.claims || [])
+    .map(normalizeAdminClaim)
+    .filter(matchesAdminClaimFilter)
+    .sort(compareLegalByDueDate);
+
+  elements.adminClaimsList.innerHTML = claims
+    .map((claim) => {
+      const urgency = getLegalUrgency(claim);
+      return `
+        <article class="admin-row admin-claim-row ${urgency.className}">
+          <div>
+            <strong>${escapeHTML(claim.claimCode)}</strong>
+            <span>${escapeHTML(getClaimTypeLabel(claim.requestType))} - ${escapeHTML(claim.consumerName)}</span>
+            <small>${escapeHTML(claim.serviceName)} - Registro: ${formatLegalDate(claim.createdAt)}</small>
+            <small>Correo: ${escapeHTML(claim.email)} - Correo constancia: ${escapeHTML(getEmailStatusLabel(claim.receivedEmailStatus))}</small>
+          </div>
+          <div class="admin-plan-cell">
+            <span class="status-pill ${urgency.pillClass}">${escapeHTML(urgency.label)}</span>
+            <span class="status-pill muted">${escapeHTML(LEGAL_STATUS_LABELS[claim.status] || claim.status)}</span>
+            <small>Limite: ${formatLegalDate(claim.dueAt)}${CLAIM_DUE_DATE_IS_ESTIMATED ? " (estimado)" : ""}</small>
+            <button class="ghost-button small-button" type="button" data-admin-claim="${claim.id}">Ver detalle</button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+  renderEmpty(elements.adminClaimsList, "No hay reclamos con ese filtro.");
+}
+
+function renderAdminPrivacy() {
+  const privacyRows = (adminState.privacyRequests || []).map(normalizePrivacyRequest).sort(compareLegalByDueDate);
+  const deletionRows = (adminState.accountDeletionRequests || []).map(normalizeDeletionRequest).sort(compareLegalByDueDate);
+
+  elements.adminPrivacyList.innerHTML = privacyRows
+    .map((request) => {
+      const urgency = getLegalUrgency(request);
+      return `
+        <article class="admin-row compact-legal-row ${urgency.className}">
+          <div>
+            <strong>${escapeHTML(request.requestCode)}</strong>
+            <span>${escapeHTML(PRIVACY_REQUEST_LABELS[request.requestType] || request.requestType)} - ${escapeHTML(request.requesterName)}</span>
+            <small>${escapeHTML(request.requesterEmail)} - Limite: ${formatLegalDate(request.dueAt)}</small>
+          </div>
+          <span class="status-pill ${urgency.pillClass}">${escapeHTML(LEGAL_STATUS_LABELS[request.status] || request.status)}</span>
+        </article>
+      `;
+    })
+    .join("");
+  renderEmpty(elements.adminPrivacyList, "Sin solicitudes de privacidad.");
+
+  elements.adminDeletionList.innerHTML = deletionRows
+    .map((request) => `
+      <article class="admin-row compact-legal-row">
+        <div>
+          <strong>${escapeHTML(request.requestCode)}</strong>
+          <span>${escapeHTML(request.email || "Usuario sin correo")}</span>
+          <small>Programada: ${formatLegalDate(request.scheduledDeletionAt)}</small>
+        </div>
+        <span class="status-pill warn">${escapeHTML(LEGAL_STATUS_LABELS[request.status] || request.status)}</span>
+      </article>
+    `)
+    .join("");
+  renderEmpty(elements.adminDeletionList, "Sin solicitudes de eliminacion.");
+}
+
+function normalizeAdminClaim(row) {
+  const createdAt = row.created_at || row.createdAt;
+  return {
+    id: row.id,
+    claimCode: row.claim_code || row.claimCode || "",
+    requestType: row.request_type || row.requestType || "",
+    serviceName: row.service_name || row.serviceName || "",
+    consumerName: `${row.consumer_first_name || ""} ${row.consumer_last_name || ""}`.trim(),
+    documentType: row.document_type || "",
+    documentNumber: row.document_number || "",
+    email: row.email || "",
+    phone: row.phone || "",
+    address: row.address || "",
+    amount: row.amount,
+    paymentReference: row.payment_reference || "",
+    detail: row.detail || "",
+    request: row.request || "",
+    status: row.status || "received",
+    response: row.response || "",
+    createdAt,
+    dueAt: row.due_at || calculateClaimDueDate(createdAt),
+    respondedAt: row.responded_at || "",
+    closedAt: row.closed_at || "",
+    receivedEmailStatus: row.received_email_status || "pending_configuration",
+    responseEmailStatus: row.response_email_status || "pending_configuration",
+    events: row.events || [],
+  };
+}
+
+function normalizePrivacyRequest(row) {
+  const submittedAt = row.submitted_at || row.created_at || row.submittedAt;
+  return {
+    id: row.id,
+    requestCode: row.request_code || row.requestCode || "",
+    requestType: row.request_type || row.requestType || "acceso",
+    requesterName: row.requester_name || row.requesterName || "",
+    requesterEmail: row.requester_email || row.requesterEmail || "",
+    status: row.status || "received",
+    submittedAt,
+    dueAt: row.due_at || calculatePrivacyDueDate(submittedAt, row.request_type),
+    respondedAt: row.responded_at || "",
+  };
+}
+
+function normalizeDeletionRequest(row) {
+  const requestedAt = row.requested_at || row.created_at || row.requestedAt;
+  return {
+    id: row.id,
+    requestCode: row.request_code || row.requestCode || "",
+    email: row.email || "",
+    status: row.status || "received",
+    requestedAt,
+    dueAt: row.scheduled_deletion_at || row.scheduledDeletionAt,
+    scheduledDeletionAt: row.scheduled_deletion_at || row.scheduledDeletionAt,
+  };
+}
+
+function matchesAdminClaimFilter(claim) {
+  const urgency = getLegalUrgency(claim);
+  if (adminClaimFilter === "pending") return ["received", "in_review"].includes(claim.status);
+  if (adminClaimFilter === "due_soon") return urgency.status === "due_soon";
+  if (adminClaimFilter === "overdue") return urgency.status === "overdue";
+  if (adminClaimFilter === "answered") return claim.status === "answered";
+  if (adminClaimFilter === "closed") return claim.status === "closed";
+  return true;
+}
+
+function compareLegalByDueDate(left, right) {
+  return new Date(left.dueAt || left.createdAt || left.submittedAt || 0) - new Date(right.dueAt || right.createdAt || right.submittedAt || 0);
+}
+
+function getLegalUrgency(item) {
+  const status = String(item.status || "");
+  const dueAt = item.dueAt ? new Date(item.dueAt) : null;
+  const respondedAt = item.respondedAt ? new Date(item.respondedAt) : null;
+  if (status === "closed") return { status: "closed", label: "Cerrado", className: "is-legal-closed", pillClass: "muted" };
+  if (status === "answered") {
+    const inTime = dueAt && respondedAt ? respondedAt <= dueAt : true;
+    return { status: "answered", label: inTime ? "Respondido dentro del plazo" : "Respondido fuera de plazo", className: inTime ? "is-legal-ok" : "is-legal-warn", pillClass: inTime ? "ok" : "warn" };
+  }
+  if (!dueAt || Number.isNaN(dueAt.getTime())) return { status: "pending", label: "Pendiente", className: "is-legal-warn", pillClass: "warn" };
+  const diffDays = Math.ceil((dueAt - new Date()) / (24 * 60 * 60 * 1000));
+  if (diffDays < 0) return { status: "overdue", label: "Plazo vencido", className: "is-legal-danger", pillClass: "danger" };
+  if (diffDays <= 3) return { status: "due_soon", label: "Por vencer", className: "is-legal-warn", pillClass: "warn" };
+  return { status: "pending", label: `${diffDays} dia(s) restantes`, className: "is-legal-ok", pillClass: "ok" };
+}
+
+function getClaimTypeLabel(type) {
+  return type === "queja" ? "Queja" : "Reclamo";
+}
+
+function openAdminClaimDialog(claimId) {
+  const claim = (adminState.claims || []).map(normalizeAdminClaim).find((item) => item.id === claimId);
+  if (!claim) return;
+  pendingAdminClaimId = claim.id;
+  elements.adminClaimTitle.textContent = `${getClaimTypeLabel(claim.requestType)} ${claim.claimCode}`;
+  elements.adminClaimResponse.value = claim.response || "";
+  elements.adminClaimNotice.classList.add("is-hidden");
+  elements.adminClaimNotice.textContent = "";
+  elements.adminClaimDetail.innerHTML = `
+    ${renderClaimDetailItem("Codigo", claim.claimCode)}
+    ${renderClaimDetailItem("Fecha de registro", formatLegalDate(claim.createdAt))}
+    ${renderClaimDetailItem("Fecha limite", `${formatLegalDate(claim.dueAt)}${CLAIM_DUE_DATE_IS_ESTIMATED ? " (estimada)" : ""}`)}
+    ${renderClaimDetailItem("Consumidor", claim.consumerName)}
+    ${renderClaimDetailItem("Documento", `${claim.documentType} ${maskDocumentNumber(claim.documentNumber)}`)}
+    ${renderClaimDetailItem("Contacto", `${claim.email} / ${claim.phone}`)}
+    ${renderClaimDetailItem("Servicio", claim.serviceName)}
+    ${renderClaimDetailItem("Monto", claim.amount === null || claim.amount === undefined ? "No indicado" : money(Number(claim.amount)))}
+    ${renderClaimDetailItem("Tipo", getClaimTypeLabel(claim.requestType))}
+    ${renderClaimDetailItem("Correo recepcion", getEmailStatusLabel(claim.receivedEmailStatus))}
+    ${renderClaimDetailItem("Correo respuesta", getEmailStatusLabel(claim.responseEmailStatus))}
+    ${renderClaimDetailItem("Detalle", claim.detail, true)}
+    ${renderClaimDetailItem("Pedido concreto", claim.request, true)}
+    ${renderClaimDetailItem("Historial de cambios", renderClaimEvents(claim.events), true, true)}
+  `;
+  elements.adminClaimDialog.showModal();
+}
+
+function renderClaimDetailItem(label, value, wide = false, isHtml = false) {
+  return `
+    <article class="claim-detail-item ${wide ? "wide" : ""}">
+      <strong>${escapeHTML(label)}</strong>
+      <span>${isHtml ? value : escapeHTML(value || "No registrado")}</span>
+    </article>
+  `;
+}
+
+function renderClaimEvents(events) {
+  if (!Array.isArray(events) || !events.length) return "Sin eventos registrados.";
+  return events
+    .map((event) => {
+      const from = event.previous_status ? ` de ${LEGAL_STATUS_LABELS[event.previous_status] || event.previous_status}` : "";
+      const to = event.new_status ? ` a ${LEGAL_STATUS_LABELS[event.new_status] || event.new_status}` : "";
+      return `<small>${escapeHTML(formatLegalDate(event.created_at))}: ${escapeHTML(event.event_type || "evento")}${escapeHTML(from + to)}</small>`;
+    })
+    .join("");
+}
+
+function maskDocumentNumber(value) {
+  const text = String(value || "");
+  if (text.length <= 4) return text ? "****" : "No registrado";
+  return `${"*".repeat(Math.max(text.length - 4, 4))}${text.slice(-4)}`;
+}
+
+async function handleAdminClaimResponseSubmit(event) {
+  event.preventDefault();
+  if (!pendingAdminClaimId || adminClaimResponseSubmissionInProgress) return;
+
+  const response = elements.adminClaimResponse.value.trim();
+  if (!response) {
+    window.alert("Escribe la respuesta al consumidor antes de enviarla.");
+    return;
+  }
+  const confirmed = window.confirm("Se guardara la respuesta oficial al consumidor. Deseas continuar?");
+  if (!confirmed) return;
+
+  try {
+    adminClaimResponseSubmissionInProgress = true;
+    elements.adminClaimRespond.disabled = true;
+    elements.adminClaimRespond.textContent = "Enviando...";
+    const result = await apiFetch(`/api/admin/reclamaciones/${encodeURIComponent(pendingAdminClaimId)}/respond`, {
+      method: "POST",
+      body: { response },
+      defaultError: "No se pudo responder la hoja de reclamacion.",
+    });
+    elements.adminClaimNotice.textContent = `Respuesta guardada. Correo de respuesta: ${getEmailStatusLabel(result.responseEmailStatus)}.`;
+    elements.adminClaimNotice.classList.remove("is-hidden");
+    await refreshAdminPanel();
+  } catch (error) {
+    elements.adminClaimNotice.textContent = error.message || "No se pudo responder.";
+    elements.adminClaimNotice.classList.remove("is-hidden");
+  } finally {
+    adminClaimResponseSubmissionInProgress = false;
+    elements.adminClaimRespond.disabled = false;
+    elements.adminClaimRespond.textContent = "Enviar respuesta";
+  }
+}
+
+async function updateAdminClaimStatus(status) {
+  if (!pendingAdminClaimId) return;
+  if (!["in_review", "closed"].includes(status)) return;
+  const confirmed = window.confirm(`Se actualizara el expediente a ${LEGAL_STATUS_LABELS[status]}. Deseas continuar?`);
+  if (!confirmed) return;
+  try {
+    const result = await apiFetch(`/api/admin/reclamaciones/${encodeURIComponent(pendingAdminClaimId)}/status`, {
+      method: "POST",
+      body: { status },
+      defaultError: "No se pudo actualizar el estado del reclamo.",
+    });
+    elements.adminClaimNotice.textContent = `Estado actualizado a ${LEGAL_STATUS_LABELS[result.status] || result.status}.`;
+    elements.adminClaimNotice.classList.remove("is-hidden");
+    await refreshAdminPanel();
+  } catch (error) {
+    elements.adminClaimNotice.textContent = error.message || "No se pudo actualizar el estado.";
+    elements.adminClaimNotice.classList.remove("is-hidden");
+  }
 }
 
 function openIntegrityDialog() {
@@ -5497,6 +6136,9 @@ function openEditDialog(clientId, loanId = null) {
   $("#editLoanId").value = loan?.id || "";
   $("#editClientName").value = client.name || "";
   $("#editClientPhone").value = client.phone || "";
+  $("#editClientDocumentType").value = client.documentType || "";
+  $("#editClientDocumentNumber").value = client.documentNumber || "";
+  $("#editClientAddress").value = client.address || "";
   $("#editClientNote").value = client.note || loan?.note || "";
   $("#editLoanAmount").value = loan ? loan.amount : "";
   $("#editLoanRate").value = loan ? loan.monthlyRate : 10;
@@ -5539,6 +6181,9 @@ function openClientDialog(mode = "new") {
   $("#clientName").required = !isExtension;
   elements.clientNameSelect.required = isExtension;
   $("#clientPhone").readOnly = isExtension;
+  $("#clientDocumentType").disabled = isExtension;
+  $("#clientDocumentNumber").readOnly = isExtension;
+  $("#clientAddress").readOnly = isExtension;
 
   if (isExtension) {
     populateClientSelect();
@@ -5547,6 +6192,9 @@ function openClientDialog(mode = "new") {
   } else {
     elements.clientNameSelect.innerHTML = "";
     $("#clientPhone").value = "";
+    $("#clientDocumentType").value = "";
+    $("#clientDocumentNumber").value = "";
+    $("#clientAddress").value = "";
     $("#clientNote").placeholder = "Direccion, referencia o acuerdo especial";
   }
   updateLoanLimitHint();
@@ -5565,6 +6213,9 @@ function fillExtensionClientFields() {
   const client = getClient(elements.clientNameSelect.value);
   if (!client) return;
   $("#clientPhone").value = client.phone || "";
+  $("#clientDocumentType").value = client.documentType || "";
+  $("#clientDocumentNumber").value = client.documentNumber || "";
+  $("#clientAddress").value = client.address || "";
   updateLoanLimitHint();
 }
 
@@ -6397,6 +7048,18 @@ function hasDuplicatePhone(phone, excludeClientId = null) {
   const normalized = normalizePhone(phone);
   if (!normalized) return false;
   return state.clients.some((client) => client.id !== excludeClientId && normalizePhone(client.phone) === normalized);
+}
+
+function validateDocumentFields(documentType, documentNumber) {
+  const type = String(documentType || "").trim().toUpperCase();
+  const number = String(documentNumber || "").trim();
+  if (!type && number) {
+    return { ok: false, message: "Selecciona el tipo de documento antes de guardar el numero." };
+  }
+  if (type === "DNI" && number && !/^\d{8}$/.test(number)) {
+    return { ok: false, message: "El DNI debe tener 8 digitos." };
+  }
+  return { ok: true };
 }
 
 function normalizePhone(phone) {

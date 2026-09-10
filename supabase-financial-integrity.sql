@@ -39,6 +39,10 @@ create table if not exists claim_book_entries (
   updated_at timestamptz default now()
 );
 
+alter table clients add column if not exists document_type text;
+alter table clients add column if not exists document_number text;
+alter table clients add column if not exists address text;
+
 alter table claim_book_entries enable row level security;
 
 drop policy if exists "claim book entries own select" on claim_book_entries;
@@ -672,6 +676,9 @@ begin
             'id', id,
             'name', name,
             'phone', coalesce(phone, ''),
+            'documentType', document_type,
+            'documentNumber', document_number,
+            'address', address,
             'note', coalesce(note, ''),
             'createdAt', created_at
           )
@@ -813,18 +820,26 @@ begin
   delete from loans where user_id = auth.uid();
   delete from clients where user_id = auth.uid();
 
-  insert into clients (id, user_id, name, phone, note, created_at)
+  insert into clients (id, user_id, name, phone, document_type, document_number, address, note, created_at)
   select
     item.id,
     auth.uid(),
     item.name,
     coalesce(item.phone, ''),
+    nullif(coalesce(item."documentType", item.document_type), ''),
+    nullif(coalesce(item."documentNumber", item.document_number), ''),
+    nullif(coalesce(item.address, ''), ''),
     coalesce(item.note, ''),
     coalesce(item."createdAt", item.created_at, now())
   from jsonb_to_recordset(coalesce(snapshot -> 'clients', '[]'::jsonb)) as item(
     id uuid,
     name text,
     phone text,
+    "documentType" text,
+    document_type text,
+    "documentNumber" text,
+    document_number text,
+    address text,
     note text,
     "createdAt" timestamptz,
     created_at timestamptz
