@@ -103,18 +103,15 @@ alter table user_backups enable row level security;
 
 drop policy if exists "user backups own data" on user_backups;
 drop policy if exists "user backups own select" on user_backups;
+drop policy if exists "user backups own restore delete" on user_backups;
 drop policy if exists "user backups admin data" on user_backups;
+drop policy if exists "user backups admin select" on user_backups;
 
 create policy "user backups own select"
 on user_backups for select
 using (auth.uid() = user_id);
 
-create policy "user backups admin data"
-on user_backups for all
-using (public.is_admin())
-with check (public.is_admin());
-
-revoke insert, update, delete on user_backups from authenticated;
+revoke all on user_backups from anon, authenticated;
 grant select on user_backups to authenticated;
 
 alter table loans add column if not exists operation_type text;
@@ -769,7 +766,7 @@ grant execute on function public.create_user_backup() to authenticated;
 create or replace function public.restore_user_backup(p_backup_id uuid)
 returns void
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 declare

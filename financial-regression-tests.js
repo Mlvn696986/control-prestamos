@@ -8,6 +8,7 @@ const htmlCode = readText("index.html");
 const sqlCode = readText("supabase-financial-integrity.sql");
 const schemaCode = readText("supabase-schema.sql");
 const rlsCode = readText("supabase-rls-hardening.sql");
+const backupStrategyCode = readText("BACKUP-STRATEGY.md");
 const stylesCode = readText("styles.css");
 const cloudflareBuildCode = readText("scripts/build-cloudflare.js");
 const wranglerCode = readText("wrangler.jsonc");
@@ -906,6 +907,41 @@ assert(validateStateIntegrity({
   loans: [],
   payments: [testPayment({ id: "payment-orphan", loanId: "sin-loan", clientId: "huerfano", date: "2026-08-10", interestPaid: 10 })],
 }).length > 0, "Importacion con pago huerfano debe rechazarse.");
+
+function backupHoursAgo(hours) {
+  return { id: "backup-" + hours, createdAt: new Date(Date.now() - hours * 60 * 60 * 1000).toISOString() };
+}
+
+let backupStatus = buildBackupStatus({ latestBackup: null, lastAttempt: null, source: "cloud" });
+assertEqual(backupStatus.status, "none", "Backups: sin copias debe marcar estado none.");
+assertEqual(backupStatus.tone, "danger", "Backups: sin copias debe pedir atencion.");
+
+backupStatus = buildBackupStatus({ latestBackup: backupHoursAgo(2), lastAttempt: null, source: "cloud" });
+assertEqual(backupStatus.status, "fresh", "Backups: copia de 2 horas debe estar actualizada.");
+assertEqual(backupStatus.tone, "ok", "Backups: copia fresca debe verse en verde.");
+
+backupStatus = buildBackupStatus({ latestBackup: backupHoursAgo(30), lastAttempt: null, source: "cloud" });
+assertEqual(backupStatus.status, "warning", "Backups: copia de 30 horas debe ser advertencia suave.");
+assertEqual(backupStatus.tone, "warn", "Backups: advertencia suave debe verse en amarillo.");
+
+backupStatus = buildBackupStatus({ latestBackup: backupHoursAgo(60), lastAttempt: null, source: "cloud" });
+assertEqual(backupStatus.status, "critical", "Backups: copia de 60 horas debe ser critica.");
+assertEqual(backupStatus.tone, "danger", "Backups: copia critica debe verse en rojo.");
+
+backupStatus = buildBackupStatus({
+  latestBackup: backupHoursAgo(30),
+  lastAttempt: { ok: false, attemptedAt: new Date().toISOString(), source: "cloud", error: "fallo controlado" },
+  source: "cloud",
+});
+assertEqual(backupStatus.status, "error", "Backups: ultimo intento fallido debe mantener estado error.");
+assert(backupStatus.detail.includes("Ultima copia segura"), "Backups: error no debe borrar la ultima copia buena.");
+
+localStorage.removeItem(BACKUP_STORAGE_KEY);
+resetTestState({ clients: [testClient("backup-local")], loans: [], payments: [], capitalMovements: [] });
+for (let index = 0; index < MAX_BACKUPS + 2; index += 1) {
+  createLocalBackup(true);
+}
+assertEqual(readLocalBackups().length, MAX_BACKUPS, "Backups: modo local debe conservar solo las 7 copias mas recientes.");
 `;
 
 vm.runInNewContext(`${appCode}\n${tests}`, context, { filename: "financial-regression-tests.vm.js" });
@@ -960,12 +996,21 @@ assertFileIncludes(sqlCode, "create or replace function public.restore_user_back
 assertFileIncludes(sqlCode, "where id = p_backup_id", "Test 10: restauracion debe buscar una copia real por ID.");
 assertFileIncludes(sqlCode, "and user_id = v_user_id", "Test 10: restauracion debe exigir que la copia pertenezca al usuario.");
 assertFileIncludes(sqlCode, "v_snapshot_clients > v_client_limit", "Test 10: restauracion debe respetar el limite de clientes del plan.");
-assertFileIncludes(sqlCode, "revoke insert, update, delete on user_backups from authenticated", "Test 10: usuarios no deben escribir backups directamente.");
+assertFileIncludes(sqlCode, "revoke all on user_backups from anon, authenticated", "Test 10: usuarios no deben escribir backups directamente.");
 assertFileIncludes(sqlCode, "grant select on user_backups to authenticated", "Test 10: usuarios solo deben leer metadatos/respaldos propios.");
 assertFileIncludes(sqlCode, "perform set_config('app.restoring_snapshot', 'on', true)", "Test 10: restauracion debe ejecutarse como snapshot transaccional controlado.");
 assertFileIncludes(appCode, 'rpc("create_user_backup")', "Test 10: frontend debe crear backups cloud con RPC segura.");
 assertFileIncludes(appCode, 'rpc("restore_user_backup", { p_backup_id: backupId })', "Test 10: frontend debe restaurar cloud solo por ID de backup.");
 assertCondition(!appCode.includes('rpc("restore_user_snapshot"'), "Test 10: frontend no debe enviar snapshots completos a Supabase.");
+assertFileIncludes(appCode, "recordBackupAttempt", "Backups: los intentos de copia deben registrarse.");
+assertFileIncludes(appCode, "getBackupStatus", "Backups: debe existir consulta de estado de ultima copia real.");
+assertFileIncludes(appCode, "renderBackupStatus", "Backups: Seguridad de datos debe mostrar el estado de copias.");
+assertFileIncludes(appCode, "createBackupNow", "Backups: debe existir accion manual para crear copia ahora.");
+assertFileIncludes(appCode, "console.error(\"Automatic backup failed\"", "Backups: fallos deben registrarse sin quedar silenciosos.");
+assertFileIncludes(htmlCode, 'id="backupStatus"', "Backups: menu Seguridad de datos debe incluir indicador visual.");
+assertFileIncludes(htmlCode, 'id="createBackupNow"', "Backups: menu Seguridad de datos debe incluir boton Crear copia ahora.");
+assertFileIncludes(stylesCode, ".backup-status-card", "Backups: debe existir estilo para el indicador.");
+assertFileIncludes(backupStrategyCode, "Capa 2: backup independiente de la base de datos", "Backups: debe documentarse la segunda capa independiente.");
 assertFileIncludes(sqlCode, "create or replace function public.create_client_with_loan", "Test 11: SQL debe definir RPC atomica de cliente + prestamo.");
 assertFileIncludes(sqlCode, "create or replace function public.update_client_with_loan", "Editar: SQL debe definir RPC atomica de cliente + prestamo.");
 assertFileIncludes(sqlCode, "create or replace function public.create_loan_operation", "Ampliacion: SQL debe definir RPC atomica de prestamo/ampliacion.");

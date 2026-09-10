@@ -142,11 +142,32 @@
                 Seguridad de datos
               </summary>
               <div class="data-menu-panel" aria-label="Opciones de seguridad de datos">
+                <div id="backupStatus" class="backup-status-card" data-status="loading" aria-live="polite">
+                  <div class="backup-status-head">
+                    <span id="backupStatusIcon" class="backup-status-icon" aria-hidden="true">i</span>
+                    <div>
+                      <strong id="backupStatusTitle">Revisando copias</strong>
+                      <small id="backupStatusDetail">Consultando estado...</small>
+                    </div>
+                  </div>
+                  <p id="backupAttemptText" class="backup-attempt-text">Copia automatica diaria activa.</p>
+                  <button
+                    id="createBackupNow"
+                    class="ghost-button backup-now-button"
+                    type="button"
+                    title="Guarda una nueva copia de recuperacion dentro de ERMIF."
+                    data-tooltip="Guarda una nueva copia de recuperacion dentro de ERMIF."
+                  >
+                    Crear copia ahora
+                  </button>
+                  <p id="backupStatusNotice" class="backup-status-notice"></p>
+                </div>
+                <div class="data-menu-separator" aria-hidden="true"></div>
                 <button
                   id="exportData"
                   class="data-menu-item"
                   type="button"
-                  data-tooltip="Descarga un archivo con todos tus datos para guardarlo como respaldo."
+                  data-tooltip="Guarda una copia adicional en tu dispositivo."
                 >
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
                   Descargar copia

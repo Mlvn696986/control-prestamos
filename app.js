@@ -1,5 +1,6 @@
 const STORAGE_KEY = "prestamos-control-v1";
 const BACKUP_STORAGE_KEY = "prestamos-control-backups-v1";
+const BACKUP_ATTEMPT_STORAGE_KEY = "prestamos-control-backup-attempt-v1";
 const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const MAX_BACKUPS = 7;
 const FREE_CLIENT_LIMIT = 10;
@@ -78,6 +79,9 @@ let paymentSubmissionInProgress = false;
 let loanDeletionInProgress = false;
 let clientDeletionInProgress = false;
 let capitalSubmissionInProgress = false;
+let backupCreationInProgress = false;
+let backupStatusCache = null;
+let backupStatusNotice = "";
 const saas = {
   client: null,
   session: null,
@@ -151,6 +155,13 @@ const elements = {
   todayLabel: $("#todayLabel"),
   viewTitle: $("#viewTitle"),
   dataMenu: $(".data-menu"),
+  backupStatus: $("#backupStatus"),
+  backupStatusIcon: $("#backupStatusIcon"),
+  backupStatusTitle: $("#backupStatusTitle"),
+  backupStatusDetail: $("#backupStatusDetail"),
+  backupAttemptText: $("#backupAttemptText"),
+  backupStatusNotice: $("#backupStatusNotice"),
+  createBackupNowButton: $("#createBackupNow"),
   exportButton: $("#exportData"),
   exportExcelButton: $("#exportExcel"),
   openAddCapitalButton: $("#openAddCapital"),
@@ -306,6 +317,7 @@ async function init() {
   setAuthMode("signup");
   await initSaaS();
   render();
+  refreshBackupStatus();
 }
 
 function bindEvents() {
@@ -336,6 +348,12 @@ function bindEvents() {
   elements.capitalForm.addEventListener("submit", handleCapitalSubmit);
   elements.capitalHistoryButton.addEventListener("click", () => openCapitalHistoryDialog(elements.capitalFormMode.value));
   elements.restoreBackupButton.addEventListener("click", restoreLatestBackup);
+  elements.createBackupNowButton.addEventListener("click", createBackupNow);
+  elements.dataMenu.addEventListener("toggle", () => {
+    if (elements.dataMenu.open) {
+      refreshBackupStatus();
+    }
+  });
   elements.importButton.addEventListener("click", () => elements.importFile.click());
   elements.importFile.addEventListener("change", importData);
   elements.showSignup.addEventListener("click", () => {
@@ -1564,69 +1582,63 @@ function normalizeBackupSnapshot(snapshot) {
   };
 }
 
+function hasBackupableData() {
+  return Boolean(state.user || state.clients.length || state.loans.length || state.payments.length || (state.capitalMovements || []).length);
+}
+
 async function ensureAutomaticBackup(force = false) {
-  if (!state.user && !state.clients.length && !state.loans.length && !state.payments.length && !(state.capitalMovements || []).length) return;
+  const source = getBackupSource();
+  const attemptedAt = new Date().toISOString();
+  if (!hasBackupableData()) {
+    const attempt = recordBackupAttempt({ ok: true, created: false, reason: "empty_state", source, attemptedAt });
+    return { ok: true, created: false, reason: "empty_state", source, attemptedAt: attempt.attemptedAt };
+  }
 
   try {
-    if (isCloudMode()) {
-      await createCloudBackup(force);
-    } else {
-      createLocalBackup(force);
-    }
-  } catch {
-    // La app debe seguir funcionando aunque la tabla de backups aun no exista.
+    const result = isCloudMode() ? await createCloudBackup(force) : createLocalBackup(force);
+    const attempt = recordBackupAttempt({ ok: true, attemptedAt, ...result });
+    return { ...result, ok: true, attemptedAt: attempt.attemptedAt };
+  } catch (error) {
+    const failure = recordBackupAttempt({
+      ok: false,
+      created: false,
+      source,
+      attemptedAt,
+      error: sanitizeBackupErrorMessage(error),
+    });
+    logBackupError("automatic_backup", error);
+    return failure;
   }
 }
 
 async function createCloudBackup(force = false) {
   const userId = saas.session?.user?.id;
-  if (!userId) return;
+  if (!userId) return { source: "cloud", created: false, reason: "no_session" };
 
-  const { data: backups, error: listError } = await saas.client
-    .from("user_backups")
-    .select("id, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(MAX_BACKUPS + 1);
+  const latest = await getLatestCloudBackup();
+  if (!force && latest && Date.now() - new Date(latest.createdAt).getTime() < BACKUP_INTERVAL_MS) {
+    return { source: "cloud", created: false, reason: "recent_backup", latestBackup: latest, createdAt: latest.createdAt };
+  }
 
-  if (listError) throw listError;
-
-  const latest = backups?.[0];
-  if (!force && latest && Date.now() - new Date(latest.created_at).getTime() < BACKUP_INTERVAL_MS) return;
-
-  const { error } = await saas.client.rpc("create_user_backup");
+  const { data, error } = await saas.client.rpc("create_user_backup");
   if (error) throw error;
+
+  const createdBackup = data ? await getCloudBackupById(data) : null;
+  const latestBackup = createdBackup || (await getLatestCloudBackup());
+  return {
+    source: "cloud",
+    created: true,
+    reason: "created",
+    backupId: latestBackup?.id || data || null,
+    latestBackup,
+    createdAt: latestBackup?.createdAt || new Date().toISOString(),
+  };
 }
 
-function createLocalBackup(force = false) {
-  const backups = readLocalBackups();
-  const latest = backups[0];
-  if (!force && latest && Date.now() - new Date(latest.createdAt).getTime() < BACKUP_INTERVAL_MS) return;
-
-  backups.unshift({
-    id: createId("backup"),
-    createdAt: new Date().toISOString(),
-    snapshot: createBackupSnapshot(),
-  });
-  localStorage.setItem(BACKUP_STORAGE_KEY, JSON.stringify(backups.slice(0, MAX_BACKUPS)));
-}
-
-function readLocalBackups() {
-  try {
-    const backups = JSON.parse(localStorage.getItem(BACKUP_STORAGE_KEY) || "[]");
-    return Array.isArray(backups) ? backups : [];
-  } catch {
-    return [];
-  }
-}
-
-async function getLatestBackup() {
-  if (!isCloudMode()) {
-    const backup = readLocalBackups()[0];
-    return backup ? { createdAt: backup.createdAt, snapshot: backup.snapshot } : null;
-  }
-
+async function getLatestCloudBackup() {
   const userId = saas.session?.user?.id;
+  if (!userId) return null;
+
   const { data, error } = await saas.client
     .from("user_backups")
     .select("id, created_at")
@@ -1636,7 +1648,260 @@ async function getLatestBackup() {
     .maybeSingle();
 
   if (error) throw error;
-  return data ? { id: data.id, createdAt: data.created_at } : null;
+  return data ? { id: data.id, createdAt: data.created_at, source: "cloud" } : null;
+}
+
+async function getCloudBackupById(backupId) {
+  const userId = saas.session?.user?.id;
+  if (!userId || !backupId) return null;
+
+  const { data, error } = await saas.client
+    .from("user_backups")
+    .select("id, created_at")
+    .eq("user_id", userId)
+    .eq("id", backupId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? { id: data.id, createdAt: data.created_at, source: "cloud" } : null;
+}
+
+function createLocalBackup(force = false) {
+  const backups = readLocalBackups();
+  const latest = backups[0];
+  if (!force && latest && Date.now() - new Date(latest.createdAt).getTime() < BACKUP_INTERVAL_MS) {
+    return { source: "local", created: false, reason: "recent_backup", latestBackup: { ...latest, source: "local" }, createdAt: latest.createdAt };
+  }
+
+  const backup = {
+    id: createId("backup"),
+    createdAt: new Date().toISOString(),
+    snapshot: createBackupSnapshot(),
+    source: "local",
+  };
+  backups.unshift(backup);
+  localStorage.setItem(BACKUP_STORAGE_KEY, JSON.stringify(backups.slice(0, MAX_BACKUPS)));
+  return { source: "local", created: true, reason: "created", backupId: backup.id, latestBackup: backup, createdAt: backup.createdAt };
+}
+
+function readLocalBackups() {
+  try {
+    const backups = JSON.parse(localStorage.getItem(BACKUP_STORAGE_KEY) || "[]");
+    return Array.isArray(backups)
+      ? backups
+          .filter((backup) => backup && backup.createdAt)
+          .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+async function getLatestBackup() {
+  if (!isCloudMode()) {
+    const backup = readLocalBackups()[0];
+    return backup ? { ...backup, source: "local" } : null;
+  }
+
+  return getLatestCloudBackup();
+}
+
+function getBackupSource() {
+  return isCloudMode() ? "cloud" : "local";
+}
+
+function getBackupAttemptKey(source = getBackupSource()) {
+  const userId = saas.session?.user?.id || state.user?.id || "local";
+  return `${BACKUP_ATTEMPT_STORAGE_KEY}:${source}:${userId}`;
+}
+
+function readLastBackupAttempt(source = getBackupSource()) {
+  try {
+    const attempt = JSON.parse(localStorage.getItem(getBackupAttemptKey(source)) || "null");
+    return attempt && attempt.attemptedAt ? attempt : null;
+  } catch {
+    return null;
+  }
+}
+
+function recordBackupAttempt(result) {
+  const attempt = {
+    ok: Boolean(result.ok),
+    created: Boolean(result.created),
+    reason: result.reason || "",
+    source: result.source || getBackupSource(),
+    attemptedAt: result.attemptedAt || new Date().toISOString(),
+    createdAt: result.createdAt || result.latestBackup?.createdAt || null,
+    error: result.ok ? "" : sanitizeBackupErrorMessage(result.error),
+  };
+  try {
+    localStorage.setItem(getBackupAttemptKey(attempt.source), JSON.stringify(attempt));
+  } catch {
+    // El estado visual no debe impedir que la app siga funcionando.
+  }
+  backupStatusCache = buildBackupStatus({ latestBackup: result.latestBackup || backupStatusCache?.latestBackup || null, lastAttempt: attempt, source: attempt.source });
+  renderBackupStatus();
+  return attempt;
+}
+
+function sanitizeBackupErrorMessage(error) {
+  const message = typeof error === "string" ? error : error?.message || "No se pudo crear la copia.";
+  return String(message).replace(/Bearer\s+[A-Za-z0-9._-]+/g, "Bearer [oculto]").slice(0, 180);
+}
+
+function logBackupError(context, error) {
+  if (typeof console === "undefined" || !console.error) return;
+  console.error("Automatic backup failed", {
+    context,
+    source: getBackupSource(),
+    message: sanitizeBackupErrorMessage(error),
+  });
+}
+
+async function getBackupStatus() {
+  const source = getBackupSource();
+  const latestBackup = await getLatestBackup();
+  return buildBackupStatus({
+    latestBackup,
+    lastAttempt: readLastBackupAttempt(source),
+    source,
+  });
+}
+
+async function refreshBackupStatus() {
+  if (!backupCreationInProgress) {
+    backupStatusNotice = "";
+  }
+  if (!state.user && !hasBackupableData()) {
+    backupStatusCache = buildBackupStatus({ latestBackup: null, lastAttempt: null, source: getBackupSource() });
+    renderBackupStatus();
+    return backupStatusCache;
+  }
+
+  backupStatusCache = { ...(backupStatusCache || buildBackupStatus({ source: getBackupSource() })), loading: true };
+  renderBackupStatus();
+  try {
+    backupStatusCache = await getBackupStatus();
+  } catch (error) {
+    logBackupError("backup_status", error);
+    backupStatusCache = buildBackupStatus({
+      latestBackup: backupStatusCache?.latestBackup || null,
+      lastAttempt: readLastBackupAttempt(getBackupSource()),
+      source: getBackupSource(),
+      status: "error",
+      overrideTitle: "No se pudo consultar el estado de copias.",
+      overrideDetail: "Tus datos siguen disponibles. Intenta nuevamente en unos minutos.",
+    });
+  }
+  renderBackupStatus();
+  return backupStatusCache;
+}
+
+function buildBackupStatus({ latestBackup = null, lastAttempt = null, source = getBackupSource(), status = "", overrideTitle = "", overrideDetail = "" } = {}) {
+  const latestAt = latestBackup?.createdAt ? new Date(latestBackup.createdAt) : null;
+  const ageMs = latestAt && Number.isFinite(latestAt.getTime()) ? Date.now() - latestAt.getTime() : null;
+  let computedStatus = latestAt ? "fresh" : "none";
+  let tone = latestAt ? "ok" : "danger";
+  let title = latestAt ? "Ultima copia segura" : source === "cloud" ? "Aun no existe una copia automatica." : "Aun no existe una copia local.";
+  let detail = latestAt ? formatBackupRelativeDate(latestAt) : "Crea una copia de recuperacion de ERMIF.";
+
+  if (latestAt && ageMs >= 48 * 60 * 60 * 1000) {
+    computedStatus = "critical";
+    tone = "danger";
+    title = `Tu ultima copia tiene mas de ${Math.max(2, Math.floor(ageMs / (24 * 60 * 60 * 1000)))} dias.`;
+    detail = `Ultima copia: ${formatBackupRelativeDate(latestAt)}`;
+  } else if (latestAt && ageMs >= BACKUP_INTERVAL_MS) {
+    computedStatus = "warning";
+    tone = "warn";
+  }
+
+  if (lastAttempt && !lastAttempt.ok) {
+    computedStatus = "error";
+    tone = latestAt && ageMs < 48 * 60 * 60 * 1000 ? "warn" : "danger";
+    title = "No se pudo actualizar la copia automatica.";
+    detail = latestAt ? `Ultima copia segura: ${formatBackupRelativeDate(latestAt)}` : "Todavia no hay una copia valida disponible.";
+  }
+
+  if (status === "error") {
+    computedStatus = "error";
+    tone = latestAt && ageMs < 48 * 60 * 60 * 1000 ? "warn" : "danger";
+  }
+
+  return {
+    source,
+    status: computedStatus,
+    tone,
+    icon: tone === "ok" ? "✓" : "⚠",
+    title: overrideTitle || title,
+    detail: overrideDetail || detail,
+    latestBackup,
+    latestAt: latestBackup?.createdAt || null,
+    ageMs,
+    lastAttempt,
+    attemptText: formatBackupAttemptText(lastAttempt, source),
+    actionLabel: lastAttempt && !lastAttempt.ok ? "Intentar nuevamente" : "Crear copia ahora",
+    loading: false,
+  };
+}
+
+function formatBackupAttemptText(lastAttempt, source) {
+  if (lastAttempt && !lastAttempt.ok) {
+    return `Ultimo intento: ${formatBackupRelativeDate(new Date(lastAttempt.attemptedAt))} - fallo.`;
+  }
+  if (lastAttempt?.ok && lastAttempt.reason === "recent_backup") {
+    return `Ultimo intento: ${formatBackupRelativeDate(new Date(lastAttempt.attemptedAt))} - ya estaba actualizada.`;
+  }
+  if (lastAttempt?.ok && lastAttempt.created) {
+    return `Ultimo intento: ${formatBackupRelativeDate(new Date(lastAttempt.attemptedAt))} - correcto.`;
+  }
+  if (lastAttempt?.ok && lastAttempt.reason === "empty_state") {
+    return "Todavia no hay datos para respaldar.";
+  }
+  return source === "cloud" ? "Copia automatica diaria activa." : "Copia local guardada en este navegador.";
+}
+
+function formatBackupRelativeDate(date) {
+  if (!date || !Number.isFinite(date.getTime())) return "fecha no disponible";
+  const current = new Date();
+  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const today = new Date(current.getFullYear(), current.getMonth(), current.getDate());
+  const diffDays = Math.round((today - day) / (24 * 60 * 60 * 1000));
+  const time = new Intl.DateTimeFormat("es-PE", { hour: "2-digit", minute: "2-digit" }).format(date);
+  if (diffDays === 0) return `Hoy · ${time}`;
+  if (diffDays === 1) return `Ayer · ${time}`;
+  return `${new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short", year: "numeric" }).format(date).replace(/\./g, "").toUpperCase()} · ${time}`;
+}
+
+function renderBackupStatus() {
+  if (!elements.backupStatus) return;
+  const status = backupStatusCache || buildBackupStatus({ source: getBackupSource(), lastAttempt: readLastBackupAttempt(getBackupSource()) });
+  elements.backupStatus.dataset.status = status.loading ? "loading" : status.tone;
+  elements.backupStatusIcon.textContent = status.loading ? "i" : status.icon;
+  elements.backupStatusTitle.textContent = status.loading ? "Revisando copias" : status.title;
+  elements.backupStatusDetail.textContent = status.loading ? "Consultando estado..." : status.detail;
+  elements.backupAttemptText.textContent = status.loading ? "Copia automatica diaria activa." : status.attemptText;
+  elements.createBackupNowButton.textContent = backupCreationInProgress ? "Creando copia..." : status.actionLabel;
+  elements.createBackupNowButton.disabled = backupCreationInProgress || status.loading;
+  elements.backupStatusNotice.textContent = backupStatusNotice;
+  elements.backupStatusNotice.classList.toggle("is-hidden", !backupStatusNotice);
+}
+
+async function createBackupNow() {
+  if (backupCreationInProgress) return;
+
+  backupCreationInProgress = true;
+  backupStatusNotice = "Creando copia...";
+  renderBackupStatus();
+
+  const result = await ensureAutomaticBackup(true);
+  await refreshBackupStatus();
+  backupStatusNotice =
+    result.ok && result.reason === "empty_state"
+      ? "Todavia no hay datos para respaldar."
+      : result.ok
+        ? "Copia creada correctamente."
+        : "No pudimos crear la copia. Tus datos siguen disponibles; intenta nuevamente.";
+  backupCreationInProgress = false;
+  renderBackupStatus();
 }
 
 async function restoreLatestBackup() {
@@ -1657,11 +1922,16 @@ async function restoreLatestBackup() {
     );
     if (!confirmed) return;
 
-    await ensureAutomaticBackup(true);
+    const safetyBackup = await ensureAutomaticBackup(true);
+    if (!safetyBackup.ok) {
+      window.alert("No se pudo crear una copia de seguridad antes de restaurar esta informacion. Intenta nuevamente desde Seguridad de datos.");
+      return;
+    }
 
     if (isCloudMode()) {
       await restoreCloudBackup(backup.id);
       await loadCloudState();
+      await refreshBackupStatus();
       render();
       window.alert(
         `Restauracion completada correctamente.\n\nClientes restaurados: ${state.clients.length}\nPrestamos: ${state.loans.length}\nPagos: ${state.payments.length}\nMovimientos de capital: ${state.capitalMovements.length}`
@@ -1675,6 +1945,7 @@ async function restoreLatestBackup() {
     state.payments = snapshot.payments;
     state.capitalMovements = snapshot.capitalMovements;
     saveState();
+    await refreshBackupStatus();
     render();
     window.alert(
       `Restauracion completada correctamente.\n\nClientes restaurados: ${snapshot.clients.length}\nPrestamos: ${snapshot.loans.length}\nPagos: ${snapshot.payments.length}\nMovimientos de capital: ${snapshot.capitalMovements.length}`
@@ -2484,6 +2755,7 @@ function render() {
   elements.ownerLabel.textContent = state.user.ownerName;
   elements.planInlineStatus.textContent = getPlanInlineStatusText();
   elements.todayLabel.textContent = `📅 ${formatTopbarDate(todayISO())}`;
+  renderBackupStatus();
 
   renderDashboard();
   renderClients();
@@ -4753,7 +5025,10 @@ async function deleteClient(clientId, actionButton = null) {
   clientDeletionInProgress = true;
   setButtonBusy(actionButton, true, "Eliminando...");
   try {
-    await ensureAutomaticBackup(true);
+    const safetyBackup = await ensureAutomaticBackup(true);
+    if (!safetyBackup.ok) {
+      throw new Error("No se pudo crear una copia de seguridad antes de eliminar esta informacion. Intenta nuevamente desde Seguridad de datos.");
+    }
     await deleteCloudClient(clientId);
 
     const loanIds = new Set(clientLoans.map((loan) => loan.id));
@@ -4863,7 +5138,10 @@ async function handleLoanDeleteSubmit(event) {
   setButtonBusy(submitButton, true, "Eliminando...");
 
   try {
-    await ensureAutomaticBackup(true);
+    const safetyBackup = await ensureAutomaticBackup(true);
+    if (!safetyBackup.ok) {
+      throw new Error("No se pudo crear una copia de seguridad antes de eliminar este prestamo. Intenta nuevamente desde Seguridad de datos.");
+    }
     await deleteCloudLoan(clientId, loanId);
 
     state.loans = state.loans.filter((loan) => loan.id !== loanId);
@@ -5821,9 +6099,13 @@ function importData(event) {
       const confirmed = window.confirm("Esta copia reemplazara los datos actuales de esta plataforma. Deseas continuar?");
       if (!confirmed) return;
 
-      await ensureAutomaticBackup(true);
+      const safetyBackup = await ensureAutomaticBackup(true);
+      if (!safetyBackup.ok) {
+        throw new Error("No se pudo crear una copia de seguridad antes de importar esta informacion. Intenta nuevamente desde Seguridad de datos.");
+      }
       Object.assign(state, imported);
       saveState();
+      await refreshBackupStatus();
       render();
       window.alert("Copia importada correctamente.");
     } catch (error) {
