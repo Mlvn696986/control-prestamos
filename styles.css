@@ -2408,10 +2408,7 @@ input.field-success {
     minmax(150px, 0.84fr)
     minmax(330px, 1.18fr);
   --client-cell-padding: 10px;
-  max-height: calc(100vh - 210px);
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable both-edges;
+  overflow-x: auto;
   border: 1px solid var(--line);
   border-top: 4px solid var(--accent);
   border-radius: 8px;
@@ -2427,9 +2424,6 @@ input.field-success {
 }
 
 .client-table-head {
-  position: sticky;
-  top: 0;
-  z-index: 4;
   padding: 0;
   border-bottom: 1px solid var(--line);
   background: #e9f1f5;
@@ -3227,8 +3221,7 @@ input.field-success {
   }
 
   .client-table-wrap {
-    max-height: calc(100vh - 180px);
-    overflow: auto;
+    overflow-x: auto;
   }
 
   .client-table {
