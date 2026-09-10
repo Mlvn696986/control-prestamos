@@ -1308,7 +1308,9 @@ input.field-success {
 
 .summary-compare-field {
   display: flex;
-  align-items: end;
+  align-items: center;
+  align-self: stretch;
+  padding-top: calc(0.84rem * 1.2 + 4px);
 }
 
 .summary-compare-button {
@@ -1356,7 +1358,9 @@ input.field-success {
 .summary-filter-actions {
   display: flex;
   align-items: center;
+  align-self: stretch;
   gap: 8px;
+  padding-top: calc(0.84rem * 1.2 + 4px);
 }
 
 .summary-kpi-grid,
@@ -2991,6 +2995,11 @@ input.field-success {
 
   .summary-filter-actions {
     justify-content: stretch;
+    padding-top: 0;
+  }
+
+  .summary-compare-field {
+    padding-top: 0;
   }
 
   .summary-filter-actions > * {

@@ -857,6 +857,9 @@ assertFileIncludes(appCode, "<small>Monto que debe figurar en tu tarjeta</small>
 assertCondition(!appCode.includes("<small>Total por cobrar estimado</small>"), "Resumen superior: no debe conservar el texto anterior de total por cobrar.");
 assertFileIncludes(htmlCode, "Periodo de fechas", "Resumen: las fechas deben estar agrupadas bajo Periodo de fechas.");
 assertFileIncludes(htmlCode, "summary-date-group", "Resumen: falta el contenedor visual del periodo de fechas.");
+assertFileIncludes(stylesCode, ".summary-compare-field {\n  display: flex;\n  align-items: center;\n  align-self: stretch;", "Resumen: el boton de comparacion debe centrarse respecto al bloque de fechas.");
+assertFileIncludes(stylesCode, ".summary-filter-actions {\n  display: flex;\n  align-items: center;\n  align-self: stretch;", "Resumen: el boton Exportar resumen debe centrarse respecto al bloque de fechas.");
+assertFileIncludes(stylesCode, "padding-top: calc(0.84rem * 1.2 + 4px)", "Resumen: los botones de filtros deben compensar la altura del titulo Periodo de fechas.");
 assertFileIncludes(htmlCode, 'id="summaryComparePreviousMonth"', "Resumen: debe existir el boton para comparar con mes anterior.");
 assertFileIncludes(htmlCode, "Comparar con mes anterior", "Resumen: el boton de comparacion debe mostrar Mes anterior.");
 assertFileIncludes(htmlCode, "summary-compare-info", "Resumen: el boton Mes anterior debe tener icono de informacion.");
