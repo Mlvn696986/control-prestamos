@@ -808,6 +808,11 @@ assertFileIncludes(stylesCode, ".section-helper", "Resumen: el texto de ayuda de
 assertFileIncludes(htmlCode, 'src="assets/ermif-logo.png"', "Marca: el login debe usar el logo completo ERMIF.");
 assertFileIncludes(htmlCode, 'src="assets/ermif-mark.png"', "Marca: la barra lateral debe usar el simbolo compacto ERMIF.");
 assertFileIncludes(htmlCode, '<span id="ownerLabel" class="is-hidden">Prestamista</span>', "Sidebar: Prestamista no debe mostrarse visualmente debajo del nombre del negocio.");
+assertCondition(!htmlCode.includes('class="plan-card"'), "Sidebar: el plan actual no debe mostrarse como tarjeta separada.");
+assertFileIncludes(htmlCode, 'id="planInlineStatus"', "Sidebar: el estado del plan debe mostrarse debajo del nombre.");
+assertFileIncludes(appCode, "getPlanInlineStatusText", "Sidebar: el estado del plan debe armarse en una sola linea.");
+assertFileIncludes(stylesCode, ".plan-inline-status", "Sidebar: el estado del plan debe tener estilo propio.");
+assertFileIncludes(stylesCode, "color: #18d38a", "Sidebar: el estado del plan debe verse en verde.");
 assertFileIncludes(stylesCode, ".brand-logo-auth", "Marca: el logo del login debe tener estilo propio.");
 assertFileIncludes(stylesCode, ".brand-logo-sidebar", "Marca: el logo lateral debe tener estilo propio.");
 assertFileIncludes(appCode, "Registra hasta 10 clientes gratis, prueba el sistema con calma y pasa a Premium cuando quieras crecer.", "Registro: la nota informativa debe tener un texto comercial breve.");

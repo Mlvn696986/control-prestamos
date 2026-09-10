@@ -144,8 +144,7 @@ const elements = {
   showLogin: $("#showLogin"),
   businessLabel: $("#businessLabel"),
   ownerLabel: $("#ownerLabel"),
-  planLabel: $("#planLabel"),
-  planUsage: $("#planUsage"),
+  planInlineStatus: $("#planInlineStatus"),
   todayLabel: $("#todayLabel"),
   viewTitle: $("#viewTitle"),
   exportButton: $("#exportData"),
@@ -870,6 +869,12 @@ function getPlanUsageText() {
   const limit = getClientLimit();
   if (limit === null) return `${state.clients.length} clientes`;
   return `${state.clients.length} de ${limit} clientes`;
+}
+
+function getPlanInlineStatusText() {
+  const plan = getCurrentPlan();
+  if (plan.clientLimit === null) return `Plan ${plan.label} · clientes ilimitados`;
+  return `Plan ${plan.label} · ${state.clients.length} de ${plan.clientLimit} clientes`;
 }
 
 async function ensureCloudAccount(userId, profile) {
@@ -2327,8 +2332,7 @@ function render() {
   }
   elements.businessLabel.textContent = state.user.businessName;
   elements.ownerLabel.textContent = state.user.ownerName;
-  elements.planLabel.textContent = getPlanLabel();
-  elements.planUsage.textContent = getPlanUsageText();
+  elements.planInlineStatus.textContent = getPlanInlineStatusText();
   elements.todayLabel.textContent = formatDate(todayISO()).replace(/\s+/g, "\u00a0");
 
   renderDashboard();

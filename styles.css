@@ -142,6 +142,19 @@ svg {
   white-space: nowrap;
 }
 
+.plan-inline-status {
+  display: block;
+  max-width: 178px;
+  margin-top: 5px;
+  overflow: hidden;
+  color: #18d38a;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .brand-lockup strong,
 .brand-lockup span {
   display: block;
@@ -238,9 +251,7 @@ h3 {
 }
 
 .sidebar .brand-lockup span,
-.sidebar .nav-tab,
-.sidebar .plan-card span,
-.sidebar .plan-card small {
+.sidebar .nav-tab {
   color: #ffffff;
 }
 
@@ -825,10 +836,6 @@ input.field-success {
   background: #ffffff;
 }
 
-.sidebar .plan-card strong {
-  color: #ffffff;
-}
-
 .ghost-button:hover {
   border-color: var(--accent);
   color: var(--accent);
@@ -989,28 +996,6 @@ input.field-success {
 .nav-tab.active {
   color: #fff;
   background: var(--accent);
-}
-
-.plan-card {
-  display: grid;
-  gap: 4px;
-  margin-top: 26px;
-  padding: 14px;
-  background: rgba(0, 167, 111, 0.14);
-  border: 1px solid rgba(0, 167, 111, 0.36);
-  border-radius: 8px;
-}
-
-.plan-card span,
-.plan-card small {
-  color: var(--muted);
-  font-size: 0.88rem;
-  font-weight: 800;
-}
-
-.plan-card strong {
-  color: var(--ink);
-  font-size: 1rem;
 }
 
 .plans-grid {
