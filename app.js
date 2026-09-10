@@ -4586,10 +4586,13 @@ function renderClients() {
           <span class="row-actions" data-label="Acciones">
             <button class="ghost-button small-button" type="button" data-edit-client="${client.id}">${icons.edit} Editar</button>
             ${paymentButton}
-            <button class="delete-button small-button" type="button" data-delete-client="${client.id}">${icons.trash} Eliminar</button>
-            <button class="icon-button square-action" title="Ver cobros" type="button" data-history-client="${client.id}">
+            <button class="delete-button small-button history-action" type="button" data-history-client="${client.id}">
               ${icons.history}
-              <span>${paymentCount}</span>
+              Historial
+              <span class="history-count">${paymentCount}</span>
+            </button>
+            <button class="icon-button square-action delete-icon-action" title="Eliminar cliente" aria-label="Eliminar cliente" type="button" data-delete-client="${client.id}">
+              ${icons.trash}
             </button>
           </span>
           ${renderClientExtensions(client, extensions)}
@@ -4683,10 +4686,13 @@ function renderClientExtensions(client, extensions) {
                 <span class="row-actions" data-label="Acciones">
                   <button class="ghost-button small-button" type="button" data-edit-client="${client.id}" data-edit-loan="${loan.id}">${icons.edit} Editar</button>
                   ${paymentButton}
-                  <button class="delete-button small-button" type="button" data-delete-client="${client.id}" data-delete-loan="${loan.id}">${icons.trash} Eliminar</button>
-                  <button class="icon-button square-action" title="Ver cobros" type="button" data-history-client="${client.id}">
+                  <button class="delete-button small-button history-action" type="button" data-history-client="${client.id}">
                     ${icons.history}
-                    <span>${paymentCount}</span>
+                    Historial
+                    <span class="history-count">${paymentCount}</span>
+                  </button>
+                  <button class="icon-button square-action delete-icon-action" title="Eliminar ampliacion" aria-label="Eliminar ampliacion" type="button" data-delete-client="${client.id}" data-delete-loan="${loan.id}">
+                    ${icons.trash}
                   </button>
                 </span>
               </article>

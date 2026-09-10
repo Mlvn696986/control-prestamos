@@ -890,6 +890,12 @@ assertFileIncludes(stylesCode, ".client-row > span:nth-of-type(4),\n.client-row 
 assertFileIncludes(stylesCode, ".client-row > .row-actions {\n  border-left: 1px solid var(--line);\n  justify-content: center;", "Clientes: las acciones principales deben centrarse dentro de su columna.");
 assertFileIncludes(stylesCode, ".client-extension-row > .row-actions {\n  border-left: 1px solid var(--line);\n  justify-content: center;", "Clientes: las acciones de ampliaciones deben centrarse dentro de su columna.");
 assertFileIncludes(stylesCode, ".row-actions .small-button {\n  flex: 0 0 auto;", "Clientes: los botones de acciones no deben comprimirse.");
+assertCondition(!appCode.includes("${icons.trash} Eliminar"), "Clientes: eliminar debe ser solo icono, sin texto.");
+assertFileIncludes(appCode, 'class="delete-button small-button history-action"', "Clientes: Historial debe ocupar el lugar visual del boton amarillo.");
+assertFileIncludes(appCode, "${icons.history}\n              Historial", "Clientes: el boton Historial debe usar icono de historial y texto.");
+assertFileIncludes(appCode, 'class="icon-button square-action delete-icon-action"', "Clientes: el tachito debe ser un boton cuadrado pequeno.");
+assertFileIncludes(stylesCode, ".history-action", "Clientes: el nuevo boton Historial debe tener estilo propio.");
+assertFileIncludes(stylesCode, ".delete-icon-action", "Clientes: el tachito de eliminar debe tener estilo propio.");
 assertCondition(!appCode.includes("Ampliaciones de ${escapeHTML(client.name)}"), "Clientes: no debe mostrarse una franja separada con el titulo de ampliaciones.");
 assertFileIncludes(appCode, "Ampliacion ${index + 1}", "Clientes: cada ampliacion debe indicar Ampliacion 1, Ampliacion 2, etc.");
 assertFileIncludes(appCode, "<strong>${escapeHTML(client.name)}</strong>", "Clientes: cada ampliacion debe mostrar primero el nombre del cliente.");
