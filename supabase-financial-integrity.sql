@@ -56,13 +56,18 @@ with check (public.is_admin());
 alter table subscriptions add column if not exists provider text;
 alter table subscriptions add column if not exists provider_subscription_id text;
 alter table subscriptions add column if not exists provider_status text;
+alter table subscriptions add column if not exists current_period_end timestamptz;
 alter table subscriptions add column if not exists updated_at timestamptz default now();
 alter table plan_requests add column if not exists provider text;
 alter table plan_requests add column if not exists provider_subscription_id text;
 alter table plan_requests add column if not exists provider_status text;
 alter table plan_requests add column if not exists checkout_url text;
 alter table plan_requests add column if not exists paid_at timestamptz;
+alter table plan_requests add column if not exists current_period_end timestamptz;
 alter table plan_requests add column if not exists updated_at timestamptz default now();
+
+create index if not exists subscriptions_provider_subscription_idx
+on subscriptions(provider, provider_subscription_id);
 
 create index if not exists plan_requests_provider_subscription_idx
 on plan_requests(provider, provider_subscription_id);
@@ -846,6 +851,12 @@ begin
   if not exists (select 1 from pg_constraint where conname = 'subscriptions_client_limit_nonnegative') then
     alter table subscriptions add constraint subscriptions_client_limit_nonnegative check (client_limit is null or client_limit >= 0) not valid;
   end if;
+  if not exists (select 1 from pg_constraint where conname = 'subscriptions_status_lifecycle') then
+    alter table subscriptions add constraint subscriptions_status_lifecycle check (status in ('active', 'past_due', 'cancelled', 'refunded', 'expired', 'chargeback')) not valid;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'plan_requests_status_lifecycle') then
+    alter table plan_requests add constraint plan_requests_status_lifecycle check (status in ('pending', 'approved', 'failed', 'cancelled', 'refunded', 'expired', 'chargeback', 'past_due')) not valid;
+  end if;
   if not exists (select 1 from pg_constraint where conname = 'loans_amount_nonnegative') then
     alter table loans add constraint loans_amount_nonnegative check (amount >= 0) not valid;
   end if;
@@ -932,6 +943,8 @@ begin
 end $$;
 
 alter table subscriptions validate constraint subscriptions_client_limit_nonnegative;
+alter table subscriptions validate constraint subscriptions_status_lifecycle;
+alter table plan_requests validate constraint plan_requests_status_lifecycle;
 alter table loans validate constraint loans_amount_nonnegative;
 alter table loans validate constraint loans_amount_positive;
 alter table loans validate constraint loans_remaining_capital_nonnegative;

@@ -18,7 +18,9 @@ const PLAN_CONFIG = {
 };
 
 const APPROVED_PAYMENT_STATUSES = new Set(["approved", "accredited", "processed"]);
-const CANCELLED_PROVIDER_STATUSES = new Set(["cancelled", "rejected", "refunded", "charged_back"]);
+const ACTIVE_PROVIDER_STATUSES = new Set(["authorized", "active"]);
+const PAST_DUE_PROVIDER_STATUSES = new Set(["pending", "paused", "in_process", "in_mediation", "rejected"]);
+const CANCELLED_PROVIDER_STATUSES = new Set(["cancelled", "canceled", "refunded", "charged_back", "chargeback", "expired"]);
 
 export default {
   async fetch(request, env) {
@@ -64,6 +66,18 @@ async function handleCheckout(request, env) {
   if (!plan) {
     throw httpError("El plan seleccionado no esta disponible para pago automatico.", 400);
   }
+
+  const currentSubscription = await getUserSubscription(env, user.id);
+  if (
+    currentSubscription?.status === "active" &&
+    currentSubscription.plan === plan.id &&
+    currentSubscription.provider === "mercadopago" &&
+    currentSubscription.provider_subscription_id
+  ) {
+    throw httpError(`Tu cuenta ya tiene activo el plan ${plan.label}.`, 409);
+  }
+
+  await cancelPendingPlanRequests(env, user.id);
 
   const now = new Date().toISOString();
   const requestRecord = await supabaseInsert(env, "plan_requests", {
@@ -160,6 +174,7 @@ async function handleMercadoPagoWebhook(request, env) {
       requestId: preapproval.external_reference,
       preapprovalId: preapproval.id,
       providerStatus: preapproval.status,
+      currentPeriodEnd: extractCurrentPeriodEnd(preapproval),
     });
     return json({ ok: true });
   }
@@ -172,18 +187,33 @@ async function processPaymentConfirmation(env, payment) {
     return;
   }
 
-  if (CANCELLED_PROVIDER_STATUSES.has(payment.status)) {
-    await markProviderStatus(env, payment);
-    return;
-  }
-
   if (!APPROVED_PAYMENT_STATUSES.has(payment.status)) {
     await markProviderStatus(env, payment);
     return;
   }
 
   const requestRecord = await findPlanRequest(env, payment);
-  if (!requestRecord || requestRecord.status === "approved") {
+  if (!requestRecord) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const providerSubscriptionId = payment.preapprovalId || requestRecord.provider_subscription_id;
+  const currentSubscription = await getUserSubscription(env, requestRecord.user_id);
+  const isSameSubscription =
+    currentSubscription?.provider === "mercadopago" && currentSubscription.provider_subscription_id === providerSubscriptionId;
+
+  if (isTerminalPlanRequestStatus(requestRecord.status)) {
+    return;
+  }
+
+  if (
+    requestRecord.status === "approved" &&
+    providerSubscriptionId &&
+    currentSubscription?.provider === "mercadopago" &&
+    currentSubscription.provider_subscription_id &&
+    !isSameSubscription
+  ) {
     return;
   }
 
@@ -197,15 +227,29 @@ async function processPaymentConfirmation(env, payment) {
     return;
   }
 
-  const now = new Date().toISOString();
+  if (
+    providerSubscriptionId &&
+    currentSubscription?.provider === "mercadopago" &&
+    currentSubscription.provider_subscription_id &&
+    !isSameSubscription
+  ) {
+    await cancelMercadoPagoPreapproval(env, currentSubscription.provider_subscription_id, { allowMissing: true });
+    await markPlanRequestsBySubscription(env, currentSubscription.provider_subscription_id, {
+      status: "cancelled",
+      provider_status: "cancelled",
+      updated_at: now,
+    });
+  }
+
   await supabaseUpsert(env, "subscriptions", "user_id", {
     user_id: requestRecord.user_id,
     plan: plan.id,
     status: "active",
     client_limit: plan.clientLimit,
-    started_at: now,
+    started_at: isSameSubscription ? currentSubscription.started_at || now : now,
+    current_period_end: payment.currentPeriodEnd || currentSubscription?.current_period_end || null,
     provider: "mercadopago",
-    provider_subscription_id: payment.preapprovalId || requestRecord.provider_subscription_id,
+    provider_subscription_id: providerSubscriptionId,
     provider_status: payment.status,
     updated_at: now,
   });
@@ -213,8 +257,9 @@ async function processPaymentConfirmation(env, payment) {
   await markPlanRequest(env, requestRecord.id, {
     status: "approved",
     provider: "mercadopago",
-    provider_subscription_id: payment.preapprovalId || requestRecord.provider_subscription_id,
+    provider_subscription_id: providerSubscriptionId,
     provider_status: payment.status,
+    current_period_end: payment.currentPeriodEnd || null,
     paid_at: now,
     updated_at: now,
   });
@@ -222,16 +267,34 @@ async function processPaymentConfirmation(env, payment) {
 
 async function markProviderStatus(env, payment) {
   const requestRecord = await findPlanRequest(env, payment);
-  if (!requestRecord || requestRecord.status === "approved") {
+  if (!requestRecord) {
     return;
   }
 
+  const now = new Date().toISOString();
+  const providerStatus = String(payment.providerStatus || payment.status || "").toLowerCase();
+  const providerSubscriptionId = payment.preapprovalId || requestRecord.provider_subscription_id;
+  const subscriptionStatus = mapProviderStatusToSubscriptionStatus(providerStatus);
+
   await markPlanRequest(env, requestRecord.id, {
+    status: mapProviderStatusToPlanRequestStatus(providerStatus, requestRecord.status),
     provider: "mercadopago",
-    provider_subscription_id: payment.preapprovalId || requestRecord.provider_subscription_id,
-    provider_status: payment.providerStatus || payment.status,
-    updated_at: new Date().toISOString(),
+    provider_subscription_id: providerSubscriptionId,
+    provider_status: providerStatus,
+    current_period_end: payment.currentPeriodEnd || null,
+    updated_at: now,
   });
+
+  if (providerSubscriptionId && subscriptionStatus) {
+    await updateCurrentSubscriptionStatus(env, {
+      userId: requestRecord.user_id,
+      providerSubscriptionId,
+      providerStatus,
+      subscriptionStatus,
+      currentPeriodEnd: payment.currentPeriodEnd || null,
+      updatedAt: now,
+    });
+  }
 }
 
 async function findPlanRequest(env, payment) {
@@ -251,11 +314,120 @@ async function findPlanRequest(env, payment) {
   return null;
 }
 
+async function getUserSubscription(env, userId) {
+  if (!userId) return null;
+  const rows = await supabaseSelect(env, `subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=1`);
+  return rows[0] || null;
+}
+
+async function cancelPendingPlanRequests(env, userId) {
+  const pendingRequests = await supabaseSelect(
+    env,
+    `plan_requests?user_id=eq.${encodeURIComponent(userId)}&provider=eq.mercadopago&status=eq.pending&select=*`
+  );
+  const now = new Date().toISOString();
+
+  for (const pendingRequest of pendingRequests) {
+    if (pendingRequest.provider_subscription_id) {
+      await cancelMercadoPagoPreapproval(env, pendingRequest.provider_subscription_id, { allowMissing: true });
+    }
+    await markPlanRequest(env, pendingRequest.id, {
+      status: "cancelled",
+      provider_status: "cancelled",
+      updated_at: now,
+    });
+  }
+}
+
+async function cancelMercadoPagoPreapproval(env, preapprovalId, options = {}) {
+  if (!preapprovalId) return;
+
+  let preapproval;
+  try {
+    preapproval = await mercadoPagoFetch(env, `/preapproval/${encodeURIComponent(preapprovalId)}`);
+  } catch (error) {
+    if (options.allowMissing && [400, 404].includes(Number(error.status || 0))) return;
+    throw error;
+  }
+
+  const status = String(preapproval.status || "").toLowerCase();
+  if (CANCELLED_PROVIDER_STATUSES.has(status)) return;
+
+  await mercadoPagoFetch(env, `/preapproval/${encodeURIComponent(preapprovalId)}`, {
+    method: "PUT",
+    body: { status: "cancelled" },
+  });
+}
+
+async function markPlanRequestsBySubscription(env, providerSubscriptionId, row) {
+  if (!providerSubscriptionId) return [];
+  return supabaseUpdate(
+    env,
+    "plan_requests",
+    `provider=eq.mercadopago&provider_subscription_id=eq.${encodeURIComponent(providerSubscriptionId)}`,
+    row
+  );
+}
+
+async function updateCurrentSubscriptionStatus(env, update) {
+  const currentSubscription = await getUserSubscription(env, update.userId);
+  if (
+    !currentSubscription ||
+    currentSubscription.provider !== "mercadopago" ||
+    currentSubscription.provider_subscription_id !== update.providerSubscriptionId
+  ) {
+    return;
+  }
+
+  await supabaseUpsert(env, "subscriptions", "user_id", {
+    user_id: update.userId,
+    plan: currentSubscription.plan || "free",
+    status: update.subscriptionStatus,
+    client_limit: currentSubscription.client_limit === null ? null : currentSubscription.client_limit || 10,
+    started_at: currentSubscription.started_at || update.updatedAt,
+    expires_at: update.subscriptionStatus === "active" ? currentSubscription.expires_at || null : update.updatedAt,
+    current_period_end: update.currentPeriodEnd || currentSubscription.current_period_end || null,
+    provider: "mercadopago",
+    provider_subscription_id: update.providerSubscriptionId,
+    provider_status: update.providerStatus,
+    updated_at: update.updatedAt,
+  });
+}
+
+function mapProviderStatusToSubscriptionStatus(status) {
+  const normalizedStatus = String(status || "").toLowerCase();
+  if (APPROVED_PAYMENT_STATUSES.has(normalizedStatus) || ACTIVE_PROVIDER_STATUSES.has(normalizedStatus)) return "active";
+  if (normalizedStatus === "refunded") return "refunded";
+  if (normalizedStatus === "charged_back" || normalizedStatus === "chargeback") return "chargeback";
+  if (normalizedStatus === "expired") return "expired";
+  if (normalizedStatus === "cancelled" || normalizedStatus === "canceled") return "cancelled";
+  if (PAST_DUE_PROVIDER_STATUSES.has(normalizedStatus)) return "past_due";
+  return null;
+}
+
+function mapProviderStatusToPlanRequestStatus(status, currentStatus) {
+  const normalizedStatus = String(status || "").toLowerCase();
+  if (APPROVED_PAYMENT_STATUSES.has(normalizedStatus)) return "approved";
+  if (ACTIVE_PROVIDER_STATUSES.has(normalizedStatus)) return currentStatus === "approved" ? "approved" : currentStatus || "pending";
+  if (normalizedStatus === "refunded") return "refunded";
+  if (normalizedStatus === "charged_back" || normalizedStatus === "chargeback") return "chargeback";
+  if (normalizedStatus === "expired") return "expired";
+  if (normalizedStatus === "cancelled" || normalizedStatus === "canceled") return "cancelled";
+  if (normalizedStatus === "rejected") return currentStatus === "approved" ? "past_due" : "failed";
+  if (PAST_DUE_PROVIDER_STATUSES.has(normalizedStatus)) return currentStatus || "pending";
+  return currentStatus || "pending";
+}
+
+function isTerminalPlanRequestStatus(status) {
+  return ["cancelled", "refunded", "chargeback", "expired", "failed"].includes(String(status || "").toLowerCase());
+}
+
 function normalizePayment(payment) {
   return {
     requestId: payment.external_reference || "",
     preapprovalId: payment.preapproval_id || payment.metadata?.preapproval_id || "",
     status: String(payment.status || "").toLowerCase(),
+    currentPeriodEnd: extractCurrentPeriodEnd(payment),
   };
 }
 
@@ -264,7 +436,38 @@ function normalizeAuthorizedPayment(payment) {
     requestId: payment.external_reference || payment.payment?.external_reference || "",
     preapprovalId: payment.preapproval_id || payment.subscription_id || payment.preapproval?.id || "",
     status: String(payment.status || payment.payment?.status || "").toLowerCase(),
+    currentPeriodEnd: extractCurrentPeriodEnd(payment),
   };
+}
+
+function extractCurrentPeriodEnd(source) {
+  const value =
+    source.current_period_end ||
+    source.currentPeriodEnd ||
+    source.next_payment_date ||
+    source.date_next_payment ||
+    source.auto_recurring?.end_date ||
+    source.payment?.current_period_end ||
+    source.payment?.next_payment_date ||
+    "";
+
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function shouldRetryWithoutCurrentPeriodEnd(error, row) {
+  return (
+    row &&
+    Object.prototype.hasOwnProperty.call(row, "current_period_end") &&
+    /current_period_end|schema cache|column/i.test(error.message || "")
+  );
+}
+
+function withoutCurrentPeriodEnd(row) {
+  const compatibleRow = { ...row };
+  delete compatibleRow.current_period_end;
+  return compatibleRow;
 }
 
 async function getAuthenticatedUser(request, env) {
@@ -314,19 +517,37 @@ async function supabaseInsert(env, table, row) {
 }
 
 async function supabaseUpdate(env, table, filter, row) {
-  return supabaseFetch(env, `${table}?${filter}`, {
-    method: "PATCH",
-    body: row,
-    headers: { Prefer: "return=representation" },
-  });
+  try {
+    return await supabaseFetch(env, `${table}?${filter}`, {
+      method: "PATCH",
+      body: row,
+      headers: { Prefer: "return=representation" },
+    });
+  } catch (error) {
+    if (!shouldRetryWithoutCurrentPeriodEnd(error, row)) throw error;
+    return supabaseFetch(env, `${table}?${filter}`, {
+      method: "PATCH",
+      body: withoutCurrentPeriodEnd(row),
+      headers: { Prefer: "return=representation" },
+    });
+  }
 }
 
 async function supabaseUpsert(env, table, conflictKey, row) {
-  return supabaseFetch(env, `${table}?on_conflict=${encodeURIComponent(conflictKey)}`, {
-    method: "POST",
-    body: row,
-    headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-  });
+  try {
+    return await supabaseFetch(env, `${table}?on_conflict=${encodeURIComponent(conflictKey)}`, {
+      method: "POST",
+      body: row,
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+    });
+  } catch (error) {
+    if (!shouldRetryWithoutCurrentPeriodEnd(error, row)) throw error;
+    return supabaseFetch(env, `${table}?on_conflict=${encodeURIComponent(conflictKey)}`, {
+      method: "POST",
+      body: withoutCurrentPeriodEnd(row),
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+    });
+  }
 }
 
 async function markPlanRequest(env, requestId, row) {

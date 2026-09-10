@@ -961,6 +961,19 @@ assertFileIncludes(workerCode, "/v1/payments/", "Pagos: el webhook debe consulta
 assertFileIncludes(workerCode, "APPROVED_PAYMENT_STATUSES", "Pagos: solo estados aprobados deben activar plan.");
 assertFileIncludes(workerCode, 'status: "active"', "Pagos: el plan se activa desde el webhook.");
 assertFileIncludes(workerCode, "client_limit: plan.clientLimit", "Pagos: el webhook debe aplicar el limite del plan.");
+assertFileIncludes(workerCode, "cancelPendingPlanRequests", "Pagos: antes de crear checkout debe cancelar solicitudes pendientes anteriores.");
+assertFileIncludes(workerCode, "cancelMercadoPagoPreapproval", "Pagos: al cambiar de plan debe cancelar la suscripcion anterior de Mercado Pago.");
+assertFileIncludes(workerCode, 'method: "PUT"', "Pagos: la cancelacion de suscripcion debe actualizar la preapproval en Mercado Pago.");
+assertFileIncludes(workerCode, 'body: { status: "cancelled" }', "Pagos: Mercado Pago debe recibir estado cancelled para detener cobros recurrentes.");
+assertFileIncludes(workerCode, "mapProviderStatusToSubscriptionStatus", "Pagos: el webhook debe mapear cancelaciones, rechazos y renovaciones.");
+assertFileIncludes(workerCode, "past_due", "Pagos: debe existir estado para pagos vencidos o rechazados.");
+assertFileIncludes(workerCode, "refunded", "Pagos: debe existir estado para devoluciones.");
+assertFileIncludes(workerCode, "chargeback", "Pagos: debe existir estado para contracargos.");
+assertFileIncludes(workerCode, "current_period_end", "Pagos: debe guardar el fin del periodo vigente cuando el proveedor lo informe.");
+assertCondition(!workerCode.includes('!requestRecord || requestRecord.status === "approved"'), "Pagos: el webhook no debe ignorar solicitudes ya aprobadas porque puede llegar cancelacion o renovacion.");
+assertFileIncludes(workerCode, "isTerminalPlanRequestStatus", "Pagos: un webhook tardio de una solicitud cancelada no debe afectar la suscripcion nueva.");
+assertFileIncludes(appCode, 'state.subscription?.status && state.subscription.status !== "active"', "Pagos: el frontend debe tratar como Gratis una suscripcion no activa.");
+assertFileIncludes(appCode, "El plan Gratis no usa checkout de Mercado Pago", "Pagos: Gratis no debe abrir checkout automatico.");
 assertFileIncludes(workerCode, "external_reference", "Pagos: Mercado Pago debe guardar referencia de la solicitud.");
 assertFileIncludes(workerCode, "back_url", "Pagos: el regreso desde Mercado Pago no debe activar plan.");
 assertFileIncludes(htmlCode, 'id="planTermsAccept"', "Pagos: debe existir casilla para aceptar terminos antes del checkout.");
@@ -997,10 +1010,15 @@ assertFileIncludes(stylesCode, "width: min(94vw, 1040px)", "Legal: el modal de t
 assertFileIncludes(stylesCode, ".sidebar-legal", "Legal: el acceso lateral debe tener estilo profesional.");
 assertFileIncludes(stylesCode, "margin-top: auto", "Legal: el bloque lateral debe quedar pegado a la parte inferior del sidebar.");
 assertFileIncludes(sqlCode, "provider_subscription_id", "Pagos: SQL debe guardar el ID de suscripcion/pago del proveedor.");
+assertFileIncludes(sqlCode, "current_period_end", "Pagos: SQL debe guardar el fin del periodo vigente de la suscripcion.");
+assertFileIncludes(sqlCode, "subscriptions_status_lifecycle", "Pagos: SQL debe validar el ciclo de vida de la suscripcion.");
+assertFileIncludes(sqlCode, "plan_requests_status_lifecycle", "Pagos: SQL debe validar estados de solicitudes de plan.");
+assertFileIncludes(sqlCode, "subscriptions_provider_subscription_idx", "Pagos: SQL debe indexar suscripciones por proveedor para webhooks.");
 assertFileIncludes(sqlCode, "plan_requests_provider_subscription_idx", "Pagos: SQL debe indexar busqueda de webhook por proveedor.");
 assertFileIncludes(sqlCode, "grant select, insert, update, delete on plan_requests to service_role", "Pagos: service_role debe poder escribir plan_requests desde el Worker.");
 assertFileIncludes(sqlCode, "grant select, insert, update, delete on subscriptions to service_role", "Pagos: service_role debe poder activar subscriptions desde el Worker.");
 assertFileIncludes(schemaCode, "provider_status text", "Pagos: esquema base debe incluir estado del proveedor.");
+assertFileIncludes(schemaCode, "current_period_end timestamptz", "Pagos: esquema base debe incluir fin de periodo vigente.");
 assertFileIncludes(schemaCode, "grant usage on schema public to service_role", "Pagos: service_role debe tener uso del esquema public.");
 
 console.log("Pruebas financieras OK");

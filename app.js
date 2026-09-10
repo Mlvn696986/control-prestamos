@@ -950,6 +950,9 @@ function getPlanLabel() {
 }
 
 function getCurrentPlan() {
+  if (state.subscription?.status && state.subscription.status !== "active") {
+    return PLAN_CATALOG.free;
+  }
   const planId = state.subscription?.plan || "free";
   return PLAN_CATALOG[planId] || PLAN_CATALOG.free;
 }
@@ -1423,6 +1426,10 @@ function subscriptionFromRow(row) {
     clientLimit: row.client_limit === null ? null : row.client_limit || row.clientLimit || FREE_CLIENT_LIMIT,
     startedAt: row.started_at || row.startedAt,
     expiresAt: row.expires_at || row.expiresAt || null,
+    currentPeriodEnd: row.current_period_end || row.currentPeriodEnd || null,
+    provider: row.provider || null,
+    providerSubscriptionId: row.provider_subscription_id || row.providerSubscriptionId || null,
+    providerStatus: row.provider_status || row.providerStatus || null,
   };
 }
 
@@ -4779,6 +4786,8 @@ function renderPlans() {
       const isUpgrade = plan.clientLimit === null || (currentPlan.clientLimit !== null && plan.clientLimit > currentPlan.clientLimit);
       const action = isCurrent
         ? `<button class="ghost-button small-button" type="button" disabled>Plan actual</button>`
+        : plan.id === "free"
+          ? `<button class="ghost-button small-button" type="button" disabled>Baja por soporte</button>`
         : `<button class="${isUpgrade ? "primary-button" : "ghost-button"} small-button" type="button" data-request-plan="${plan.id}">Solicitar plan</button>`;
       return `
         <article class="plan-option ${isCurrent ? "active-plan" : ""}">
@@ -5054,6 +5063,10 @@ function matchesClientFilters(client, loans, filters) {
 function openPlanRequestDialog(planId) {
   const plan = PLAN_CATALOG[planId];
   if (!plan) return;
+  if (plan.id === "free") {
+    window.alert("El plan Gratis no usa checkout de Mercado Pago. Para bajar de plan, contacta a soporte.");
+    return;
+  }
 
   elements.requestedPlan.value = plan.id;
   elements.planRequestTitle.textContent = `Solicitar plan ${plan.label}`;
@@ -5068,6 +5081,10 @@ async function handlePlanRequestSubmit(event) {
   const requestedPlan = elements.requestedPlan.value;
   const plan = PLAN_CATALOG[requestedPlan];
   if (!plan) return;
+  if (plan.id === "free") {
+    window.alert("El plan Gratis no usa checkout de Mercado Pago. Para bajar de plan, contacta a soporte.");
+    return;
+  }
 
   if (!elements.planTermsAccept.checked) {
     window.alert("Debes aceptar los terminos y el cobro mensual para continuar.");
