@@ -3,13 +3,16 @@
 
 select
   'rls_tables' as audit_section,
-  schemaname,
-  tablename,
-  rowsecurity as rls_enabled,
-  forcerowsecurity as force_rls
-from pg_tables
-where schemaname = 'public'
-  and tablename in (
+  namespaces.nspname as schemaname,
+  classes.relname as tablename,
+  classes.relrowsecurity as rls_enabled,
+  classes.relforcerowsecurity as force_rls
+from pg_class classes
+join pg_namespace namespaces
+  on namespaces.oid = classes.relnamespace
+where namespaces.nspname = 'public'
+  and classes.relkind in ('r', 'p')
+  and classes.relname in (
     'profiles',
     'subscriptions',
     'clients',
@@ -20,7 +23,7 @@ where schemaname = 'public'
     'user_backups',
     'claim_book_entries'
   )
-order by tablename;
+order by classes.relname;
 
 select
   'policies' as audit_section,
