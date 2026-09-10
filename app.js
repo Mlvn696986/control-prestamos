@@ -974,32 +974,17 @@ function getPlanInlineStatusText() {
 }
 
 async function ensureCloudAccount(userId, profile) {
-  const profileRow = {
-    id: userId,
-    email: profile.email || null,
-    business_name: profile.businessName || "Mi negocio",
-    owner_name: profile.ownerName || "Prestamista",
-    currency: profile.currency || "PEN",
-  };
-  const subscriptionRow = {
-    user_id: userId,
-      plan: "free",
-      status: "active",
-      client_limit: PLAN_CATALOG.free.clientLimit,
-  };
-
-  let { error: profileError } = await saas.client.from("profiles").upsert(profileRow);
-  if (profileError && /email|schema cache/i.test(profileError.message || "")) {
-    const { email, ...compatibleProfileRow } = profileRow;
-    const retry = await saas.client.from("profiles").upsert(compatibleProfileRow);
-    profileError = retry.error;
+  if (!userId || userId !== saas.session?.user?.id) {
+    throw new Error("No se pudo inicializar la cuenta autenticada.");
   }
-  if (profileError) throw profileError;
 
-  const { error: subscriptionError } = await saas.client.from("subscriptions").upsert(subscriptionRow, {
-    onConflict: "user_id",
+  const { error } = await saas.client.rpc("initialize_user_account", {
+    p_email: profile.email || null,
+    p_business_name: profile.businessName || "Mi negocio",
+    p_owner_name: profile.ownerName || "Prestamista",
+    p_currency: profile.currency || "PEN",
   });
-  if (subscriptionError) throw subscriptionError;
+  if (error) throw error;
 }
 
 async function loadCloudState() {
@@ -1262,20 +1247,6 @@ async function deleteCloudLoan(clientId, loanId) {
     .eq("client_id", clientId)
     .eq("id", loanId);
   if (loanDelete.error) throw loanDelete.error;
-}
-
-async function createPlanRequest(requestedPlan, message) {
-  if (!isCloudMode()) {
-    return;
-  }
-
-  const { error } = await saas.client.from("plan_requests").insert({
-    user_id: saas.session.user.id,
-    requested_plan: requestedPlan,
-    status: "pending",
-    message,
-  });
-  if (error) throw error;
 }
 
 async function createPlanCheckout(requestedPlan, message) {
@@ -5120,27 +5091,12 @@ async function updateAdminUserPlan(userId, planId, requestId = "") {
   if (!plan) return;
 
   try {
-    const { error: subscriptionError } = await saas.client
-      .from("subscriptions")
-      .upsert(
-        {
-          user_id: userId,
-          plan: plan.id,
-          status: "active",
-          client_limit: plan.clientLimit,
-          started_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" }
-      );
-    if (subscriptionError) throw subscriptionError;
-
-    if (requestId) {
-      const { error: requestError } = await saas.client
-        .from("plan_requests")
-        .update({ status: "approved" })
-        .eq("id", requestId);
-      if (requestError) throw requestError;
-    }
+    const { error } = await saas.client.rpc("admin_update_user_plan", {
+      p_user_id: userId,
+      p_plan: plan.id,
+      p_request_id: requestId || null,
+    });
+    if (error) throw error;
 
     await loadCloudState();
     render();
