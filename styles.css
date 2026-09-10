@@ -2403,10 +2403,10 @@ input.field-success {
   --client-table-columns:
     minmax(160px, 1fr)
     minmax(120px, 0.78fr)
-    minmax(145px, 0.9fr)
-    minmax(130px, 0.82fr)
-    minmax(130px, 0.82fr)
-    minmax(370px, 1.25fr);
+    minmax(150px, 0.9fr)
+    minmax(150px, 0.84fr)
+    minmax(150px, 0.84fr)
+    minmax(330px, 1.18fr);
   --client-cell-padding: 10px;
   overflow-x: auto;
   border: 1px solid var(--line);
@@ -2473,17 +2473,26 @@ input.field-success {
   justify-content: center;
   width: 100%;
   min-height: 28px;
+  padding: 0 4px;
   text-align: center;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .filter-cell input {
   width: 100%;
+  min-width: 0;
   min-height: 34px;
   padding: 0 9px;
   font-size: 0.82rem;
   font-weight: 700;
   text-transform: none;
   text-align: center;
+}
+
+.filter-cell input[type="date"] {
+  font-size: 0.78rem;
+  white-space: nowrap;
 }
 
 .filter-input-wrap {
@@ -2587,6 +2596,11 @@ input.field-success {
 
 .client-row > span:nth-of-type(5) {
   border-right: 0;
+}
+
+.client-row > span:nth-of-type(4),
+.client-row > span:nth-of-type(5) {
+  white-space: nowrap;
 }
 
 .client-row > .row-actions {
@@ -2694,6 +2708,11 @@ input.field-success {
 
 .client-extension-row > span:nth-of-type(5) {
   border-right: 0;
+}
+
+.client-extension-row > span:nth-of-type(4),
+.client-extension-row > span:nth-of-type(5) {
+  white-space: nowrap;
 }
 
 .client-extension-row > .row-actions {

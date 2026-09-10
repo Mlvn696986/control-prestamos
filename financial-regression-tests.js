@@ -877,9 +877,12 @@ assertFileIncludes(appCode, "elements.summaryCustomStart.value = addMonthsKeepin
 assertCondition(!htmlCode.includes("Restablecer orden"), "Resumen: el boton Restablecer orden no debe mostrarse en Indicadores.");
 assertFileIncludes(stylesCode, ".filter-cell {\n  display: grid;\n  grid-template-rows: 28px 34px;", "Clientes: las cabeceras con filtros deben quedar alineadas en filas consistentes.");
 assertFileIncludes(stylesCode, ".filter-cell > span:first-child {\n  display: flex;\n  align-items: center;\n  justify-content: center;", "Clientes: los titulos de filtros deben estar centrados.");
-assertFileIncludes(stylesCode, ".filter-cell input {\n  width: 100%;\n  min-height: 34px;", "Clientes: los campos de filtro deben mantener altura consistente.");
-assertFileIncludes(stylesCode, "text-align: center;\n}\n\n.filter-input-wrap", "Clientes: los textos de los filtros deben quedar centrados.");
+assertFileIncludes(stylesCode, ".filter-cell input {\n  width: 100%;\n  min-width: 0;\n  min-height: 34px;", "Clientes: los campos de filtro deben mantener altura consistente.");
+assertFileIncludes(stylesCode, "text-transform: none;\n  text-align: center;", "Clientes: los textos de los filtros deben quedar centrados.");
 assertFileIncludes(stylesCode, ".filter-actions {\n  display: grid;\n  grid-template-rows: 28px 34px;", "Clientes: la columna Acciones debe alinearse con las filas del encabezado.");
+assertFileIncludes(stylesCode, "minmax(150px, 0.84fr)", "Clientes: las columnas de fecha deben conservar un ancho minimo que evite deformaciones.");
+assertFileIncludes(stylesCode, '.filter-cell input[type="date"]', "Clientes: los filtros de fecha deben tener ajuste especifico.");
+assertFileIncludes(stylesCode, ".client-row > span:nth-of-type(4),\n.client-row > span:nth-of-type(5)", "Clientes: las fechas de la cartera deben permanecer en una sola linea.");
 assertCondition(!htmlCode.includes("summaryOperation"), "Resumen: el filtro visual Tipo de operacion no debe seguir en el HTML.");
 assertFileIncludes(appCode, 'operation: "all"', "Resumen: al retirar el filtro visual, la operacion interna debe quedar en Todos.");
 assertCondition(!appCode.includes("summaryCustomStart.value = getCalendarMonthRange"), "Resumen: Desde no debe llenarse automaticamente con el mes actual.");
