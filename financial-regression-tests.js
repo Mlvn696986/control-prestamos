@@ -885,6 +885,11 @@ assertFileIncludes(stylesCode, ".filter-actions {\n  display: grid;\n  grid-temp
 assertFileIncludes(stylesCode, "minmax(150px, 0.84fr)", "Clientes: las columnas de fecha deben conservar un ancho minimo que evite deformaciones.");
 assertFileIncludes(stylesCode, '.filter-cell input[type="date"]', "Clientes: los filtros de fecha deben tener ajuste especifico.");
 assertFileIncludes(stylesCode, ".client-row > span:nth-of-type(4),\n.client-row > span:nth-of-type(5)", "Clientes: las fechas de la cartera deben permanecer en una sola linea.");
+assertFileIncludes(htmlCode, 'id="clientHorizontalScroll"', "Clientes: debe existir una barra horizontal auxiliar para la tabla.");
+assertFileIncludes(stylesCode, ".client-horizontal-scroll {\n  position: fixed;", "Clientes: la barra horizontal auxiliar debe quedar fija en pantalla.");
+assertFileIncludes(appCode, "initClientHorizontalScrollbar", "Clientes: falta inicializar la barra horizontal auxiliar.");
+assertFileIncludes(appCode, "syncClientHorizontalScrollbar", "Clientes: la barra horizontal auxiliar debe sincronizarse con la tabla.");
+assertFileIncludes(appCode, "clientsViewIsActive && tableIsVisible", "Clientes: la barra auxiliar solo debe mostrarse en la vista Clientes cuando la tabla esta visible.");
 assertCondition(!htmlCode.includes("summaryOperation"), "Resumen: el filtro visual Tipo de operacion no debe seguir en el HTML.");
 assertFileIncludes(appCode, 'operation: "all"', "Resumen: al retirar el filtro visual, la operacion interna debe quedar en Todos.");
 assertCondition(!appCode.includes("summaryCustomStart.value = getCalendarMonthRange"), "Resumen: Desde no debe llenarse automaticamente con el mes actual.");

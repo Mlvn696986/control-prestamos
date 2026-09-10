@@ -71,6 +71,7 @@ let quickCollectionScrollPositions = new Map();
 let activeInfoTooltipTarget = null;
 let indicatorDragState = null;
 let indicatorTouchDragState = null;
+let clientHorizontalScrollSyncing = false;
 let clientSubmissionInProgress = false;
 let editSubmissionInProgress = false;
 let paymentSubmissionInProgress = false;
@@ -188,6 +189,9 @@ const elements = {
   clientSubmitButton: $("#clientSubmitButton"),
   interestInfoButton: $("#interestInfoButton"),
   interestInfoDialog: $("#interestInfoDialog"),
+  clientTableWrap: $(".client-table-wrap"),
+  clientHorizontalScroll: $("#clientHorizontalScroll"),
+  clientHorizontalScrollTrack: $("#clientHorizontalScrollTrack"),
   clientList: $("#clientList"),
   clientTabs: $$("[data-client-tab]"),
   filterName: $("#filterName"),
@@ -383,10 +387,19 @@ function bindEvents() {
   window.addEventListener("resize", () => {
     scheduleQuickCollectionSetup();
     positionActiveInfoTooltip();
+    scheduleClientHorizontalScrollbarUpdate();
   });
-  window.addEventListener("scroll", positionActiveInfoTooltip, true);
+  window.addEventListener(
+    "scroll",
+    () => {
+      positionActiveInfoTooltip();
+      scheduleClientHorizontalScrollbarUpdate();
+    },
+    true
+  );
   initInfoTooltipEvents();
   initIndicatorOrderEvents();
+  initClientHorizontalScrollbar();
 
   document.addEventListener("click", (event) => {
     if (elements.dataMenu?.open && !event.target.closest(".data-menu")) {
@@ -449,6 +462,61 @@ function bindEvents() {
       updateAdminUserPlan(adminPlanButton.dataset.adminUser, adminPlanButton.dataset.adminPlan, adminPlanButton.dataset.adminRequest);
     }
   });
+}
+
+function initClientHorizontalScrollbar() {
+  if (!elements.clientTableWrap || !elements.clientHorizontalScroll || !elements.clientHorizontalScrollTrack) return;
+
+  elements.clientTableWrap.addEventListener("scroll", () => syncClientHorizontalScrollbar("table"));
+  elements.clientHorizontalScroll.addEventListener("scroll", () => syncClientHorizontalScrollbar("bar"));
+  scheduleClientHorizontalScrollbarUpdate();
+}
+
+function syncClientHorizontalScrollbar(source) {
+  if (clientHorizontalScrollSyncing || !elements.clientTableWrap || !elements.clientHorizontalScroll) return;
+
+  clientHorizontalScrollSyncing = true;
+  if (source === "bar") {
+    elements.clientTableWrap.scrollLeft = elements.clientHorizontalScroll.scrollLeft;
+  } else {
+    elements.clientHorizontalScroll.scrollLeft = elements.clientTableWrap.scrollLeft;
+  }
+  clientHorizontalScrollSyncing = false;
+}
+
+function scheduleClientHorizontalScrollbarUpdate() {
+  const schedule = window.requestAnimationFrame || ((callback) => window.setTimeout(callback, 0));
+  schedule(updateClientHorizontalScrollbar);
+}
+
+function updateClientHorizontalScrollbar() {
+  const table = elements.clientTableWrap;
+  const bar = elements.clientHorizontalScroll;
+  const track = elements.clientHorizontalScrollTrack;
+  const clientsView = $("#clientsView");
+  if (!table || !bar || !track || !clientsView || !bar.style || !track.style || !table.getBoundingClientRect) return;
+
+  const tableWidth = Number(table.clientWidth || 0);
+  const contentWidth = Number(table.scrollWidth || 0);
+  const rect = table.getBoundingClientRect();
+  const viewportWidth = window.innerWidth || document.documentElement?.clientWidth || 0;
+  const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+  const tableIsVisible = rect.bottom > 0 && rect.top < viewportHeight;
+  const clientsViewIsActive = clientsView.classList?.contains?.("active-view");
+  const shouldShow = clientsViewIsActive && tableIsVisible && contentWidth > tableWidth + 1;
+
+  bar.classList.toggle("is-visible", shouldShow);
+  if (!shouldShow) return;
+
+  const left = Math.max(0, rect.left);
+  const rightGap = 24;
+  const width = Math.min(rect.width, Math.max(0, viewportWidth - left - rightGap));
+  bar.style.left = `${left}px`;
+  bar.style.width = `${width}px`;
+  track.style.width = `${contentWidth}px`;
+  if (bar.scrollLeft !== table.scrollLeft) {
+    bar.scrollLeft = table.scrollLeft;
+  }
 }
 
 function loadState() {
@@ -2376,6 +2444,7 @@ function setView(view) {
   $$(".view").forEach((section) => section.classList.remove("active-view"));
   $(`#${view}View`).classList.add("active-view");
   elements.viewTitle.textContent = title;
+  scheduleClientHorizontalScrollbarUpdate();
   if (view === "admin") refreshAdminPanel();
 }
 
@@ -4530,6 +4599,7 @@ function renderClients() {
     .join("");
 
   renderEmpty(elements.clientList, "No hay clientes con ese criterio.");
+  scheduleClientHorizontalScrollbarUpdate();
 }
 
 async function deleteClient(clientId, actionButton = null) {
