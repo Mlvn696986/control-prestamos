@@ -883,8 +883,13 @@ assertFileIncludes(stylesCode, ".filter-cell input {\n  width: 100%;\n  min-widt
 assertFileIncludes(stylesCode, "text-transform: none;\n  text-align: center;", "Clientes: los textos de los filtros deben quedar centrados.");
 assertFileIncludes(stylesCode, ".filter-actions {\n  display: grid;\n  grid-template-rows: 28px 34px;", "Clientes: la columna Acciones debe alinearse con las filas del encabezado.");
 assertFileIncludes(stylesCode, "minmax(150px, 0.84fr)", "Clientes: las columnas de fecha deben conservar un ancho minimo que evite deformaciones.");
+assertFileIncludes(stylesCode, "minmax(370px, 1.24fr)", "Clientes: la columna Acciones debe tener ancho suficiente para centrar todos sus botones.");
+assertFileIncludes(stylesCode, "min-width: 1100px", "Clientes: la tabla debe conservar ancho minimo para no deformar Acciones.");
 assertFileIncludes(stylesCode, '.filter-cell input[type="date"]', "Clientes: los filtros de fecha deben tener ajuste especifico.");
 assertFileIncludes(stylesCode, ".client-row > span:nth-of-type(4),\n.client-row > span:nth-of-type(5)", "Clientes: las fechas de la cartera deben permanecer en una sola linea.");
+assertFileIncludes(stylesCode, ".client-row > .row-actions {\n  border-left: 1px solid var(--line);\n  justify-content: center;", "Clientes: las acciones principales deben centrarse dentro de su columna.");
+assertFileIncludes(stylesCode, ".client-extension-row > .row-actions {\n  border-left: 1px solid var(--line);\n  justify-content: center;", "Clientes: las acciones de ampliaciones deben centrarse dentro de su columna.");
+assertFileIncludes(stylesCode, ".row-actions .small-button {\n  flex: 0 0 auto;", "Clientes: los botones de acciones no deben comprimirse.");
 assertFileIncludes(htmlCode, 'id="clientHorizontalScroll"', "Clientes: debe existir una barra horizontal auxiliar para la tabla.");
 assertFileIncludes(stylesCode, ".client-horizontal-scroll {\n  position: fixed;", "Clientes: la barra horizontal auxiliar debe quedar fija en pantalla.");
 assertFileIncludes(appCode, "initClientHorizontalScrollbar", "Clientes: falta inicializar la barra horizontal auxiliar.");

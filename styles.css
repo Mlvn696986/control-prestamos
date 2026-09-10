@@ -2406,7 +2406,7 @@ input.field-success {
     minmax(150px, 0.9fr)
     minmax(150px, 0.84fr)
     minmax(150px, 0.84fr)
-    minmax(330px, 1.18fr);
+    minmax(370px, 1.24fr);
   --client-cell-padding: 10px;
   overflow-x: auto;
   border: 1px solid var(--line);
@@ -2443,7 +2443,7 @@ input.field-success {
   grid-template-columns: var(--client-table-columns);
   gap: 0;
   align-items: center;
-  min-width: 1060px;
+  min-width: 1100px;
 }
 
 .client-table-head {
@@ -2628,6 +2628,9 @@ input.field-success {
 
 .client-row > .row-actions {
   border-left: 1px solid var(--line);
+  justify-content: center;
+  padding-right: 16px;
+  padding-left: 16px;
 }
 
 .client-row > .client-name-cell {
@@ -2740,6 +2743,9 @@ input.field-success {
 
 .client-extension-row > .row-actions {
   border-left: 1px solid var(--line);
+  justify-content: center;
+  padding-right: 16px;
+  padding-left: 16px;
 }
 
 .client-extension-row > .client-name-cell {
@@ -2776,11 +2782,15 @@ input.field-success {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   justify-content: center;
   width: 100%;
   height: 100%;
   overflow: visible;
+}
+
+.row-actions .small-button {
+  flex: 0 0 auto;
 }
 
 .small-button {
@@ -2794,6 +2804,7 @@ input.field-success {
   width: 36px;
   min-height: 34px;
   flex: 0 0 36px;
+  margin-right: 4px;
 }
 
 .amount-stack {
@@ -3248,7 +3259,7 @@ input.field-success {
   }
 
   .client-table {
-    min-width: 1060px;
+    min-width: 1100px;
     grid-template-columns: var(--client-table-columns);
     gap: 0;
   }
