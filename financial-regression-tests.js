@@ -137,6 +137,16 @@ function assertMoney(actual, expected, message) {
   }
 }
 
+function assertThrows(callback, expectedText, message) {
+  try {
+    callback();
+  } catch (error) {
+    if (!expectedText || String(error.message || error).includes(expectedText)) return;
+    throw new Error(message + " Error recibido: " + (error.message || error));
+  }
+  throw new Error(message + " No se lanzo ningun error.");
+}
+
 function testClient(id) {
   return {
     id,
@@ -175,6 +185,9 @@ function testPayment(data) {
     date: data.date,
     scheduledDueDate: data.scheduledDueDate || data.date,
     interestPaid: data.interestPaid || 0,
+    expectedInterest: data.expectedInterest ?? data.interestPaid ?? 0,
+    pendingInterest: data.pendingInterest || 0,
+    periodStatus: data.periodStatus || "closed",
     capitalPaid: data.capitalPaid || 0,
     remainingCapitalAfter: data.remainingCapitalAfter || 0,
     nextDueDateAfter: data.nextDueDateAfter || null,
@@ -323,6 +336,55 @@ preview = buildPaymentTransactionPreview(testLoan({ id: "cierra-total", clientId
 assertMoney(preview.updatedLoan.remainingCapital, 0, "Test 9: pago total deja capital pendiente cero.");
 assertEqual(preview.updatedLoan.status, "closed", "Test 9: pago total cierra el prestamo.");
 assertEqual(preview.updatedLoan.nextDueDate, null, "Test 9: prestamo cerrado deja nextDueDate null.");
+
+resetTestState({
+  clients: [testClient("parcial")],
+  loans: [
+    testLoan({ id: "parcial-main", clientId: "parcial", amount: 1000, remainingCapital: 1000, monthlyRate: 10, startDate: "2026-08-01", nextDueDate: "2026-09-01", operationType: "principal" }),
+  ],
+  capitalMovements: [testCapitalMovement({ id: "parcial-capital", type: "deposit", amount: 2000, date: "2026-08-01" })],
+});
+preview = buildPaymentTransactionPreview(state.loans[0], {
+  paymentDate: "2026-09-01",
+  scheduledDueDate: "2026-09-01",
+  interestPaid: 20,
+  capitalPaid: 0,
+});
+assertMoney(preview.payment.expectedInterest, 100, "Pago parcial: debe guardar el interes esperado del periodo.");
+assertMoney(preview.payment.pendingInterest, 80, "Pago parcial: debe guardar el interes pendiente.");
+assertEqual(preview.payment.periodStatus, "partial", "Pago parcial: el periodo queda parcial.");
+assertEqual(preview.updatedLoan.nextDueDate, "2026-09-01", "Pago parcial: no debe avanzar la fecha de cobro.");
+state.loans[0] = preview.updatedLoan;
+state.payments.push(preview.payment);
+dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
+assertMoney(dashboard.metrics.projectedProfit, 80, "Pago parcial: la ganancia proyectada debe mostrar solo el interes pendiente.");
+preview = buildPaymentTransactionPreview(state.loans[0], {
+  paymentDate: "2026-09-02",
+  scheduledDueDate: "2026-09-01",
+  interestPaid: 0,
+  capitalPaid: 300,
+});
+assertMoney(preview.payment.expectedInterest, 100, "Abono a capital: debe conservar el interes esperado original.");
+assertMoney(preview.payment.pendingInterest, 80, "Abono a capital: no debe perdonar el interes pendiente.");
+assertEqual(preview.payment.periodStatus, "capital_only", "Abono a capital: debe distinguirse del pago del periodo.");
+assertMoney(preview.updatedLoan.remainingCapital, 700, "Abono a capital: debe reducir capital pendiente.");
+assertEqual(preview.updatedLoan.nextDueDate, "2026-09-01", "Abono a capital: no debe avanzar la fecha de cobro.");
+state.loans[0] = preview.updatedLoan;
+state.payments.push(preview.payment);
+preview = buildPaymentTransactionPreview(state.loans[0], {
+  paymentDate: "2026-09-03",
+  scheduledDueDate: "2026-09-01",
+  interestPaid: 80,
+  capitalPaid: 0,
+});
+assertMoney(preview.payment.pendingInterest, 0, "Cierre de periodo: al pagar lo pendiente debe quedar en cero.");
+assertEqual(preview.payment.periodStatus, "closed", "Cierre de periodo: debe marcar el periodo como cerrado.");
+assertEqual(preview.updatedLoan.nextDueDate, "2026-10-01", "Cierre de periodo: recien ahi debe avanzar la fecha.");
+assertThrows(
+  () => buildPaymentTransactionPreview(state.loans[0], { paymentDate: "2026-09-04", scheduledDueDate: "2026-09-01", interestPaid: 90, capitalPaid: 700 }),
+  "superar el interes pendiente",
+  "Pago parcial: no debe permitir pagar mas interes que el pendiente del periodo."
+);
 
 resetTestState({
   clients: [testClient("flujo")],
@@ -801,7 +863,12 @@ assertFileIncludes(sqlCode, "create or replace function public.update_client_wit
 assertFileIncludes(sqlCode, "create or replace function public.create_loan_operation", "Ampliacion: SQL debe definir RPC atomica de prestamo/ampliacion.");
 assertFileIncludes(sqlCode, "Ya existe un cobro registrado para este periodo.", "Test 12: register_payment debe rechazar doble pago del mismo vencimiento.");
 assertFileIncludes(sqlCode, "Este periodo ya fue cobrado o el prestamo ya avanzo a otra fecha.", "Test 12: register_payment debe rechazar pagos atrasados por dos pestanas.");
-assertFileIncludes(sqlCode, "next_due_date = case when v_new_remaining = 0 then null else v_next_due end", "Test 9: RPC debe dejar next_due_date null al cerrar.");
+assertFileIncludes(sqlCode, "v_pending_interest", "Pago parcial: register_payment debe calcular interes pendiente del periodo.");
+assertFileIncludes(sqlCode, "period_status", "Pago parcial: SQL debe guardar el estado del periodo.");
+assertFileIncludes(sqlCode, "when v_period_closed then v_next_due", "Pago parcial: RPC solo debe avanzar fecha cuando el periodo cierre.");
+assertFileIncludes(sqlCode, "Para cerrar el prestamo debes completar primero el interes pendiente", "Pago parcial: RPC debe impedir cierre de capital con interes pendiente.");
+assertFileIncludes(appCode, "buildPaymentPeriodSummary", "Pago parcial: frontend debe calcular el estado del periodo antes de guardar.");
+assertFileIncludes(schemaCode, "expected_interest numeric not null default 0", "Pago parcial: esquema base debe incluir interes esperado.");
 assertFileIncludes(sqlCode, "calculate_available_capital", "Test 8: servidor debe validar capital disponible desde una funcion central.");
 assertCondition(!sqlCode.includes("El cliente supera el limite de S/1,000"), "Regla actual: servidor no debe bloquear por limite S/1,000 por cliente.");
 assertFileIncludes(sqlCode, "create or replace function public.enforce_client_plan_limit", "Planes: servidor debe validar limite de clientes por plan.");

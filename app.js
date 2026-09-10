@@ -1464,13 +1464,20 @@ function loanFromRow(row) {
 }
 
 function paymentFromRow(row) {
+  const interestPaid = Number(row.interest_paid);
+  const expectedInterestValue = Number(row.expected_interest);
+  const pendingInterestValue = Number(row.pending_interest);
+  const expectedInterest = Number.isFinite(expectedInterestValue) && (expectedInterestValue > 0 || interestPaid === 0) ? expectedInterestValue : interestPaid;
   return {
     id: row.id,
     loanId: row.loan_id,
     clientId: row.client_id,
     date: row.date,
     scheduledDueDate: row.scheduled_due_date,
-    interestPaid: Number(row.interest_paid),
+    interestPaid,
+    expectedInterest,
+    pendingInterest: Number.isFinite(pendingInterestValue) ? pendingInterestValue : 0,
+    periodStatus: normalizePaymentPeriodStatus(row.period_status),
     capitalPaid: Number(row.capital_paid),
     remainingCapitalAfter: Number(row.remaining_capital_after || 0),
     nextDueDateAfter: row.next_due_date_after,
@@ -1531,6 +1538,9 @@ function paymentToRow(payment, userId) {
     date: payment.date,
     scheduled_due_date: payment.scheduledDueDate,
     interest_paid: payment.interestPaid,
+    expected_interest: payment.expectedInterest ?? payment.interestPaid ?? 0,
+    pending_interest: payment.pendingInterest ?? 0,
+    period_status: normalizePaymentPeriodStatus(payment.periodStatus),
     capital_paid: payment.capitalPaid,
     remaining_capital_after: payment.remainingCapitalAfter,
     next_due_date_after: payment.nextDueDateAfter,
@@ -2212,17 +2222,24 @@ async function handlePaymentSubmit(event) {
     return;
   }
 
+  let transaction;
+  try {
+    transaction = buildPaymentTransactionPreview(loan, {
+      paymentDate,
+      scheduledDueDate,
+      interestPaid,
+      capitalPaid,
+      note: $("#paymentNote").value.trim(),
+    });
+  } catch (error) {
+    window.alert(error.message || "No se pudo preparar el cobro.");
+    return;
+  }
+
   const submitButton = event.submitter || elements.paymentForm.querySelector("button[type='submit']");
   paymentSubmissionInProgress = true;
   setButtonBusy(submitButton, true, "Registrando...");
-
-  const { payment, updatedLoan } = buildPaymentTransactionPreview(loan, {
-    paymentDate,
-    scheduledDueDate,
-    interestPaid,
-    capitalPaid,
-    note: $("#paymentNote").value.trim(),
-  });
+  const { payment, updatedLoan } = transaction;
 
   try {
     await ensureAutomaticBackup();
@@ -2369,29 +2386,86 @@ async function handleCapitalSubmit(event) {
 }
 
 function buildPaymentTransactionPreview(loan, paymentData) {
-  const remainingCapitalAfter = roundMoney(Number(loan.remainingCapital || 0) - Number(paymentData.capitalPaid || 0));
-  const nextDueDateAfter = remainingCapitalAfter <= 0 ? null : getNextDueDateAfterPayment(loan);
+  const scheduledDueDate = paymentData.scheduledDueDate || loan.nextDueDate;
+  const interestPaid = roundMoney(Number(paymentData.interestPaid || 0));
+  const capitalPaid = roundMoney(Number(paymentData.capitalPaid || 0));
+  const period = buildPaymentPeriodSummary(loan, scheduledDueDate, paymentData.payments || state.payments);
+  if (interestPaid > period.pendingInterest) {
+    throw new Error(`El interes pagado no puede superar el interes pendiente del periodo (${money(period.pendingInterest)}).`);
+  }
+
+  const pendingInterestAfter = roundMoney(Math.max(period.pendingInterest - interestPaid, 0));
+  const periodClosed = pendingInterestAfter <= 0;
+  const remainingCapitalAfter = roundMoney(Number(loan.remainingCapital || 0) - capitalPaid);
+  if (remainingCapitalAfter <= 0 && !periodClosed) {
+    throw new Error("Para cerrar el prestamo debes completar primero el interes pendiente de este periodo.");
+  }
+
+  const nextDueDateAfter = periodClosed ? (remainingCapitalAfter <= 0 ? null : getNextDueDateAfterPayment(loan)) : scheduledDueDate;
   const updatedLoan = {
     ...loan,
     remainingCapital: remainingCapitalAfter,
     nextDueDate: nextDueDateAfter,
-    status: remainingCapitalAfter <= 0 ? "closed" : "active",
-    closedAt: remainingCapitalAfter <= 0 ? paymentData.paymentDate : null,
+    status: remainingCapitalAfter <= 0 && periodClosed ? "closed" : "active",
+    closedAt: remainingCapitalAfter <= 0 && periodClosed ? paymentData.paymentDate : null,
   };
   const payment = {
     id: createId("payment"),
     loanId: loan.id,
     clientId: loan.clientId,
     date: paymentData.paymentDate,
-    scheduledDueDate: paymentData.scheduledDueDate || loan.nextDueDate,
-    interestPaid: Number(paymentData.interestPaid || 0),
-    capitalPaid: Number(paymentData.capitalPaid || 0),
+    scheduledDueDate,
+    interestPaid,
+    expectedInterest: period.expectedInterest,
+    pendingInterest: pendingInterestAfter,
+    periodStatus: getPaymentPeriodStatus({ periodClosed, interestPaid, capitalPaid }),
+    capitalPaid,
     remainingCapitalAfter: updatedLoan.remainingCapital,
     nextDueDateAfter: updatedLoan.status === "active" ? updatedLoan.nextDueDate : null,
     note: paymentData.note || "",
     createdAt: new Date().toISOString(),
   };
   return { payment, updatedLoan };
+}
+
+function buildPaymentPeriodSummary(loan, scheduledDueDate = loan?.nextDueDate, payments = state.payments) {
+  const periodPayments = getPaymentsForLoanPeriod(loan?.id, scheduledDueDate, payments);
+  const storedExpectedInterest = periodPayments
+    .map((payment) => Number(payment.expectedInterest))
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => b - a)[0];
+  const expectedInterestValue = roundMoney(storedExpectedInterest ?? expectedInterest(loan, payments));
+  const paidInterest = roundMoney(periodPayments.reduce((total, payment) => total + Number(payment.interestPaid || 0), 0));
+  const pendingInterest = roundMoney(Math.max(expectedInterestValue - paidInterest, 0));
+  return {
+    expectedInterest: expectedInterestValue,
+    paidInterest,
+    pendingInterest,
+    periodStatus: pendingInterest <= 0 ? "closed" : "partial",
+  };
+}
+
+function getPaymentsForLoanPeriod(loanId, scheduledDueDate, payments = state.payments) {
+  return (payments || []).filter((payment) => payment.loanId === loanId && payment.scheduledDueDate === scheduledDueDate);
+}
+
+function getPaymentPeriodStatus({ periodClosed, interestPaid, capitalPaid }) {
+  if (periodClosed) return "closed";
+  if (interestPaid > 0) return "partial";
+  if (capitalPaid > 0) return "capital_only";
+  return "partial";
+}
+
+function normalizePaymentPeriodStatus(status) {
+  if (status === "partial" || status === "capital_only" || status === "closed") return status;
+  return "closed";
+}
+
+function getPaymentPeriodStatusLabel(status) {
+  const normalized = normalizePaymentPeriodStatus(status);
+  if (normalized === "partial") return "Interes parcial";
+  if (normalized === "capital_only") return "Abono a capital";
+  return "Periodo cerrado";
 }
 
 function render() {
@@ -2476,7 +2550,7 @@ function buildDashboardData(options = {}) {
     .filter((loan) => loanWasActiveOnDate(loan, range.end))
     .map((loan) => {
       const snapshot = loanSnapshotAtDate(loan, range.end, scopePayments);
-      return { ...snapshot, expectedInterest: expectedInterest(snapshot, paymentsToRangeEnd) };
+      return { ...snapshot, expectedInterest: getLoanExpectedInterest(snapshot, paymentsToRangeEnd) };
     });
   const overdueLoans = activeLoans.filter((loan) => isOverdueAt(loan, range.end));
   const todayLoans = scopeLoans.filter((loan) => loan.status === "active" && loan.nextDueDate === todayISO()).sort(sortLoansByDueDate);
@@ -5200,15 +5274,15 @@ function openPaymentDialog(loanId) {
   if (!loan || loan.status !== "active") return;
 
   const client = getClient(loan.clientId);
-  const interest = expectedInterest(loan);
+  const period = buildPaymentPeriodSummary(loan);
 
   $("#paymentLoanId").value = loan.id;
   $("#paymentDate").value = todayISO();
-  $("#paymentInterest").value = interest.toFixed(2);
+  $("#paymentInterest").value = period.pendingInterest.toFixed(2);
   $("#paymentCapital").value = "0";
   $("#paymentNote").value = "";
   elements.paymentTitle.textContent = client?.name || "Registrar pago";
-  elements.paymentSummary.textContent = `Cobro programado: ${formatDate(loan.nextDueDate)}. Modalidad: ${getInterestModeLabel(loan.interestMode)}. Interes esperado: ${money(interest)}. Capital pendiente: ${money(loan.remainingCapital)}.`;
+  elements.paymentSummary.textContent = `Cobro programado: ${formatDate(loan.nextDueDate)}. Modalidad: ${getInterestModeLabel(loan.interestMode)}. Interes esperado: ${money(period.expectedInterest)}. Ya pagado: ${money(period.paidInterest)}. Interes pendiente: ${money(period.pendingInterest)}. Capital pendiente: ${money(loan.remainingCapital)}.`;
   elements.paymentDialog.showModal();
 }
 
@@ -5232,18 +5306,23 @@ function openHistoryDialog(clientId) {
         ${payments
         .map((payment) => {
           const capitalText = payment.capitalPaid > 0 ? `Capital abonado: ${money(payment.capitalPaid)}` : "No pago capital";
-          const capitalClass = payment.capitalPaid > 0 ? "ok" : "warn";
+          const periodStatus = normalizePaymentPeriodStatus(payment.periodStatus);
+          const pendingInterest = Number(payment.pendingInterest || 0);
+          const capitalClass = periodStatus === "closed" ? "ok" : "warn";
           return `
             <article class="history-item">
               <div>
                 <strong>${formatDate(payment.date)}</strong>
+                <span>Periodo: ${getPaymentPeriodStatusLabel(periodStatus)}</span>
+                <span>Interes esperado: ${money(payment.expectedInterest ?? payment.interestPaid)}</span>
                 <span>Interes pagado: ${money(payment.interestPaid)}</span>
+                <span>Interes pendiente: ${money(pendingInterest)}</span>
                 <span>${capitalText}</span>
                 <span>Capital pendiente despues: ${money(payment.remainingCapitalAfter)}</span>
                 <span>Proximo cobro: ${payment.nextDueDateAfter ? formatDate(payment.nextDueDateAfter) : "Prestamo cerrado"}</span>
                 ${payment.note ? `<small>${escapeHTML(payment.note)}</small>` : ""}
               </div>
-              <span class="status-pill ${capitalClass}">${capitalText}</span>
+              <span class="status-pill ${capitalClass}">${getPaymentPeriodStatusLabel(periodStatus)}</span>
             </article>
           `;
         })
@@ -5412,6 +5491,7 @@ function exportClientsExcel() {
     ["Ganancia reinvertida", capitalPosition.compoundedProfit],
     ["Capital pendiente", state.loans.filter((loan) => loan.status !== "closed").reduce((sum, loan) => sum + Number(loan.remainingCapital || 0), 0)],
     ["Interes cobrado", state.payments.reduce((sum, payment) => sum + Number(payment.interestPaid || 0), 0)],
+    ["Interes pendiente registrado", state.payments.reduce((sum, payment) => sum + Number(payment.pendingInterest || 0), 0)],
     ["Capital recuperado", state.payments.reduce((sum, payment) => sum + Number(payment.capitalPaid || 0), 0)],
   ];
 
@@ -5446,7 +5526,10 @@ function exportClientsExcel() {
           "Prestamo",
           "Fecha de pago",
           "Fecha programada",
+          "Interes esperado",
           "Interes pagado",
+          "Interes pendiente",
+          "Estado del periodo",
           "Capital pagado",
           "Capital pendiente despues",
           "Proximo cobro",
@@ -5506,7 +5589,10 @@ function buildPaymentHistoryRows() {
         loan ? loanLabel : "Prestamo eliminado",
         formatDate(payment.date),
         payment.scheduledDueDate ? formatDate(payment.scheduledDueDate) : "",
+        Number(payment.expectedInterest ?? payment.interestPaid ?? 0),
         Number(payment.interestPaid || 0),
+        Number(payment.pendingInterest || 0),
+        getPaymentPeriodStatusLabel(payment.periodStatus),
         Number(payment.capitalPaid || 0),
         Number(payment.remainingCapitalAfter || 0),
         payment.nextDueDateAfter ? formatDate(payment.nextDueDateAfter) : "Prestamo cerrado",
@@ -5722,7 +5808,8 @@ function expectedInterest(loan, payments = state.payments) {
 }
 
 function getLoanExpectedInterest(loan, payments = state.payments) {
-  return Number.isFinite(Number(loan?.expectedInterest)) ? Number(loan.expectedInterest) : expectedInterest(loan, payments);
+  if (Number.isFinite(Number(loan?.expectedInterest))) return Number(loan.expectedInterest);
+  return buildPaymentPeriodSummary(loan, loan?.nextDueDate, payments).pendingInterest;
 }
 
 function calculateInterestForMode(capital, monthlyRate, interestMode = "monthly", days = 1, periodFactor = null) {

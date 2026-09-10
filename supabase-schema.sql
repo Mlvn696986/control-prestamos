@@ -59,12 +59,26 @@ create table if not exists payments (
   date date not null,
   scheduled_due_date date,
   interest_paid numeric not null default 0,
+  expected_interest numeric not null default 0,
+  pending_interest numeric not null default 0,
+  period_status text not null default 'closed',
   capital_paid numeric not null default 0,
   remaining_capital_after numeric,
   next_due_date_after date,
   note text,
   created_at timestamptz default now()
 );
+
+alter table payments add column if not exists expected_interest numeric not null default 0;
+alter table payments add column if not exists pending_interest numeric not null default 0;
+alter table payments add column if not exists period_status text not null default 'closed';
+
+update payments
+set expected_interest = interest_paid,
+    pending_interest = 0,
+    period_status = 'closed'
+where expected_interest = 0
+  and interest_paid > 0;
 
 create table if not exists capital_movements (
   id uuid primary key default gen_random_uuid(),
@@ -764,6 +778,9 @@ begin
             'date', date,
             'scheduledDueDate', scheduled_due_date,
             'interestPaid', interest_paid,
+            'expectedInterest', expected_interest,
+            'pendingInterest', pending_interest,
+            'periodStatus', period_status,
             'capitalPaid', capital_paid,
             'remainingCapitalAfter', remaining_capital_after,
             'nextDueDateAfter', next_due_date_after,
@@ -971,6 +988,9 @@ insert into loans (
     date,
     scheduled_due_date,
     interest_paid,
+    expected_interest,
+    pending_interest,
+    period_status,
     capital_paid,
     remaining_capital_after,
     next_due_date_after,
@@ -985,6 +1005,9 @@ insert into loans (
     item.date,
     coalesce(item."scheduledDueDate", item.scheduled_due_date),
     coalesce(item."interestPaid", item.interest_paid, 0),
+    coalesce(item."expectedInterest", item.expected_interest, item."interestPaid", item.interest_paid, 0),
+    coalesce(item."pendingInterest", item.pending_interest, 0),
+    coalesce(item."periodStatus", item.period_status, 'closed'),
     coalesce(item."capitalPaid", item.capital_paid, 0),
     coalesce(item."remainingCapitalAfter", item.remaining_capital_after, 0),
     coalesce(item."nextDueDateAfter", item.next_due_date_after),
@@ -1001,6 +1024,12 @@ insert into loans (
     scheduled_due_date date,
     "interestPaid" numeric,
     interest_paid numeric,
+    "expectedInterest" numeric,
+    expected_interest numeric,
+    "pendingInterest" numeric,
+    pending_interest numeric,
+    "periodStatus" text,
+    period_status text,
     "capitalPaid" numeric,
     capital_paid numeric,
     "remainingCapitalAfter" numeric,
@@ -1067,8 +1096,17 @@ declare
   v_new_remaining numeric;
   v_next_due date;
   v_scheduled_due date;
+  v_expected_interest numeric;
+  v_interest_paid_before numeric;
+  v_pending_interest numeric;
+  v_period_closed boolean;
+  v_period_status text;
   v_target_month date;
   v_last_day integer;
+  v_period_factor numeric;
+  v_has_any_payment boolean;
+  v_previous_scheduled_due date;
+  v_period_days integer;
 begin
   if v_user_id is null then
     raise exception 'Usuario no autenticado.';
@@ -1118,9 +1156,69 @@ begin
     where user_id = v_user_id
       and loan_id = v_loan.id
       and scheduled_due_date = v_scheduled_due
+      and period_status = 'closed'
   ) then
     raise exception 'Ya existe un cobro registrado para este periodo.';
   end if;
+
+  select coalesce(max(expected_interest), null), coalesce(sum(interest_paid), 0)
+  into v_expected_interest, v_interest_paid_before
+  from payments
+  where user_id = v_user_id
+    and loan_id = v_loan.id
+    and scheduled_due_date = v_scheduled_due;
+
+  if v_expected_interest is null then
+    select exists (
+      select 1
+      from payments
+      where user_id = v_user_id
+        and loan_id = v_loan.id
+    )
+    into v_has_any_payment;
+
+    select max(scheduled_due_date)
+    into v_previous_scheduled_due
+    from payments
+    where user_id = v_user_id
+      and loan_id = v_loan.id
+      and scheduled_due_date < v_scheduled_due;
+
+    v_period_days := greatest(v_scheduled_due - coalesce(v_previous_scheduled_due, v_loan.start_date), 1);
+
+    v_period_factor := case coalesce(v_loan.interest_mode, 'monthly')
+      when 'monthly' then case
+        when v_has_any_payment then 1
+        when greatest(v_scheduled_due - v_loan.start_date, 0) >= 25 then 1
+        when greatest(v_scheduled_due - v_loan.start_date, 0) >= 15 then 0.5
+        else 0
+      end
+      when 'biweekly' then 0.5
+      when 'weekly' then 7.0 / 30.0
+      when 'daily' then v_period_days / 30.0
+      else null
+    end;
+
+    if v_period_factor is null then
+      raise exception 'Modalidad de interes invalida.';
+    end if;
+
+    v_expected_interest := round(v_loan.remaining_capital * (v_loan.monthly_rate / 100) * v_period_factor, 2);
+  end if;
+
+  v_pending_interest := round(greatest(v_expected_interest - v_interest_paid_before, 0), 2);
+
+  if p_interest_paid > v_pending_interest then
+    raise exception 'El interes pagado no puede superar el interes pendiente del periodo (%).', v_pending_interest;
+  end if;
+
+  v_pending_interest := round(greatest(v_pending_interest - p_interest_paid, 0), 2);
+  v_period_closed := v_pending_interest = 0;
+  v_period_status := case
+    when v_period_closed then 'closed'
+    when p_interest_paid > 0 then 'partial'
+    else 'capital_only'
+  end;
 
   if coalesce(v_loan.interest_mode, 'monthly') = 'monthly' then
     v_target_month := (date_trunc('month', v_loan.next_due_date)::date + interval '1 month')::date;
@@ -1142,12 +1240,20 @@ begin
 
   v_new_remaining := round(v_loan.remaining_capital - p_capital_paid, 2);
 
+  if v_new_remaining = 0 and not v_period_closed then
+    raise exception 'Para cerrar el prestamo debes completar primero el interes pendiente de este periodo.';
+  end if;
+
   update loans
   set
     remaining_capital = v_new_remaining,
-    next_due_date = case when v_new_remaining = 0 then null else v_next_due end,
-    status = case when v_new_remaining = 0 then 'closed' else 'active' end,
-    closed_at = case when v_new_remaining = 0 then p_date::timestamptz else null end
+    next_due_date = case
+      when v_new_remaining = 0 and v_period_closed then null
+      when v_period_closed then v_next_due
+      else v_scheduled_due
+    end,
+    status = case when v_new_remaining = 0 and v_period_closed then 'closed' else 'active' end,
+    closed_at = case when v_new_remaining = 0 and v_period_closed then p_date::timestamptz else null end
   where id = v_loan.id
     and user_id = v_user_id
   returning * into v_loan;
@@ -1160,6 +1266,9 @@ begin
     date,
     scheduled_due_date,
     interest_paid,
+    expected_interest,
+    pending_interest,
+    period_status,
     capital_paid,
     remaining_capital_after,
     next_due_date_after,
@@ -1174,9 +1283,12 @@ begin
     p_date,
     v_scheduled_due,
     p_interest_paid,
+    v_expected_interest,
+    v_pending_interest,
+    v_period_status,
     p_capital_paid,
     v_new_remaining,
-    case when v_new_remaining = 0 then null else v_next_due end,
+    v_loan.next_due_date,
     coalesce(p_note, ''),
     coalesce(p_created_at, now())
   )
@@ -1255,6 +1367,21 @@ begin
   if not exists (select 1 from pg_constraint where conname = 'payments_interest_paid_nonnegative') then
     alter table payments add constraint payments_interest_paid_nonnegative check (interest_paid >= 0) not valid;
   end if;
+  if not exists (select 1 from pg_constraint where conname = 'payments_expected_interest_nonnegative') then
+    alter table payments add constraint payments_expected_interest_nonnegative check (expected_interest >= 0) not valid;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'payments_pending_interest_nonnegative') then
+    alter table payments add constraint payments_pending_interest_nonnegative check (pending_interest >= 0) not valid;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'payments_interest_paid_not_above_expected') then
+    alter table payments add constraint payments_interest_paid_not_above_expected check (interest_paid <= expected_interest) not valid;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'payments_pending_interest_not_above_expected') then
+    alter table payments add constraint payments_pending_interest_not_above_expected check (pending_interest <= expected_interest) not valid;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'payments_period_status_valid') then
+    alter table payments add constraint payments_period_status_valid check (period_status in ('closed', 'partial', 'capital_only')) not valid;
+  end if;
   if not exists (select 1 from pg_constraint where conname = 'payments_capital_paid_nonnegative') then
     alter table payments add constraint payments_capital_paid_nonnegative check (capital_paid >= 0) not valid;
   end if;
@@ -1316,6 +1443,11 @@ alter table loans validate constraint loans_due_date_not_before_start;
 alter table loans validate constraint loans_status_matches_remaining_capital;
 alter table loans validate constraint loans_status_matches_due_date;
 alter table payments validate constraint payments_interest_paid_nonnegative;
+alter table payments validate constraint payments_expected_interest_nonnegative;
+alter table payments validate constraint payments_pending_interest_nonnegative;
+alter table payments validate constraint payments_interest_paid_not_above_expected;
+alter table payments validate constraint payments_pending_interest_not_above_expected;
+alter table payments validate constraint payments_period_status_valid;
 alter table payments validate constraint payments_capital_paid_nonnegative;
 alter table payments validate constraint payments_has_amount;
 alter table payments validate constraint payments_remaining_after_nonnegative;
