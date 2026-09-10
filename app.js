@@ -149,6 +149,7 @@ const elements = {
   planInlineStatus: $("#planInlineStatus"),
   todayLabel: $("#todayLabel"),
   viewTitle: $("#viewTitle"),
+  dataMenu: $(".data-menu"),
   exportButton: $("#exportData"),
   exportExcelButton: $("#exportExcel"),
   openAddCapitalButton: $("#openAddCapital"),
@@ -388,6 +389,10 @@ function bindEvents() {
   initIndicatorOrderEvents();
 
   document.addEventListener("click", (event) => {
+    if (elements.dataMenu?.open && !event.target.closest(".data-menu")) {
+      elements.dataMenu.removeAttribute("open");
+    }
+
     const infoDot = event.target.closest(".info-dot");
     if (infoDot) {
       event.preventDefault();

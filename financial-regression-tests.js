@@ -844,6 +844,9 @@ assertFileIncludes(appCode, 'host.endsWith(".netlify.app")', "Dominio: cualquier
 assertCondition(!htmlCode.includes('id="exportExcel"'), "Topbar: Exportar Excel no debe mostrarse en la barra superior.");
 assertFileIncludes(htmlCode, "topbar-primary-actions", "Topbar: Agregar, Retirar y Nuevo cliente deben estar agrupados a la derecha.");
 assertFileIncludes(appCode, "elements.exportExcelButton?.addEventListener", "Topbar: JS debe tolerar que Exportar Excel no exista en HTML.");
+assertFileIncludes(appCode, 'dataMenu: $(".data-menu")', "Topbar: JS debe tener referencia al menu Seguridad de datos.");
+assertFileIncludes(appCode, '!event.target.closest(".data-menu")', "Topbar: Seguridad de datos debe cerrarse al hacer clic fuera del menu.");
+assertFileIncludes(appCode, 'elements.dataMenu.removeAttribute("open")', "Topbar: el clic externo debe cerrar el menu Seguridad de datos.");
 assertFileIncludes(appCode, '<span class="status-pill ok">Capital disponible</span>', "Resumen superior: la tarjeta derecha debe mostrar Capital disponible.");
 assertFileIncludes(appCode, "<strong>${money(dashboard.metrics.availableCapital)}</strong>", "Resumen superior: la tarjeta derecha debe usar capital disponible.");
 assertFileIncludes(appCode, "<small>Monto que debe figurar en tu tarjeta</small>", "Resumen superior: el mensaje bajo el valor debe ser el texto solicitado.");
