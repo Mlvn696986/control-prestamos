@@ -89,6 +89,24 @@ grant select, insert, update, delete on plan_requests to service_role;
 grant select, insert, update, delete on claim_book_entries to service_role;
 grant select, insert, update, delete on user_backups to service_role;
 
+alter table user_backups enable row level security;
+
+drop policy if exists "user backups own data" on user_backups;
+drop policy if exists "user backups own select" on user_backups;
+drop policy if exists "user backups admin data" on user_backups;
+
+create policy "user backups own select"
+on user_backups for select
+using (auth.uid() = user_id);
+
+create policy "user backups admin data"
+on user_backups for all
+using (public.is_admin())
+with check (public.is_admin());
+
+revoke insert, update, delete on user_backups from authenticated;
+grant select on user_backups to authenticated;
+
 alter table loans add column if not exists operation_type text;
 alter table loans add column if not exists parent_loan_id uuid;
 alter table loans alter column next_due_date drop not null;
@@ -503,13 +521,167 @@ $$;
 
 grant execute on function public.update_client_with_loan(uuid, text, text, text, uuid, numeric, numeric, numeric, text, date, date, integer, text, text, timestamptz) to authenticated;
 
-create or replace function public.restore_user_snapshot(snapshot jsonb)
+drop function if exists public.restore_user_snapshot(jsonb);
+
+create or replace function public.create_user_backup()
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_backup_id uuid;
+begin
+  if v_user_id is null then
+    raise exception 'Usuario no autenticado.';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext(v_user_id::text)::bigint);
+
+  insert into user_backups (user_id, snapshot)
+  values (
+    v_user_id,
+    jsonb_build_object(
+      'version', 1,
+      'createdAt', now(),
+      'clients', coalesce((
+        select jsonb_agg(
+          jsonb_build_object(
+            'id', id,
+            'name', name,
+            'phone', coalesce(phone, ''),
+            'note', coalesce(note, ''),
+            'createdAt', created_at
+          )
+          order by created_at, id
+        )
+        from clients
+        where user_id = v_user_id
+      ), '[]'::jsonb),
+      'loans', coalesce((
+        select jsonb_agg(
+          jsonb_build_object(
+            'id', id,
+            'clientId', client_id,
+            'amount', amount,
+            'remainingCapital', remaining_capital,
+            'monthlyRate', monthly_rate,
+            'interestMode', interest_mode,
+            'operationType', operation_type,
+            'parentLoanId', parent_loan_id,
+            'startDate', start_date,
+            'nextDueDate', next_due_date,
+            'dueDay', due_day,
+            'note', coalesce(note, ''),
+            'status', status,
+            'createdAt', created_at,
+            'closedAt', closed_at
+          )
+          order by created_at, start_date, id
+        )
+        from loans
+        where user_id = v_user_id
+      ), '[]'::jsonb),
+      'payments', coalesce((
+        select jsonb_agg(
+          jsonb_build_object(
+            'id', id,
+            'loanId', loan_id,
+            'clientId', client_id,
+            'date', date,
+            'scheduledDueDate', scheduled_due_date,
+            'interestPaid', interest_paid,
+            'capitalPaid', capital_paid,
+            'remainingCapitalAfter', remaining_capital_after,
+            'nextDueDateAfter', next_due_date_after,
+            'note', coalesce(note, ''),
+            'createdAt', created_at
+          )
+          order by created_at, date, id
+        )
+        from payments
+        where user_id = v_user_id
+      ), '[]'::jsonb),
+      'capitalMovements', coalesce((
+        select jsonb_agg(
+          jsonb_build_object(
+            'id', id,
+            'type', type,
+            'amount', amount,
+            'date', date,
+            'note', coalesce(note, ''),
+            'createdAt', created_at
+          )
+          order by created_at, date, id
+        )
+        from capital_movements
+        where user_id = v_user_id
+      ), '[]'::jsonb)
+    )
+  )
+  returning id into v_backup_id;
+
+  delete from user_backups
+  where user_id = v_user_id
+    and id not in (
+      select id
+      from user_backups
+      where user_id = v_user_id
+      order by created_at desc
+      limit 7
+    );
+
+  return v_backup_id;
+end;
+$$;
+
+revoke all on function public.create_user_backup() from public;
+grant execute on function public.create_user_backup() to authenticated;
+
+create or replace function public.restore_user_backup(p_backup_id uuid)
 returns void
 language plpgsql
 security invoker
 set search_path = public
 as $$
+declare
+  snapshot jsonb;
+  v_user_id uuid := auth.uid();
+  v_client_limit integer;
+  v_snapshot_clients integer;
 begin
+  if v_user_id is null then
+    raise exception 'Usuario no autenticado.';
+  end if;
+
+  select user_backups.snapshot
+  into snapshot
+  from user_backups
+  where id = p_backup_id
+    and user_id = v_user_id;
+
+  if not found then
+    raise exception 'Copia de seguridad no encontrada.';
+  end if;
+
+  select subscriptions.client_limit
+  into v_client_limit
+  from subscriptions
+  where subscriptions.user_id = v_user_id
+    and subscriptions.status = 'active'
+  order by subscriptions.started_at desc nulls last
+  limit 1;
+
+  if not found then
+    v_client_limit := 10;
+  end if;
+
+  v_snapshot_clients := jsonb_array_length(coalesce(snapshot -> 'clients', '[]'::jsonb));
+  if v_client_limit is not null and v_snapshot_clients > v_client_limit then
+    raise exception 'Esta copia tiene % clientes y tu plan permite hasta %. Actualiza tu plan para restaurarla.', v_snapshot_clients, v_client_limit;
+  end if;
+
   perform set_config('app.restoring_snapshot', 'on', true);
 
   delete from capital_movements where user_id = auth.uid();
@@ -697,7 +869,8 @@ begin
 end;
 $$;
 
-grant execute on function public.restore_user_snapshot(jsonb) to authenticated;
+revoke all on function public.restore_user_backup(uuid) from public;
+grant execute on function public.restore_user_backup(uuid) to authenticated;
 
 create or replace function public.register_payment(
   p_payment_id uuid,

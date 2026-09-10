@@ -1602,23 +1602,8 @@ async function createCloudBackup(force = false) {
   const latest = backups?.[0];
   if (!force && latest && Date.now() - new Date(latest.created_at).getTime() < BACKUP_INTERVAL_MS) return;
 
-  const { error: insertError } = await saas.client.from("user_backups").insert({
-    user_id: userId,
-    snapshot: createBackupSnapshot(),
-  });
-  if (insertError) throw insertError;
-
-  const oldBackups = (backups || []).slice(MAX_BACKUPS - 1);
-  if (oldBackups.length) {
-    await saas.client
-      .from("user_backups")
-      .delete()
-      .eq("user_id", userId)
-      .in(
-        "id",
-        oldBackups.map((backup) => backup.id)
-      );
-  }
+  const { error } = await saas.client.rpc("create_user_backup");
+  if (error) throw error;
 }
 
 function createLocalBackup(force = false) {
@@ -1652,14 +1637,14 @@ async function getLatestBackup() {
   const userId = saas.session?.user?.id;
   const { data, error } = await saas.client
     .from("user_backups")
-    .select("created_at, snapshot")
+    .select("id, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error) throw error;
-  return data ? { createdAt: data.created_at, snapshot: data.snapshot } : null;
+  return data ? { id: data.id, createdAt: data.created_at } : null;
 }
 
 async function restoreLatestBackup() {
@@ -1682,11 +1667,17 @@ async function restoreLatestBackup() {
 
     await ensureAutomaticBackup(true);
 
-    const snapshot = normalizeBackupSnapshot(backup.snapshot);
     if (isCloudMode()) {
-      await restoreCloudSnapshot(snapshot);
+      await restoreCloudBackup(backup.id);
+      await loadCloudState();
+      render();
+      window.alert(
+        `Restauracion completada correctamente.\n\nClientes restaurados: ${state.clients.length}\nPrestamos: ${state.loans.length}\nPagos: ${state.payments.length}\nMovimientos de capital: ${state.capitalMovements.length}`
+      );
+      return;
     }
 
+    const snapshot = normalizeBackupSnapshot(backup.snapshot);
     state.clients = snapshot.clients;
     state.loans = snapshot.loans;
     state.payments = snapshot.payments;
@@ -1698,7 +1689,7 @@ async function restoreLatestBackup() {
     );
   } catch (error) {
     const message = error.message || "";
-    if (/user_backups|restore_user_snapshot|schema cache|relation|function/i.test(message)) {
+    if (/user_backups|restore_user_backup|create_user_backup|schema cache|relation|function/i.test(message)) {
       window.alert("Para restaurar copias automaticas en Supabase, primero ejecuta el SQL actualizado que crea las funciones seguras de respaldo.");
       return;
     }
@@ -1708,8 +1699,8 @@ async function restoreLatestBackup() {
   }
 }
 
-async function restoreCloudSnapshot(snapshot) {
-  const rpcRestore = await saas.client.rpc("restore_user_snapshot", { snapshot });
+async function restoreCloudBackup(backupId) {
+  const rpcRestore = await saas.client.rpc("restore_user_backup", { p_backup_id: backupId });
   if (!rpcRestore.error) return;
   throw rpcRestore.error;
 }
