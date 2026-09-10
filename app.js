@@ -4834,11 +4834,15 @@ async function handleLoanDeleteSubmit(event) {
 
 function renderLoanPendingCapital(loan) {
   if (!loan) return "Sin prestamo";
+  const rate = getDisplayPeriodRate(loan);
+  const mode = normalizeInterestMode(loan.interestMode);
+  const collectionLabel = `Cobro ${getInterestModeShortLabel(mode)}: ${formatDisplayPercent(rate)}%`;
 
   return `
     <span class="amount-stack">
       <strong>${money(loan.remainingCapital)}</strong>
-      <small>Interes: ${roundMoney(loan.monthlyRate)}% ${getInterestModeShortLabel(loan.interestMode)}</small>
+      <small>Tasa base: ${formatDisplayPercent(loan.monthlyRate)}% mensual</small>
+      <small>${collectionLabel}</small>
     </span>
   `;
 }
@@ -5282,7 +5286,25 @@ function openPaymentDialog(loanId) {
   $("#paymentCapital").value = "0";
   $("#paymentNote").value = "";
   elements.paymentTitle.textContent = client?.name || "Registrar pago";
-  elements.paymentSummary.textContent = `Cobro programado: ${formatDate(loan.nextDueDate)}. Modalidad: ${getInterestModeLabel(loan.interestMode)}. Interes esperado: ${money(period.expectedInterest)}. Ya pagado: ${money(period.paidInterest)}. Interes pendiente: ${money(period.pendingInterest)}. Capital pendiente: ${money(loan.remainingCapital)}.`;
+  const adjustment = getFirstMonthlyCollectionAdjustment(loan);
+  const displayedRate = adjustment ? adjustment.appliedRate : getDisplayPeriodRate(loan);
+  elements.paymentSummary.innerHTML = `
+    <div class="payment-summary-list">
+      <span>Cobro programado: <strong>${formatDate(loan.nextDueDate)}</strong></span>
+      <span>Tasa base: <strong>${formatDisplayPercent(loan.monthlyRate)}% mensual</strong></span>
+      <span>Modalidad: <strong>${getInterestModeLabel(loan.interestMode)}</strong></span>
+      <span>Tasa de este cobro: <strong>${formatDisplayPercent(displayedRate)}%</strong></span>
+      <span>Interes esperado: <strong>${money(period.expectedInterest)}</strong></span>
+      <span>Ya pagado: <strong>${money(period.paidInterest)}</strong></span>
+      <span>Interes pendiente: <strong>${money(period.pendingInterest)}</strong></span>
+      <span>Capital pendiente: <strong>${money(loan.remainingCapital)}</strong></span>
+      ${
+        adjustment
+          ? `<small>Primer cobro ajustado segun los dias transcurridos (${adjustment.days} dia(s)). Tasa aplicada en este primer cobro: ${formatDisplayPercent(adjustment.appliedRate)}%.</small>`
+          : ""
+      }
+    </div>
+  `;
   elements.paymentDialog.showModal();
 }
 
@@ -5884,6 +5906,29 @@ function getInterestModeLabel(mode) {
 
 function getInterestModeShortLabel(mode) {
   return INTEREST_MODES[normalizeInterestMode(mode)].shortLabel;
+}
+
+function getDisplayPeriodRate(loan) {
+  const mode = normalizeInterestMode(loan?.interestMode);
+  return roundMoney(Number(loan?.monthlyRate || 0) * INTEREST_MODES[mode].rateFactor);
+}
+
+function formatDisplayPercent(value) {
+  return roundMoney(Number(value || 0)).toLocaleString("es-PE", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
+function getFirstMonthlyCollectionAdjustment(loan, payments = state.payments) {
+  if (normalizeInterestMode(loan?.interestMode) !== "monthly" || !isFirstInterestPeriod(loan, payments)) return null;
+  const factor = getInterestPeriodFactor(loan, payments);
+  if (factor === null || factor === 1) return null;
+  const days = Math.max(daysBetween(loan.startDate, loan.nextDueDate), 0);
+  return {
+    days,
+    appliedRate: roundMoney(Number(loan.monthlyRate || 0) * factor),
+  };
 }
 
 function isOverdue(loan) {

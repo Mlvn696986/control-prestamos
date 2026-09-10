@@ -643,12 +643,35 @@
           </button>
         </div>
         <div class="interest-info-content">
-          <p>
-            La modalidad de interés funciona tomando siempre como referencia una tasa mensual base, por ejemplo 10% mensual, pero el monto que se cobra depende de la modalidad seleccionada para cada período: si el préstamo es mensual, se cobra el 10% completo sobre el capital pendiente, sin importar si entre las fechas existen 28, 30 o 31 días; si es quincenal, se cobra la mitad de la tasa mensual, es decir 5% por cada quincena, por lo que un préstamo de S/1,000 genera S/50 de interés, aunque entre la fecha del préstamo y la fecha de cobro existan 14, 15 o 16 días; si es semanal, se calcula el equivalente de 7 días tomando como base un mes de 30 días, es decir 10% × 7/30, que equivale aproximadamente a 2.33% por semana, por lo que S/1,000 generan S/23.33; y si es diario, se divide la tasa mensual entre 30, obteniendo aproximadamente 0.3333% por día, y el interés se multiplica por la cantidad de días que corresponda.
-          </p>
-          <p>
-            En todos los casos, el interés debe calcularse sobre el capital pendiente actual. Además, la modalidad debe poder cambiarse para los siguientes períodos sin modificar lo que ya fue cobrado: por ejemplo, si un cliente inicia un préstamo de S/1,000 al 10% mensual pero con modalidad quincenal, en su primera quincena pagará S/50 de interés; después de registrar ese pago, si para el siguiente cobro se desea pasar a modalidad mensual, se debe ingresar a Editar, cambiar la modalidad de quincenal a mensual y establecer la nueva fecha de cobro; a partir de ese momento, el siguiente período se calculará al 10% mensual completo sobre el capital pendiente, sin alterar ni recalcular la primera quincena que ya fue pagada y registrada en el historial.
-          </p>
+          <section>
+            <h4>Tasa mensual base</h4>
+            <p>ERMIF usa una tasa mensual como referencia para todas las modalidades. Si registras 10% mensual, el porcentaje de cada cobro depende de la modalidad seleccionada.</p>
+          </section>
+          <section>
+            <h4>Mensual</h4>
+            <p>Se cobra la tasa mensual completa sobre el capital pendiente. Ejemplo: S/1,000 al 10% generan S/100.</p>
+          </section>
+          <section>
+            <h4>Quincenal</h4>
+            <p>Se cobra la mitad de la tasa mensual por quincena. Ejemplo: 10% mensual equivale a 5% por quincena; S/1,000 generan S/50.</p>
+          </section>
+          <section>
+            <h4>Semanal</h4>
+            <p>Se calcula tasa mensual x 7/30. Ejemplo: 10% mensual equivale aproximadamente a 2.33% por semana; S/1,000 generan cerca de S/23.33.</p>
+          </section>
+          <section>
+            <h4>Diario</h4>
+            <p>Se divide la tasa mensual entre 30. Ejemplo: 10% mensual equivale aproximadamente a 0.33% por dia; S/1,000 generan cerca de S/3.33 por dia.</p>
+          </section>
+          <section>
+            <h4>Primer cobro en modalidad mensual</h4>
+            <p>Cuando el primer cobro mensual no completa un mes, ERMIF aplica automaticamente este ajuste: 25 dias o mas cobran 100% de la tasa mensual; 15 a 24 dias cobran 50%; menos de 15 dias cobran 0% de interes en ese primer cobro.</p>
+            <p>Este ajuste se usa solo en el primer cobro mensual. Despues, los siguientes cobros mensuales usan normalmente la tasa mensual completa sobre el capital pendiente.</p>
+          </section>
+          <section>
+            <h4>Capital pendiente y cambios futuros</h4>
+            <p>El interes siempre se calcula sobre el capital pendiente actual. Si el cliente amortiza capital, el siguiente interes se calcula sobre el nuevo saldo. Si cambias la modalidad del prestamo, se aplica solo a los siguientes cobros y no modifica pagos ya registrados.</p>
+          </section>
         </div>
         <button class="primary-button" type="button" data-close-dialog>Cerrar</button>
       </section>

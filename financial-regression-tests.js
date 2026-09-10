@@ -297,6 +297,14 @@ assertMoney(dashboard.metrics.overdueAmount, 250, "Test 5: monto vencido muestra
 assertMoney(calculateFirstPeriodInterest(500, 10, "2026-08-01", "2026-08-31"), 50, "Test 6: primer periodo mensual de 30 dias cobra 10%.");
 assertMoney(calculateFirstPeriodInterest(500, 10, "2026-08-11", "2026-08-31"), 25, "Test 6: primer periodo mensual de 20 dias cobra 5%.");
 assertMoney(calculateFirstPeriodInterest(500, 10, "2026-08-24", "2026-08-31"), 0, "Test 6: primer periodo mensual de 7 dias no cobra interes.");
+assertMoney(getDisplayPeriodRate(testLoan({ id: "rate-monthly", clientId: "reglas", amount: 1000, monthlyRate: 15, interestMode: "monthly", startDate: "2026-08-01", nextDueDate: "2026-09-01" })), 15, "Tasa visual mensual: debe mostrar la tasa base completa.");
+assertMoney(getDisplayPeriodRate(testLoan({ id: "rate-biweekly", clientId: "reglas", amount: 1000, monthlyRate: 15, interestMode: "biweekly", startDate: "2026-08-01", nextDueDate: "2026-08-16" })), 7.5, "Tasa visual quincenal: debe mostrar mitad de la tasa mensual.");
+assertMoney(getDisplayPeriodRate(testLoan({ id: "rate-weekly", clientId: "reglas", amount: 1000, monthlyRate: 15, interestMode: "weekly", startDate: "2026-08-01", nextDueDate: "2026-08-08" })), 3.5, "Tasa visual semanal: debe mostrar tasa mensual x 7/30.");
+assertMoney(getDisplayPeriodRate(testLoan({ id: "rate-daily", clientId: "reglas", amount: 1000, monthlyRate: 15, interestMode: "daily", startDate: "2026-08-01", nextDueDate: "2026-08-02" })), 0.5, "Tasa visual diaria: debe mostrar tasa mensual / 30.");
+const rateMarkup = renderLoanPendingCapital(testLoan({ id: "rate-render", clientId: "reglas", amount: 1000, monthlyRate: 10, interestMode: "biweekly", startDate: "2026-08-01", nextDueDate: "2026-08-16" }));
+assert(rateMarkup.includes("Tasa base: 10% mensual"), "Tasa visual: la tabla debe separar tasa base mensual.");
+assert(rateMarkup.includes("Cobro quincenal: 5%"), "Tasa visual: la tabla debe mostrar el cobro quincenal real.");
+assert(!rateMarkup.includes("Interes: 10% quincenal"), "Tasa visual: no debe mostrar el texto confuso anterior.");
 
 resetTestState({
   clients: [testClient("sin-limite")],
