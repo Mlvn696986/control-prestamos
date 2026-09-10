@@ -1,14 +1,16 @@
 const fs = require("fs");
 const vm = require("vm");
 
-const appCode = fs.readFileSync("app.js", "utf8");
-const htmlCode = fs.readFileSync("index.html", "utf8");
-const sqlCode = fs.readFileSync("supabase-financial-integrity.sql", "utf8");
-const schemaCode = fs.readFileSync("supabase-schema.sql", "utf8");
-const stylesCode = fs.readFileSync("styles.css", "utf8");
-const cloudflareBuildCode = fs.readFileSync("scripts/build-cloudflare.js", "utf8");
-const wranglerCode = fs.readFileSync("wrangler.jsonc", "utf8");
-const workerCode = fs.readFileSync("src/worker.js", "utf8");
+const readText = (path) => fs.readFileSync(path, "utf8").replace(/\r\n/g, "\n");
+
+const appCode = readText("app.js");
+const htmlCode = readText("index.html");
+const sqlCode = readText("supabase-financial-integrity.sql");
+const schemaCode = readText("supabase-schema.sql");
+const stylesCode = readText("styles.css");
+const cloudflareBuildCode = readText("scripts/build-cloudflare.js");
+const wranglerCode = readText("wrangler.jsonc");
+const workerCode = readText("src/worker.js");
 const localStorageStore = new Map();
 
 function createElement() {
