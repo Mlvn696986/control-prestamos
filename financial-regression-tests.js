@@ -974,6 +974,10 @@ assertFileIncludes(htmlCode, 'assets/libro-reclamaciones.png', "Legal: el acceso
 assertFileIncludes(htmlCode, 'id="claimsDialog"', "Legal: debe existir modal de Libro de Reclamaciones.");
 assertFileIncludes(htmlCode, 'id="claimBookForm"', "Legal: debe existir formulario de Libro de Reclamaciones.");
 assertFileIncludes(htmlCode, "Mz. E Lote 33 Urb. Tres Orizontes", "Libro de Reclamaciones: debe mostrar direccion del proveedor.");
+assertFileIncludes(htmlCode, 'class="whatsapp-float"', "Soporte: debe existir boton flotante de WhatsApp.");
+assertFileIncludes(htmlCode, "https://wa.me/51984096252", "Soporte: el boton de WhatsApp debe apuntar al numero autorizado.");
+assertFileIncludes(htmlCode, "tengo%20una%20duda%20o%20sugerencia", "Soporte: WhatsApp debe abrir con mensaje sugerido.");
+assertFileIncludes(stylesCode, ".whatsapp-float {\n  position: fixed;", "Soporte: el boton de WhatsApp debe quedar fijo en pantalla.");
 assertFileIncludes(appCode, 'fetch("/api/reclamaciones"', "Libro de Reclamaciones: el frontend debe registrar la hoja via Worker.");
 assertFileIncludes(workerCode, "/api/reclamaciones", "Libro de Reclamaciones: el Worker debe exponer endpoint seguro.");
 assertFileIncludes(workerCode, "normalizeClaimBookEntry", "Libro de Reclamaciones: el Worker debe validar datos antes de guardar.");
