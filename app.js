@@ -4660,7 +4660,6 @@ function renderClientExtensions(client, extensions) {
 
   return `
     <div class="client-extension-panel">
-      <strong>Ampliaciones de ${escapeHTML(client.name)} (${extensions.length})</strong>
       <div class="client-extension-list">
         ${extensions
           .map((loan, index) => {
@@ -4673,7 +4672,8 @@ function renderClientExtensions(client, extensions) {
             return `
               <article class="client-extension-table client-extension-row">
                 <span data-label="Nombre" class="client-name-cell">
-                  <strong>Ampliacion ${index + 1}</strong>
+                  <strong>Aplicacion ${index + 1}</strong>
+                  <small class="extension-client-name">${escapeHTML(client.name)}</small>
                   <i class="status-pill ${status.className}">${status.label}</i>
                 </span>
                 <span data-label="Telefono">${escapeHTML(client.phone || "Sin telefono")}</span>

@@ -2653,7 +2653,7 @@ input.field-success {
 .client-extension-panel {
   grid-column: 1 / -1;
   display: grid;
-  gap: 8px;
+  gap: 0;
   margin-top: 0;
   padding: 0;
   background: var(--client-row-bg);
@@ -2662,26 +2662,12 @@ input.field-success {
   border-radius: 0;
 }
 
-.client-extension-panel > strong {
-  display: block;
-  margin: 10px 12px 0;
-  padding: 9px 12px;
-  border-left: 4px solid var(--accent);
-  border-radius: 8px;
-  color: var(--accent-strong);
-  background: var(--client-title-bg);
-  font-size: 0.95rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  line-height: 1.15;
-}
-
 .client-extension-list {
   display: grid;
   gap: 0;
   overflow: hidden;
   border: 0;
-  border-top: 1px solid var(--line);
+  border-top: 0;
   background: var(--client-extension-bg);
 }
 
@@ -2766,6 +2752,15 @@ input.field-success {
 
 .client-extension-row i {
   font-style: normal;
+}
+
+.extension-client-name {
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1.1;
+  overflow-wrap: break-word;
 }
 
 .client-extension-row .row-actions {
