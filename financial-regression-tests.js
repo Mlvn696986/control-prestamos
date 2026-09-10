@@ -892,7 +892,8 @@ assertFileIncludes(stylesCode, ".client-extension-row > .row-actions {\n  border
 assertFileIncludes(stylesCode, ".row-actions .small-button {\n  flex: 0 0 auto;", "Clientes: los botones de acciones no deben comprimirse.");
 assertCondition(!appCode.includes("Ampliaciones de ${escapeHTML(client.name)}"), "Clientes: no debe mostrarse una franja separada con el titulo de ampliaciones.");
 assertFileIncludes(appCode, "Aplicacion ${index + 1}", "Clientes: cada ampliacion debe indicar Aplicacion 1, Aplicacion 2, etc.");
-assertFileIncludes(appCode, 'class="extension-client-name"', "Clientes: cada ampliacion debe mostrar el nombre del cliente debajo del numero de aplicacion.");
+assertFileIncludes(appCode, "<strong>${escapeHTML(client.name)}</strong>", "Clientes: cada ampliacion debe mostrar primero el nombre del cliente.");
+assertFileIncludes(appCode, '<small class="extension-client-name">Aplicacion ${index + 1}</small>', "Clientes: cada ampliacion debe mostrar Aplicacion debajo del nombre del cliente.");
 assertFileIncludes(stylesCode, ".client-extension-panel {\n  grid-column: 1 / -1;\n  display: grid;\n  gap: 0;", "Clientes: las ampliaciones deben quedar pegadas al cliente principal.");
 assertFileIncludes(stylesCode, ".extension-client-name", "Clientes: el nombre del cliente en ampliaciones debe tener estilo propio.");
 assertFileIncludes(htmlCode, 'id="clientHorizontalScroll"', "Clientes: debe existir una barra horizontal auxiliar para la tabla.");

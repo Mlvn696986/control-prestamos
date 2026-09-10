@@ -4672,8 +4672,8 @@ function renderClientExtensions(client, extensions) {
             return `
               <article class="client-extension-table client-extension-row">
                 <span data-label="Nombre" class="client-name-cell">
-                  <strong>Aplicacion ${index + 1}</strong>
-                  <small class="extension-client-name">${escapeHTML(client.name)}</small>
+                  <strong>${escapeHTML(client.name)}</strong>
+                  <small class="extension-client-name">Aplicacion ${index + 1}</small>
                   <i class="status-pill ${status.className}">${status.label}</i>
                 </span>
                 <span data-label="Telefono">${escapeHTML(client.phone || "Sin telefono")}</span>
