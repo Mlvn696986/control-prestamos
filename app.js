@@ -1193,10 +1193,17 @@ async function createCloudPaymentAndUpdateLoan(payment) {
 }
 
 async function createCloudCapitalMovement(movement) {
-  if (!isCloudMode()) return;
-  const userId = saas.session.user.id;
-  const { error } = await saas.client.from("capital_movements").insert(capitalMovementToRow(movement, userId));
+  if (!isCloudMode()) return movement;
+  const { data, error } = await saas.client.rpc("register_capital_movement", {
+    p_movement_id: movement.id,
+    p_type: normalizeCapitalMovementType(movement.type),
+    p_amount: movement.amount,
+    p_date: movement.date,
+    p_note: movement.note || "",
+    p_created_at: movement.createdAt,
+  });
   if (error) throw error;
+  return data ? capitalMovementFromRow(data) : movement;
 }
 
 async function insertCloudLoanRow(loan, userId) {
@@ -1232,6 +1239,10 @@ function isInterestModeColumnError(error) {
 
 function isCapitalMovementsTableError(error) {
   return Boolean(error && /capital_movements|schema cache|relation .* does not exist/i.test(error.message || ""));
+}
+
+function isCapitalAvailabilityError(error) {
+  return Boolean(error && /capital disponible suficiente|disponible actual|retiro/i.test(error.message || ""));
 }
 
 async function deleteCloudClient(clientId) {
@@ -2361,15 +2372,18 @@ async function handleCapitalSubmit(event) {
 
   try {
     await ensureAutomaticBackup();
+    let savedMovement = movement;
     if (isCloudMode()) {
-      await createCloudCapitalMovement(movement);
+      savedMovement = await createCloudCapitalMovement(movement);
     }
     state.capitalMovements = state.capitalMovements || [];
-    state.capitalMovements.push(movement);
+    state.capitalMovements.push(savedMovement || movement);
   } catch (error) {
     const message = error.message || "";
     if (isCapitalMovementsTableError(error)) {
       window.alert("Para usar agregar y retirar capital en Supabase, primero ejecuta el SQL actualizado que crea la tabla capital_movements.");
+    } else if (type === "withdrawal" && isCapitalAvailabilityError(error)) {
+      window.alert("No se pudo registrar el retiro porque el capital disponible cambio en la nube. ERMIF actualizara tus datos para mostrar el saldo correcto.");
     } else {
       window.alert(message || "No se pudo guardar el movimiento de capital.");
     }

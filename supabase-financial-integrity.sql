@@ -154,12 +154,22 @@ where remaining_capital = 0;
 alter table capital_movements enable row level security;
 
 drop policy if exists "capital movements own data" on capital_movements;
+drop policy if exists "capital movements own select" on capital_movements;
+drop policy if exists "capital movements own insert" on capital_movements;
+drop policy if exists "capital movements own restore delete" on capital_movements;
 drop policy if exists "capital movements admin data" on capital_movements;
 
-create policy "capital movements own data"
-on capital_movements for all
-using (auth.uid() = user_id)
+create policy "capital movements own select"
+on capital_movements for select
+using (auth.uid() = user_id);
+
+create policy "capital movements own insert"
+on capital_movements for insert
 with check (auth.uid() = user_id);
+
+create policy "capital movements own restore delete"
+on capital_movements for delete
+using (auth.uid() = user_id and current_setting('app.restoring_snapshot', true) = 'on');
 
 create policy "capital movements admin data"
 on capital_movements for all
@@ -182,6 +192,108 @@ as $$
 $$;
 
 grant execute on function public.calculate_available_capital(uuid) to authenticated;
+
+create or replace function public.validate_capital_movement_rules(
+  p_user_id uuid,
+  p_type text,
+  p_amount numeric,
+  p_date date
+)
+returns numeric
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_available numeric;
+begin
+  if p_user_id is null or (p_user_id <> auth.uid() and not public.is_admin()) then
+    raise exception 'Usuario no autorizado.';
+  end if;
+
+  if p_type not in ('deposit', 'withdrawal') then
+    raise exception 'Tipo de movimiento de capital invalido.';
+  end if;
+
+  if p_amount is null or p_amount <= 0 then
+    raise exception 'El monto del movimiento de capital debe ser mayor a cero.';
+  end if;
+
+  if p_date is null then
+    raise exception 'Selecciona una fecha valida para el movimiento de capital.';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext(p_user_id::text)::bigint);
+
+  v_available := public.calculate_available_capital(p_user_id);
+  if p_type = 'withdrawal' and round(p_amount, 2) > v_available then
+    raise exception 'No hay capital disponible suficiente para realizar este retiro. Disponible actual: %.', v_available;
+  end if;
+
+  return v_available;
+end;
+$$;
+
+grant execute on function public.validate_capital_movement_rules(uuid, text, numeric, date) to authenticated;
+
+create or replace function public.enforce_capital_movement_rules()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if current_setting('app.restoring_snapshot', true) = 'on' then
+    return new;
+  end if;
+
+  perform public.validate_capital_movement_rules(new.user_id, new.type, new.amount, new.date);
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_enforce_capital_movement_rules on capital_movements;
+create trigger trg_enforce_capital_movement_rules
+before insert on capital_movements
+for each row execute function public.enforce_capital_movement_rules();
+
+create or replace function public.register_capital_movement(
+  p_movement_id uuid,
+  p_type text,
+  p_amount numeric,
+  p_date date,
+  p_note text default '',
+  p_created_at timestamptz default now()
+)
+returns capital_movements
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+  v_movement capital_movements%rowtype;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception 'Usuario no autenticado.';
+  end if;
+
+  perform public.validate_capital_movement_rules(v_user_id, p_type, p_amount, p_date);
+
+  insert into capital_movements (id, user_id, type, amount, date, note, created_at)
+  values (p_movement_id, v_user_id, p_type, round(p_amount, 2), p_date, coalesce(p_note, ''), coalesce(p_created_at, now()))
+  returning * into v_movement;
+
+  return v_movement;
+exception
+  when unique_violation then
+    raise exception 'Este movimiento de capital ya fue registrado.';
+end;
+$$;
+
+revoke all on function public.register_capital_movement(uuid, text, numeric, date, text, timestamptz) from public;
+grant execute on function public.register_capital_movement(uuid, text, numeric, date, text, timestamptz) to authenticated;
 
 create or replace function public.validate_loan_financial_rules(
   p_user_id uuid,
@@ -260,6 +372,8 @@ begin
   if p_operation_type = 'principal' and v_principal_id is not null then
     raise exception 'El cliente ya tiene un prestamo principal.';
   end if;
+
+  perform pg_advisory_xact_lock(hashtext(p_user_id::text)::bigint);
 
   v_available := public.calculate_available_capital(p_user_id);
   v_additional := greatest(round(p_remaining_capital - coalesce(p_previous_remaining, 0), 2), 0);

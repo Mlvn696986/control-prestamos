@@ -938,6 +938,8 @@ assertFileIncludes(appCode, 'saas.client.rpc("register_payment"', "Prueba E/F: e
 assertFileIncludes(appCode, 'saas.client.rpc("create_client_with_loan"', "Test 11: crear cliente + prestamo debe usar RPC atomica.");
 assertFileIncludes(appCode, 'saas.client.rpc("update_client_with_loan"', "Editar cliente + prestamo debe usar RPC atomica.");
 assertFileIncludes(appCode, 'saas.client.rpc("create_loan_operation"', "Crear ampliacion debe usar RPC atomica de operacion.");
+assertFileIncludes(appCode, 'saas.client.rpc("register_capital_movement"', "Capital: agregar/retiro en nube debe usar RPC transaccional.");
+assertCondition(!appCode.includes('.from("capital_movements").insert'), "Capital: frontend no debe insertar movimientos de capital directo en la tabla.");
 assertCondition(!appCode.includes("restoreCloudCapitalMovements"), "Test 10: restauracion no debe duplicar delete/insert de capital_movements en frontend.");
 assertFileIncludes(appCode, "paymentSubmissionInProgress", "Prueba H: debe existir proteccion de doble clic en cobro.");
 assertFileIncludes(appCode, "clientSubmissionInProgress", "Prueba H: debe existir proteccion de doble clic al guardar cliente/ampliacion.");
@@ -970,6 +972,16 @@ assertFileIncludes(sqlCode, "Para cerrar el prestamo debes completar primero el 
 assertFileIncludes(appCode, "buildPaymentPeriodSummary", "Pago parcial: frontend debe calcular el estado del periodo antes de guardar.");
 assertFileIncludes(schemaCode, "expected_interest numeric not null default 0", "Pago parcial: esquema base debe incluir interes esperado.");
 assertFileIncludes(sqlCode, "calculate_available_capital", "Test 8: servidor debe validar capital disponible desde una funcion central.");
+assertFileIncludes(sqlCode, "create or replace function public.register_capital_movement", "Capital: SQL debe definir RPC segura para movimientos de capital.");
+assertFileIncludes(sqlCode, "create or replace function public.validate_capital_movement_rules", "Capital: SQL debe validar movimientos de capital desde una funcion central.");
+assertFileIncludes(sqlCode, "create trigger trg_enforce_capital_movement_rules", "Capital: SQL debe bloquear inserciones directas invalidas con trigger.");
+assertFileIncludes(sqlCode, "before insert on capital_movements", "Capital: trigger debe ejecutarse antes de registrar movimientos.");
+assertFileIncludes(sqlCode, "current_setting('app.restoring_snapshot', true) = 'on'", "Capital: restauracion oficial debe mantener una excepcion controlada.");
+assertFileIncludes(sqlCode, "capital movements own restore delete", "Capital: usuarios solo deben borrar movimientos durante restauracion oficial.");
+assertFileIncludes(sqlCode, "perform pg_advisory_xact_lock(hashtext(p_user_id::text)::bigint);", "Capital: validaciones financieras deben usar candado por usuario.");
+assertFileIncludes(schemaCode, "create or replace function public.register_capital_movement", "Esquema base debe incluir RPC segura de movimientos de capital.");
+assertFileIncludes(schemaCode, "create trigger trg_enforce_capital_movement_rules", "Esquema base debe incluir trigger de movimientos de capital.");
+assertFileIncludes(schemaCode, "capital movements own restore delete", "Esquema base debe restringir borrado de movimientos de capital.");
 assertCondition(!sqlCode.includes("El cliente supera el limite de S/1,000"), "Regla actual: servidor no debe bloquear por limite S/1,000 por cliente.");
 assertFileIncludes(sqlCode, "create or replace function public.enforce_client_plan_limit", "Planes: servidor debe validar limite de clientes por plan.");
 assertFileIncludes(sqlCode, "create trigger trg_enforce_client_plan_limit", "Planes: falta trigger servidor para bloquear exceso de clientes.");
