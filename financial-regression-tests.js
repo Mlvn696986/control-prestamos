@@ -372,6 +372,31 @@ resetTestState({
 assertEqual(getLoansForClient("ops").filter(isPrimaryLoan).length, 1, "Test 15: debe existir un unico principal explicito.");
 assertEqual(getLoansForClient("ops").filter((loan) => !isPrimaryLoan(loan)).length, 3, "Test 15: deben existir tres ampliaciones explicitas.");
 
+const orphanExtensionLoans = normalizeLoans([
+  testLoan({
+    id: "ops-orphan-ext",
+    clientId: "ops-orphan",
+    amount: 350,
+    remainingCapital: 350,
+    startDate: "2026-08-05",
+    nextDueDate: "2026-09-05",
+    operationType: "ampliacion",
+    parentLoanId: null,
+  }),
+]);
+resetTestState({
+  clients: [testClient("ops-orphan")],
+  loans: orphanExtensionLoans,
+});
+assertEqual(orphanExtensionLoans[0].operationType, "ampliacion", "Test 15: una ampliacion sin principal no debe convertirse en principal.");
+assertEqual(getPrimaryLoanForClient("ops-orphan"), null, "Test 15: cliente con solo ampliaciones no debe inventar prestamo principal.");
+assertEqual(isPrimaryLoan(state.loans[0]), false, "Test 15: ampliacion huerfana debe seguir siendo ampliacion.");
+assertEqual(
+  validateStateIntegrity({ user: null, subscription: null, clients: state.clients, loans: state.loans, payments: [] }).length,
+  0,
+  "Test 15: la auditoria debe aceptar ampliaciones pendientes aunque el principal se haya eliminado."
+);
+
 resetTestState({
   clients: [testClient("atraviesa"), testClient("cerrado")],
   loans: [
@@ -786,6 +811,8 @@ assertFileIncludes(sqlCode, "loans_status_matches_remaining_capital", "Invariant
 assertFileIncludes(sqlCode, "loans_status_matches_due_date", "Invariantes: falta constraint de estado vs proxima fecha.");
 assertFileIncludes(sqlCode, "loans_operation_type_valid", "Test 15: falta constraint de tipo de operacion.");
 assertFileIncludes(sqlCode, "loans_parent_matches_type", "Test 15: falta constraint de parent_loan_id para ampliaciones.");
+assertFileIncludes(sqlCode, "alter table loans drop constraint if exists loans_parent_matches_type", "Clientes: la migracion debe reemplazar el constraint anterior de ampliaciones.");
+assertCondition(!sqlCode.includes("(operation_type = 'ampliacion' and parent_loan_id is not null)"), "Clientes: las ampliaciones deben poder quedarse sin principal si se elimina el prestamo principal.");
 assertFileIncludes(sqlCode, "loans_one_principal_per_client", "Test 15: debe existir indice unico de principal por cliente.");
 assertFileIncludes(sqlCode, "payments_has_amount", "Invariantes: falta constraint que impide pagos en cero.");
 assertFileIncludes(schemaCode, "create or replace function public.create_client_with_loan", "Esquema base debe incluir RPC atomica de cliente + prestamo.");
@@ -896,6 +923,14 @@ assertFileIncludes(appCode, "${icons.history}\n              Historial", "Client
 assertFileIncludes(appCode, 'class="icon-button square-action delete-icon-action"', "Clientes: el tachito debe ser un boton cuadrado pequeno.");
 assertFileIncludes(stylesCode, ".history-action", "Clientes: el nuevo boton Historial debe tener estilo propio.");
 assertFileIncludes(stylesCode, ".delete-icon-action", "Clientes: el tachito de eliminar debe tener estilo propio.");
+assertFileIncludes(htmlCode, 'id="loanDeleteTitle">Eliminar prestamo</h3>', "Clientes: el modal de borrado debe servir para prestamo principal y ampliacion.");
+assertFileIncludes(appCode, "clientLoans.find(isPrimaryLoan) || null", "Clientes: la fila principal debe mostrar solo el prestamo principal, no tomar una ampliacion como principal.");
+assertFileIncludes(appCode, "const hasExplicitOperationTypes = clientLoans.some", "Clientes: la normalizacion no debe convertir ampliaciones explicitas en principal.");
+assertFileIncludes(appCode, "return hasExplicitOperationTypes ? null : loans[0] || null;", "Clientes: no debe inventarse prestamo principal desde la primera ampliacion explicita.");
+assertFileIncludes(appCode, 'title="Eliminar prestamo principal"', "Clientes: el tachito de la fila principal debe borrar el prestamo principal.");
+assertFileIncludes(appCode, "El cliente y sus ampliaciones se mantendran en la cartera.", "Clientes: al borrar el prestamo principal se deben conservar las ampliaciones.");
+assertFileIncludes(appCode, "loan.parentLoanId === loanId ? { ...loan, parentLoanId: null }", "Clientes: al borrar el principal se deben desvincular las ampliaciones locales sin eliminarlas.");
+assertFileIncludes(appCode, "principals.length > 1", "Clientes: la auditoria debe permitir clientes con ampliaciones y sin prestamo principal.");
 assertCondition(!appCode.includes("Ampliaciones de ${escapeHTML(client.name)}"), "Clientes: no debe mostrarse una franja separada con el titulo de ampliaciones.");
 assertFileIncludes(appCode, "Ampliacion ${index + 1}", "Clientes: cada ampliacion debe indicar Ampliacion 1, Ampliacion 2, etc.");
 assertFileIncludes(appCode, "<strong>${escapeHTML(client.name)}</strong>", "Clientes: cada ampliacion debe mostrar primero el nombre del cliente.");

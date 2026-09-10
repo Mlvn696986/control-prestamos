@@ -1064,13 +1064,12 @@ begin
   if not exists (select 1 from pg_constraint where conname = 'loans_operation_type_valid') then
     alter table loans add constraint loans_operation_type_valid check (operation_type in ('principal', 'ampliacion')) not valid;
   end if;
-  if not exists (select 1 from pg_constraint where conname = 'loans_parent_matches_type') then
-    alter table loans add constraint loans_parent_matches_type check (
-      (operation_type = 'principal' and parent_loan_id is null)
-      or
-      (operation_type = 'ampliacion' and parent_loan_id is not null)
-    ) not valid;
-  end if;
+  alter table loans drop constraint if exists loans_parent_matches_type;
+  alter table loans add constraint loans_parent_matches_type check (
+    (operation_type = 'principal' and parent_loan_id is null)
+    or
+    (operation_type = 'ampliacion')
+  ) not valid;
   if not exists (select 1 from pg_constraint where conname = 'loans_due_date_not_before_start') then
     alter table loans add constraint loans_due_date_not_before_start check (next_due_date is null or next_due_date >= start_date) not valid;
   end if;

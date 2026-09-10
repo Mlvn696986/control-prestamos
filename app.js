@@ -211,7 +211,10 @@ const elements = {
   historyList: $("#historyList"),
   loanDeleteDialog: $("#loanDeleteDialog"),
   loanDeleteForm: $("#loanDeleteForm"),
+  loanDeleteEyebrow: $("#loanDeleteEyebrow"),
+  loanDeleteTitle: $("#loanDeleteTitle"),
   loanDeleteSummary: $("#loanDeleteSummary"),
+  loanDeleteSubmit: $("#loanDeleteSubmit"),
   plansGrid: $("#plansGrid"),
   planRequestDialog: $("#planRequestDialog"),
   planRequestForm: $("#planRequestForm"),
@@ -609,7 +612,8 @@ function normalizeLoanOperationTypes(loans) {
   byClient.forEach((clientLoans) => {
     clientLoans.sort(compareLoansForOperationOrder);
     let principal = clientLoans.find((loan) => normalizeOperationType(loan.operationType) === OPERATION_TYPES.principal);
-    if (!principal) {
+    const hasExplicitOperationTypes = clientLoans.some((loan) => normalizeOperationType(loan.operationType));
+    if (!principal && !hasExplicitOperationTypes) {
       principal = clientLoans[0];
       if (principal) principal.operationType = OPERATION_TYPES.principal;
     }
@@ -688,13 +692,12 @@ function validateStateIntegrity(candidate) {
 
   loansByClient.forEach((clientLoans, clientId) => {
     const principals = clientLoans.filter((loan) => loan.operationType === OPERATION_TYPES.principal);
-    if (principals.length !== 1) errors.push(`Cliente ${clientId} debe tener un unico prestamo principal.`);
+    if (principals.length > 1) errors.push(`Cliente ${clientId} debe tener como maximo un prestamo principal.`);
     const principalId = principals[0]?.id;
     clientLoans
       .filter((loan) => loan.operationType === OPERATION_TYPES.ampliacion)
       .forEach((loan) => {
-        if (!loan.parentLoanId && !loan.parent_loan_id) errors.push(`Ampliacion ${loan.id} sin prestamo principal vinculado.`);
-        if ((loan.parentLoanId || loan.parent_loan_id) && (loan.parentLoanId || loan.parent_loan_id) !== principalId) {
+        if (principalId && (loan.parentLoanId || loan.parent_loan_id) && (loan.parentLoanId || loan.parent_loan_id) !== principalId) {
           errors.push(`Ampliacion ${loan.id} vinculada a un principal invalido.`);
         }
       });
@@ -1235,7 +1238,7 @@ async function deleteCloudClient(clientId) {
   if (clientDelete.error) throw clientDelete.error;
 }
 
-async function deleteCloudLoanExtension(clientId, loanId) {
+async function deleteCloudLoan(clientId, loanId) {
   if (!isCloudMode()) return;
   const userId = saas.session.user.id;
   const loanDelete = await saas.client
@@ -4564,7 +4567,7 @@ function renderClients() {
   elements.clientList.innerHTML = orderedClients
     .map((client) => {
       const clientLoans = getLoansForClient(client.id);
-      const loan = clientLoans[0] || null;
+      const loan = clientLoans.find(isPrimaryLoan) || null;
       const activeLoan = loan?.status === "active" ? loan : null;
       const extensions = clientLoans.filter((loan) => !isPrimaryLoan(loan));
       const paymentCount = state.payments.filter((payment) => payment.clientId === client.id).length;
@@ -4591,9 +4594,11 @@ function renderClients() {
               Historial
               <span class="history-count">${paymentCount}</span>
             </button>
-            <button class="icon-button square-action delete-icon-action" title="Eliminar cliente" aria-label="Eliminar cliente" type="button" data-delete-client="${client.id}">
-              ${icons.trash}
-            </button>
+            ${
+              loan
+                ? `<button class="icon-button square-action delete-icon-action" title="Eliminar prestamo principal" aria-label="Eliminar prestamo principal" type="button" data-delete-client="${client.id}" data-delete-loan="${loan.id}">${icons.trash}</button>`
+                : `<button class="icon-button square-action delete-icon-action" title="Sin prestamo principal" aria-label="Sin prestamo principal" type="button" disabled>${icons.trash}</button>`
+            }
           </span>
           ${renderClientExtensions(client, extensions)}
         </article>
@@ -4707,11 +4712,17 @@ function renderClientExtensions(client, extensions) {
 function openLoanDeleteDialog(clientId, loanId) {
   const client = state.clients.find((item) => item.id === clientId);
   const loan = state.loans.find((item) => item.id === loanId && item.clientId === clientId);
-  if (!client || !loan || getLoansForClient(clientId)[0]?.id === loanId) return;
+  if (!client || !loan) return;
 
+  const isPrincipal = isPrimaryLoan(loan);
   pendingLoanDelete = { clientId, loanId };
-  elements.loanDeleteSummary.textContent =
-    "Estas seguro de que deseas eliminar esta ampliacion? Esta accion eliminara unicamente esta ampliacion y su historial asociado.";
+  const label = isPrincipal ? "prestamo principal" : "ampliacion";
+  elements.loanDeleteEyebrow.textContent = `Eliminar ${label}`;
+  elements.loanDeleteTitle.textContent = `Eliminar ${label}`;
+  elements.loanDeleteSubmit.textContent = `Eliminar ${label}`;
+  elements.loanDeleteSummary.textContent = isPrincipal
+    ? "Estas seguro de que deseas eliminar este prestamo principal? Se eliminara solo este prestamo y sus cobros asociados. El cliente y sus ampliaciones se mantendran en la cartera."
+    : "Estas seguro de que deseas eliminar esta ampliacion? Esta accion eliminara unicamente esta ampliacion y su historial asociado.";
   elements.loanDeleteDialog.showModal();
 }
 
@@ -4726,9 +4737,12 @@ async function handleLoanDeleteSubmit(event) {
 
   try {
     await ensureAutomaticBackup(true);
-    await deleteCloudLoanExtension(clientId, loanId);
+    await deleteCloudLoan(clientId, loanId);
 
     state.loans = state.loans.filter((loan) => loan.id !== loanId);
+    state.loans = state.loans.map((loan) =>
+      loan.clientId === clientId && loan.parentLoanId === loanId ? { ...loan, parentLoanId: null } : loan
+    );
     state.payments = state.payments.filter((payment) => payment.loanId !== loanId);
 
     pendingLoanDelete = null;
@@ -4739,7 +4753,7 @@ async function handleLoanDeleteSubmit(event) {
     if (isCloudMode()) {
       await reloadAfterCloudError();
     }
-    window.alert(error.message || "No se pudo eliminar la ampliacion.");
+    window.alert(error.message || "No se pudo eliminar el prestamo.");
   } finally {
     loanDeletionInProgress = false;
     setButtonBusy(submitButton, false);
@@ -5311,7 +5325,10 @@ function getLoansForClient(clientId) {
 
 function getPrimaryLoanForClient(clientId) {
   const loans = getLoansForClient(clientId);
-  return loans.find((loan) => normalizeOperationType(loan.operationType) === OPERATION_TYPES.principal) || loans[0] || null;
+  const principal = loans.find((loan) => normalizeOperationType(loan.operationType) === OPERATION_TYPES.principal);
+  if (principal) return principal;
+  const hasExplicitOperationTypes = loans.some((loan) => normalizeOperationType(loan.operationType));
+  return hasExplicitOperationTypes ? null : loans[0] || null;
 }
 
 function isClientCompletelyClosed(clientId) {
