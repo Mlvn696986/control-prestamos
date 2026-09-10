@@ -371,6 +371,18 @@ h3 {
   justify-content: flex-end;
 }
 
+.topbar-actions {
+  margin-left: auto;
+}
+
+.topbar-primary-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .section-heading {
   position: relative;
   justify-content: space-between;
@@ -811,6 +823,11 @@ input.field-success {
 .capital-action {
   min-width: 142px;
   min-height: 42px;
+  white-space: nowrap;
+}
+
+.client-action {
+  min-width: 150px;
   white-space: nowrap;
 }
 
@@ -3096,6 +3113,8 @@ input.field-success {
   }
 
   .topbar-actions > *,
+  .topbar-primary-actions,
+  .topbar-primary-actions > *,
   .item-actions > *,
   .compact-input {
     width: 100%;

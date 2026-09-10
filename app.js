@@ -322,7 +322,7 @@ function bindEvents() {
     });
   });
   elements.exportButton.addEventListener("click", exportData);
-  elements.exportExcelButton.addEventListener("click", exportClientsExcel);
+  elements.exportExcelButton?.addEventListener("click", exportClientsExcel);
   elements.openAddCapitalButton.addEventListener("click", () => openCapitalDialog("deposit"));
   elements.openWithdrawCapitalButton.addEventListener("click", () => openCapitalDialog("withdrawal"));
   elements.capitalForm.addEventListener("submit", handleCapitalSubmit);

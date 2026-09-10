@@ -841,6 +841,9 @@ assertFileIncludes(appCode, 'CANONICAL_APP_ORIGIN = "https://ermif.com"', "Domin
 assertFileIncludes(appCode, "redirectLegacyHost", "Dominio: la app debe redirigir hosts antiguos al dominio canonico.");
 assertFileIncludes(appCode, "reliable-kleicha-4c46be.netlify.app", "Dominio: debe cubrir el antiguo despliegue de Netlify.");
 assertFileIncludes(appCode, 'host.endsWith(".netlify.app")', "Dominio: cualquier host Netlify heredado debe salir hacia ermif.com.");
+assertCondition(!htmlCode.includes('id="exportExcel"'), "Topbar: Exportar Excel no debe mostrarse en la barra superior.");
+assertFileIncludes(htmlCode, "topbar-primary-actions", "Topbar: Agregar, Retirar y Nuevo cliente deben estar agrupados a la derecha.");
+assertFileIncludes(appCode, "elements.exportExcelButton?.addEventListener", "Topbar: JS debe tolerar que Exportar Excel no exista en HTML.");
 assertFileIncludes(appCode, '<span class="status-pill ok">Capital disponible</span>', "Resumen superior: la tarjeta derecha debe mostrar Capital disponible.");
 assertFileIncludes(appCode, "<strong>${money(dashboard.metrics.availableCapital)}</strong>", "Resumen superior: la tarjeta derecha debe usar capital disponible.");
 assertFileIncludes(appCode, "<small>Monto que debe figurar en tu tarjeta</small>", "Resumen superior: el mensaje bajo el valor debe ser el texto solicitado.");
