@@ -3,6 +3,7 @@
 *.zip
 node_modules/
 dist/
+backups/
 .env
 .DS_Store
 Thumbs.db
