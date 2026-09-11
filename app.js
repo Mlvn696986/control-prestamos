@@ -283,6 +283,7 @@ const elements = {
   editLoanAppliedInterest: $("#editLoanAppliedInterest"),
   paymentDialog: $("#paymentDialog"),
   paymentForm: $("#paymentForm"),
+  paymentWhatsAppButton: $("#paymentWhatsAppButton"),
   paymentTitle: $("#paymentTitle"),
   paymentSummary: $("#paymentSummary"),
   historyDialog: $("#historyDialog"),
@@ -371,6 +372,8 @@ const icons = {
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>',
   history:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>',
+  whatsapp:
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.1 4.9A9.7 9.7 0 0 0 3.4 16.1L2 22l6-1.4A9.7 9.7 0 0 0 19.1 4.9Z"/><path d="M8.6 7.9c.2-.4.4-.4.7-.4h.5c.2 0 .4.1.5.4l.8 1.9c.1.3.1.5-.1.7l-.4.5c-.1.2-.2.3 0 .6.4.8 1 1.5 1.7 2 .7.6 1.4.9 1.8 1 .3.1.5 0 .6-.2l.7-.8c.2-.2.4-.3.7-.2l1.9.9c.3.1.4.3.4.6 0 .5-.2 1.4-.8 1.9-.6.5-1.5.7-2.5.5-1.3-.2-2.9-1-4.5-2.3-1.7-1.4-2.9-3.1-3.4-4.5-.4-1.1-.3-2 .1-2.7Z"/></svg>',
 };
 
 if (!window.__PRESTAMOS_TEST__ && !redirectLegacyHost()) {
@@ -402,6 +405,9 @@ async function init() {
 }
 
 function bindEvents() {
+  if (elements.paymentWhatsAppButton) {
+    elements.paymentWhatsAppButton.innerHTML = `${icons.whatsapp} Cobrar por WhatsApp`;
+  }
   elements.registerForm.addEventListener("submit", handleRegister);
   elements.authPassword.addEventListener("input", updateConfirmPasswordFeedback);
   elements.authConfirmPassword.addEventListener("input", updateConfirmPasswordFeedback);
@@ -411,6 +417,7 @@ function bindEvents() {
   elements.clientForm.addEventListener("submit", handleClientSubmit);
   elements.editForm.addEventListener("submit", handleEditSubmit);
   elements.paymentForm.addEventListener("submit", handlePaymentSubmit);
+  elements.paymentWhatsAppButton?.addEventListener("click", handlePaymentWhatsAppClick);
   elements.loanDeleteForm.addEventListener("submit", handleLoanDeleteSubmit);
   elements.clientDeleteForm.addEventListener("submit", handleClientDeleteSubmit);
   elements.planRequestForm.addEventListener("submit", handlePlanRequestSubmit);
@@ -2965,6 +2972,64 @@ async function handlePaymentSubmit(event) {
   elements.paymentDialog.close();
   saveState();
   render();
+}
+
+function handlePaymentWhatsAppClick() {
+  const loan = getLoan($("#paymentLoanId").value);
+  if (!loan || loan.status !== "active") {
+    window.alert("No se encontro un prestamo activo para cobrar por WhatsApp.");
+    return;
+  }
+
+  const client = getClient(loan.clientId);
+  const whatsappPhone = normalizeWhatsAppPhone(client?.phone);
+  if (!whatsappPhone) {
+    window.alert("Este cliente no tiene un numero de WhatsApp valido. Agrega su telefono en el registro del cliente.");
+    return;
+  }
+
+  const message = buildPaymentWhatsAppMessage(loan, client);
+  window.open(`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+}
+
+function buildPaymentWhatsAppMessage(loan, client) {
+  const period = buildPaymentPeriodSummary(loan);
+  const senderName = getCollectionSenderName();
+  const capitalToPay = toNumber($("#paymentCapital")?.value);
+  const capitalLine = capitalToPay > 0 ? money(capitalToPay) : "opcional";
+  const loanType = isPrimaryLoan(loan) ? "Préstamo principal" : "Ampliación";
+
+  return [
+    `Hola, soy ${senderName}.`,
+    "",
+    "Te escribo con referencia al préstamo que mantienes vigente.",
+    "",
+    "Detalle:",
+    `Cliente: ${client?.name || "Cliente"}`,
+    `Operación: ${loanType}`,
+    `Monto prestado: ${money(loan.amount)}`,
+    `Capital pendiente: ${money(loan.remainingCapital)}`,
+    `Interés pendiente del cobro: ${money(period.pendingInterest)}`,
+    `Capital a pagar: ${capitalLine}`,
+    "",
+    `Fecha programada de cobro: ${formatDate(loan.nextDueDate)}`,
+    "",
+    "",
+    "Si ya realizaste algún pago, por favor envíame el comprobante para actualizar tu registro. Gracias.",
+  ].join("\n");
+}
+
+function getCollectionSenderName() {
+  return state.user?.businessName || state.user?.ownerName || "ERMIF";
+}
+
+function normalizeWhatsAppPhone(phone) {
+  const digits = normalizePhone(phone);
+  if (!digits) return "";
+  if (digits.length === 9 && digits.startsWith("9")) return `51${digits}`;
+  if (digits.length === 11 && digits.startsWith("51")) return digits;
+  if (digits.length >= 10 && digits.length <= 15) return digits;
+  return "";
 }
 
 function openCapitalDialog(mode) {

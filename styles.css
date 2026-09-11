@@ -838,6 +838,7 @@ input.field-success {
 .primary-button,
 .danger-button,
 .ghost-button,
+.whatsapp-collection-button,
 .delete-button,
 .icon-button,
 .nav-tab {
@@ -871,6 +872,27 @@ input.field-success {
 
 .danger-button:hover {
   background: var(--withdraw-strong);
+}
+
+.whatsapp-collection-button {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
+  color: #ffffff;
+  background: #20bf63;
+  box-shadow: 0 10px 20px rgba(32, 191, 99, 0.18);
+}
+
+.whatsapp-collection-button:hover {
+  background: #149c52;
+}
+
+.whatsapp-collection-button svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
 }
 
 .capital-action {
