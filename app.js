@@ -3187,6 +3187,9 @@ function buildDashboardData(options = {}) {
   if (range.invalid) {
     return buildInvalidDashboardData(filters, range);
   }
+  if (isPortfolioFullyCleared()) {
+    return buildClearedDashboardData(filters, range);
+  }
   const scopeLoans = state.loans.filter((loan) => loanMatchesDashboardScope(loan, filters));
   const scopePayments = state.payments.filter((payment) => paymentMatchesDashboardScope(payment, scopeLoans));
   const loans = scopeLoans.filter((loan) => loanWasInPortfolioDuringRange(loan, range));
@@ -3340,6 +3343,29 @@ function buildDashboardData(options = {}) {
   };
   dashboard.comparison = options.skipComparison ? null : buildDashboardComparison(dashboard);
   return dashboard;
+}
+
+function isPortfolioFullyCleared() {
+  return !state.clients.length && !state.loans.length && !state.payments.length;
+}
+
+function buildClearedDashboardData(filters, range) {
+  return {
+    filters: { ...filters, compare: "none" },
+    range,
+    loans: [],
+    scopeLoans: [],
+    payments: [],
+    activeLoans: [],
+    overdueLoans: [],
+    todayLoans: [],
+    soonLoans: [],
+    monthLoans: [],
+    metrics: createEmptyDashboardMetrics(),
+    charts: createEmptyDashboardCharts(),
+    lists: createEmptyDashboardLists(),
+    comparison: null,
+  };
 }
 
 function buildInvalidDashboardData(filters, range) {
@@ -5455,6 +5481,9 @@ async function deleteClient(clientId, actionButton = null, options = {}) {
     state.clients = state.clients.filter((item) => item.id !== clientId);
     state.loans = state.loans.filter((loan) => loan.clientId !== clientId);
     state.payments = state.payments.filter((payment) => payment.clientId !== clientId && !loanIds.has(payment.loanId));
+    if (isPortfolioFullyCleared()) {
+      state.capitalMovements = [];
+    }
 
     saveState();
     render();
