@@ -500,6 +500,23 @@
           <section class="panel admin-panel">
             <div class="section-heading">
               <div>
+                <p class="eyebrow">Comunicaciones</p>
+                <h3>Mensajes entrantes</h3>
+              </div>
+              <div class="admin-filter-tabs" id="adminInboxFilters" aria-label="Filtrar mensajes entrantes">
+                <button class="admin-filter active" type="button" data-inbox-filter="all">Todos</button>
+                <button class="admin-filter" type="button" data-inbox-filter="pending">Pendientes</button>
+                <button class="admin-filter" type="button" data-inbox-filter="claims">Reclamos</button>
+                <button class="admin-filter" type="button" data-inbox-filter="privacy">Privacidad</button>
+                <button class="admin-filter" type="button" data-inbox-filter="deletion">Eliminacion</button>
+              </div>
+            </div>
+            <div id="adminInboxList" class="admin-list empty-target"></div>
+          </section>
+
+          <section class="panel admin-panel">
+            <div class="section-heading">
+              <div>
                 <p class="eyebrow">Reclamos</p>
                 <h3>Libro de Reclamaciones</h3>
               </div>
@@ -1407,6 +1424,24 @@
           <button id="adminClaimRespond" class="primary-button" type="submit">Enviar respuesta</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog id="adminMessageDialog" class="modal">
+      <section class="modal-panel legal-panel claim-admin-detail">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Mensaje entrante</p>
+            <h3 id="adminMessageTitle">Detalle del mensaje</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div id="adminMessageDetail" class="claim-detail-grid"></div>
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" data-close-dialog>Cerrar</button>
+        </div>
+      </section>
     </dialog>
 
     <template id="emptyTemplate">

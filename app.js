@@ -110,6 +110,7 @@ let backupCreationInProgress = false;
 let backupStatusCache = null;
 let backupStatusNotice = "";
 let adminClaimFilter = "all";
+let adminInboxFilter = "all";
 let pendingAdminClaimId = null;
 let claimSubmissionInProgress = false;
 let privacyRequestSubmissionInProgress = false;
@@ -189,6 +190,9 @@ const elements = {
   adminClaimResponse: $("#adminClaimResponse"),
   adminClaimNotice: $("#adminClaimNotice"),
   adminClaimRespond: $("#adminClaimRespond"),
+  adminMessageDialog: $("#adminMessageDialog"),
+  adminMessageTitle: $("#adminMessageTitle"),
+  adminMessageDetail: $("#adminMessageDetail"),
   claimsDialog: $("#claimsDialog"),
   claimBookForm: $("#claimBookForm"),
   claimBookNotice: $("#claimBookNotice"),
@@ -336,6 +340,8 @@ const elements = {
   adminMonthlyRevenue: $("#adminMonthlyRevenue"),
   adminRequestsList: $("#adminRequestsList"),
   adminUserList: $("#adminUserList"),
+  adminInboxList: $("#adminInboxList"),
+  adminInboxFilters: $("#adminInboxFilters"),
   adminClaimsList: $("#adminClaimsList"),
   adminPrivacyList: $("#adminPrivacyList"),
   adminDeletionList: $("#adminDeletionList"),
@@ -459,6 +465,12 @@ function bindEvents() {
     adminClaimFilter = button.dataset.claimFilter || "all";
     renderAdmin();
   });
+  elements.adminInboxFilters?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-inbox-filter]");
+    if (!button) return;
+    adminInboxFilter = button.dataset.inboxFilter || "all";
+    renderAdmin();
+  });
   elements.interestInfoButton.addEventListener("click", () => elements.interestInfoDialog.showModal());
   $$("[data-dashboard-filter]").forEach((filter) => {
     filter.addEventListener("input", renderDashboard);
@@ -526,6 +538,7 @@ function bindEvents() {
     const deleteButton = event.target.closest("[data-delete-client]");
     const planButton = event.target.closest("[data-request-plan]");
     const adminPlanButton = event.target.closest("[data-admin-plan]");
+    const adminMessageButton = event.target.closest("[data-admin-message]");
     const adminClaimButton = event.target.closest("[data-admin-claim]");
     const adminClaimStatusButton = event.target.closest("[data-admin-claim-status]");
     const quickScrollButton = event.target.closest("[data-scroll-quick-list]");
@@ -566,6 +579,11 @@ function bindEvents() {
 
     if (adminPlanButton) {
       updateAdminUserPlan(adminPlanButton.dataset.adminUser, adminPlanButton.dataset.adminPlan, adminPlanButton.dataset.adminRequest);
+      return;
+    }
+
+    if (adminMessageButton) {
+      openAdminMessageDialog(adminMessageButton.dataset.adminMessage);
       return;
     }
 
@@ -5584,6 +5602,10 @@ function renderAdmin() {
       </div>
     `;
     elements.adminUserList.innerHTML = "";
+    if (elements.adminInboxList) elements.adminInboxList.innerHTML = "";
+    if (elements.adminClaimsList) elements.adminClaimsList.innerHTML = "";
+    if (elements.adminPrivacyList) elements.adminPrivacyList.innerHTML = "";
+    if (elements.adminDeletionList) elements.adminDeletionList.innerHTML = "";
     return;
   }
 
@@ -5617,6 +5639,9 @@ function renderAdmin() {
     .join("");
   renderEmpty(elements.adminRequestsList, "No hay solicitudes pendientes.");
 
+  renderAdminInboxFilters();
+  renderAdminInbox();
+
   elements.adminUserList.innerHTML = adminState.profiles
     .map((profile) => {
       const subscription = getAdminSubscription(profile.id);
@@ -5647,6 +5672,107 @@ function renderAdmin() {
   renderAdminClaimFilters();
   renderAdminClaims();
   renderAdminPrivacy();
+}
+
+function renderAdminInboxFilters() {
+  elements.adminInboxFilters?.querySelectorAll?.("[data-inbox-filter]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.inboxFilter === adminInboxFilter);
+  });
+}
+
+function renderAdminInbox() {
+  if (!elements.adminInboxList) return;
+  const messages = getAdminInboxMessages().filter(matchesAdminInboxFilter);
+  elements.adminInboxList.innerHTML = messages.map(renderAdminInboxMessage).join("");
+  renderEmpty(elements.adminInboxList, "No hay mensajes entrantes con ese filtro.");
+}
+
+function getAdminInboxMessages() {
+  const claimMessages = (adminState.claims || []).map(normalizeAdminClaim).map((claim) => {
+    const urgency = getLegalUrgency(claim);
+    return {
+      id: claim.id,
+      key: `claim:${claim.id}`,
+      type: "claims",
+      code: claim.claimCode,
+      title: `${getClaimTypeLabel(claim.requestType)} - ${claim.consumerName || "Consumidor"}`,
+      sender: claim.consumerName || "Consumidor no registrado",
+      email: claim.email,
+      date: claim.createdAt,
+      dueAt: claim.dueAt,
+      summary: claim.detail,
+      status: claim.status,
+      statusLabel: LEGAL_STATUS_LABELS[claim.status] || claim.status,
+      urgency,
+      actionLabel: "Ver expediente",
+    };
+  });
+
+  const privacyMessages = (adminState.privacyRequests || []).map(normalizePrivacyRequest).map((request) => {
+    const urgency = getLegalUrgency(request);
+    return {
+      id: request.id,
+      key: `privacy:${request.id}`,
+      type: "privacy",
+      code: request.requestCode,
+      title: `${PRIVACY_REQUEST_LABELS[request.requestType] || request.requestType} - ${request.requesterName || "Titular"}`,
+      sender: request.requesterName || "Solicitante no registrado",
+      email: request.requesterEmail,
+      date: request.submittedAt,
+      dueAt: request.dueAt,
+      summary: request.detail,
+      status: request.status,
+      statusLabel: LEGAL_STATUS_LABELS[request.status] || request.status,
+      urgency,
+      actionLabel: "Ver detalle",
+    };
+  });
+
+  const deletionMessages = (adminState.accountDeletionRequests || []).map(normalizeDeletionRequest).map((request) => {
+    const urgency = getLegalUrgency(request);
+    return {
+      id: request.id,
+      key: `deletion:${request.id}`,
+      type: "deletion",
+      code: request.requestCode,
+      title: "Eliminacion de cuenta",
+      sender: request.email || "Usuario sin correo",
+      email: request.email,
+      date: request.requestedAt,
+      dueAt: request.scheduledDeletionAt,
+      summary: request.reason,
+      status: request.status,
+      statusLabel: LEGAL_STATUS_LABELS[request.status] || request.status,
+      urgency,
+      actionLabel: "Ver detalle",
+    };
+  });
+
+  return [...claimMessages, ...privacyMessages, ...deletionMessages].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+}
+
+function matchesAdminInboxFilter(message) {
+  if (adminInboxFilter === "all") return true;
+  if (adminInboxFilter === "pending") return ["received", "in_review", "pending"].includes(message.status);
+  return message.type === adminInboxFilter;
+}
+
+function renderAdminInboxMessage(message) {
+  return `
+    <article class="admin-row admin-inbox-row ${message.urgency.className}">
+      <div>
+        <strong>${escapeHTML(message.title)}</strong>
+        <span>${escapeHTML(message.sender)}${message.email ? ` - ${escapeHTML(message.email)}` : ""}</span>
+        <small>${escapeHTML(message.code || "Sin codigo")} - Recibido: ${formatLegalDate(message.date)}</small>
+        <small>${escapeHTML(truncateText(message.summary || "Sin detalle adicional.", 150))}</small>
+      </div>
+      <div class="admin-plan-cell">
+        <span class="status-pill ${message.urgency.pillClass}">${escapeHTML(message.statusLabel)}</span>
+        <small>Limite: ${formatLegalDate(message.dueAt)}</small>
+        <button class="ghost-button small-button" type="button" data-admin-message="${escapeHTML(message.key)}">${escapeHTML(message.actionLabel)}</button>
+      </div>
+    </article>
+  `;
 }
 
 function renderAdminClaimFilters() {
@@ -5757,12 +5883,17 @@ function normalizePrivacyRequest(row) {
     id: row.id,
     requestCode: row.request_code || row.requestCode || "",
     requestType: row.request_type || row.requestType || "acceso",
+    subjectRole: row.subject_role || row.subjectRole || "",
     requesterName: row.requester_name || row.requesterName || "",
     requesterEmail: row.requester_email || row.requesterEmail || "",
+    documentType: row.document_type || row.documentType || "",
+    documentNumber: row.document_number || row.documentNumber || "",
+    detail: row.detail || "",
     status: row.status || "received",
     submittedAt,
     dueAt: row.due_at || calculatePrivacyDueDate(submittedAt, row.request_type),
     respondedAt: row.responded_at || "",
+    response: row.response || "",
   };
 }
 
@@ -5771,7 +5902,9 @@ function normalizeDeletionRequest(row) {
   return {
     id: row.id,
     requestCode: row.request_code || row.requestCode || "",
+    userId: row.user_id || row.userId || "",
     email: row.email || "",
+    reason: row.reason || "",
     status: row.status || "received",
     requestedAt,
     dueAt: row.scheduled_deletion_at || row.scheduledDeletionAt,
@@ -5840,6 +5973,59 @@ function openAdminClaimDialog(claimId) {
   elements.adminClaimDialog.showModal();
 }
 
+function openAdminMessageDialog(messageKey) {
+  const [type, id] = String(messageKey || "").split(":");
+  if (!type || !id) return;
+  if (type === "claim") {
+    openAdminClaimDialog(id);
+    return;
+  }
+
+  const item =
+    type === "privacy"
+      ? (adminState.privacyRequests || []).map(normalizePrivacyRequest).find((request) => request.id === id)
+      : (adminState.accountDeletionRequests || []).map(normalizeDeletionRequest).find((request) => request.id === id);
+
+  if (!item || !elements.adminMessageDialog) return;
+  elements.adminMessageTitle.textContent = type === "privacy" ? `Privacidad ${item.requestCode}` : `Eliminacion ${item.requestCode}`;
+  elements.adminMessageDetail.innerHTML = type === "privacy" ? renderPrivacyMessageDetail(item) : renderDeletionMessageDetail(item);
+  elements.adminMessageDialog.showModal();
+}
+
+function renderPrivacyMessageDetail(request) {
+  return `
+    ${renderClaimDetailItem("Codigo", request.requestCode)}
+    ${renderClaimDetailItem("Tipo", PRIVACY_REQUEST_LABELS[request.requestType] || request.requestType)}
+    ${renderClaimDetailItem("Estado", LEGAL_STATUS_LABELS[request.status] || request.status)}
+    ${renderClaimDetailItem("Fecha de registro", formatLegalDate(request.submittedAt))}
+    ${renderClaimDetailItem("Fecha limite", formatLegalDate(request.dueAt))}
+    ${renderClaimDetailItem("Solicitante", request.requesterName)}
+    ${renderClaimDetailItem("Correo", request.requesterEmail)}
+    ${renderClaimDetailItem("Rol", getPrivacySubjectRoleLabel(request.subjectRole))}
+    ${renderClaimDetailItem("Documento", `${request.documentType || "No indicado"} ${maskDocumentNumber(request.documentNumber)}`)}
+    ${renderClaimDetailItem("Detalle enviado", request.detail, true)}
+    ${renderClaimDetailItem("Respuesta registrada", request.response || "Sin respuesta registrada.", true)}
+  `;
+}
+
+function renderDeletionMessageDetail(request) {
+  return `
+    ${renderClaimDetailItem("Codigo", request.requestCode)}
+    ${renderClaimDetailItem("Estado", LEGAL_STATUS_LABELS[request.status] || request.status)}
+    ${renderClaimDetailItem("Correo", request.email)}
+    ${renderClaimDetailItem("Usuario", request.userId)}
+    ${renderClaimDetailItem("Fecha de solicitud", formatLegalDate(request.requestedAt))}
+    ${renderClaimDetailItem("Fecha programada", formatLegalDate(request.scheduledDeletionAt))}
+    ${renderClaimDetailItem("Motivo enviado", request.reason || "Sin motivo indicado.", true)}
+  `;
+}
+
+function getPrivacySubjectRoleLabel(role) {
+  if (role === "user") return "Usuario de ERMIF";
+  if (role === "client") return "Cliente registrado por un usuario";
+  return role || "No indicado";
+}
+
 function renderClaimDetailItem(label, value, wide = false, isHtml = false) {
   return `
     <article class="claim-detail-item ${wide ? "wide" : ""}">
@@ -5864,6 +6050,12 @@ function maskDocumentNumber(value) {
   const text = String(value || "");
   if (text.length <= 4) return text ? "****" : "No registrado";
   return `${"*".repeat(Math.max(text.length - 4, 4))}${text.slice(-4)}`;
+}
+
+function truncateText(value, maxLength = 140) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1).trim()}...`;
 }
 
 async function handleAdminClaimResponseSubmit(event) {

@@ -240,7 +240,7 @@ grant execute on function public.validate_capital_movement_rules(uuid, text, num
 create or replace function public.enforce_capital_movement_rules()
 returns trigger
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 begin
@@ -268,7 +268,7 @@ create or replace function public.register_capital_movement(
 )
 returns capital_movements
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 declare
@@ -389,7 +389,7 @@ grant execute on function public.validate_loan_financial_rules(uuid, uuid, uuid,
 create or replace function public.enforce_loan_financial_rules()
 returns trigger
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 begin
@@ -490,7 +490,7 @@ create or replace function public.create_client_with_loan(
 )
 returns jsonb
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 declare
@@ -538,7 +538,7 @@ create or replace function public.create_loan_operation(
 )
 returns jsonb
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 declare
@@ -588,7 +588,7 @@ create or replace function public.update_client_with_loan(
 )
 returns jsonb
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 declare
@@ -1036,7 +1036,7 @@ create or replace function public.register_payment(
 )
 returns jsonb
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 declare
@@ -1399,5 +1399,7 @@ create unique index if not exists loans_one_principal_per_client
 on loans(user_id, client_id)
 where operation_type = 'principal';
 
-grant select, insert, update, delete on capital_movements to authenticated;
-grant select, insert, update, delete on claim_book_entries to authenticated;
+revoke all on capital_movements from anon, authenticated;
+revoke all on claim_book_entries from anon, authenticated;
+grant select on capital_movements to authenticated;
+grant select on claim_book_entries to authenticated;

@@ -1328,6 +1328,15 @@ input.field-success {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+.admin-inbox-row {
+  border-top-color: var(--accent);
+}
+
+.admin-inbox-row small {
+  max-width: 760px;
+  overflow-wrap: anywhere;
+}
+
 .view {
   display: none;
 }
@@ -2347,7 +2356,8 @@ input.field-success {
 }
 
 #privacyDialog,
-#adminClaimDialog {
+#adminClaimDialog,
+#adminMessageDialog {
   width: min(1040px, calc(100vw - 28px));
 }
 
