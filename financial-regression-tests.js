@@ -1146,7 +1146,7 @@ assertFileIncludes(stylesCode, "padding-top: calc(0.84rem * 1.2 + 4px)", "Resume
 assertFileIncludes(htmlCode, 'id="summaryComparePreviousMonth"', "Resumen: debe existir el boton para comparar con mes anterior.");
 assertFileIncludes(htmlCode, "Comparar con mes anterior", "Resumen: el boton de comparacion debe mostrar Mes anterior.");
 assertFileIncludes(htmlCode, "summary-compare-info", "Resumen: el boton Mes anterior debe tener icono de informacion.");
-assertFileIncludes(htmlCode, '<button id="summaryComparePreviousMonth" class="ghost-button summary-compare-button" type="button">\n                  Comparar con mes anterior\n                  <span', "Resumen: el icono de informacion debe estar dentro del boton Mes anterior.");
+assertFileIncludes(htmlCode, '<button id="summaryComparePreviousMonth" class="ghost-button summary-compare-button" type="button">\n                  <span id="summaryComparePreviousMonthText">Comparar con mes anterior</span>\n                  <span', "Resumen: el icono de informacion debe estar dentro del boton Mes anterior.");
 assertFileIncludes(htmlCode, "compara el periodo seleccionado contra el mismo rango movido un mes atras", "Resumen: el tooltip debe explicar contra que compara.");
 assertFileIncludes(htmlCode, "06/08/2026 - 06/09/2026 contra 06/07/2026 - 06/08/2026", "Resumen: el tooltip debe incluir un ejemplo claro.");
 assertFileIncludes(htmlCode, "S/1,300 otorgados ese mes", "Resumen: el tooltip de prestamos por mes debe explicar que el grafico muestra monto otorgado.");

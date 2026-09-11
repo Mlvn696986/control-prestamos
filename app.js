@@ -314,6 +314,7 @@ const elements = {
   summaryCustomEnd: $("#summaryCustomEnd"),
   summaryCompare: $("#summaryCompare"),
   summaryComparePreviousMonth: $("#summaryComparePreviousMonth"),
+  summaryComparePreviousMonthText: $("#summaryComparePreviousMonthText"),
   summaryExport: $("#summaryExport"),
   summaryCriticalGrid: $("#summaryCriticalGrid"),
   summaryIndicatorsGrid: $("#summaryIndicatorsGrid"),
@@ -3528,6 +3529,11 @@ function getDashboardFilters() {
 
 function setDashboardPreviousMonthComparison() {
   if (!elements.summaryCompare) return;
+  if (elements.summaryCompare.value === "previousMonth") {
+    elements.summaryCompare.value = "none";
+    renderDashboard();
+    return;
+  }
   const hasManualRange = Boolean(elements.summaryCustomStart?.value || elements.summaryCustomEnd?.value);
   if (!hasManualRange) {
     const today = todayISO();
@@ -3581,7 +3587,12 @@ function addValidDashboardDate(dates, value) {
 
 function syncDashboardCompareOptions(hasManualRange) {
   if (elements.summaryComparePreviousMonth) {
-    elements.summaryComparePreviousMonth.classList.toggle("active", elements.summaryCompare?.value === "previousMonth" && hasManualRange);
+    const isPreviousMonthActive = elements.summaryCompare?.value === "previousMonth" && hasManualRange;
+    elements.summaryComparePreviousMonth.classList.toggle("active", isPreviousMonthActive);
+    elements.summaryComparePreviousMonth.setAttribute("aria-pressed", String(isPreviousMonthActive));
+    if (elements.summaryComparePreviousMonthText) {
+      elements.summaryComparePreviousMonthText.textContent = isPreviousMonthActive ? "Quitar comparacion" : "Comparar con mes anterior";
+    }
   }
   if (!elements.summaryCompare?.options) return;
   Array.from(elements.summaryCompare.options || []).forEach((option) => {
