@@ -94,6 +94,7 @@ let adminState = createEmptyAdminState();
 let activeClientTab = "all";
 let signupSuccessTimer = null;
 let pendingLoanDelete = null;
+let pendingClientDelete = null;
 let dashboardMessageTimers = [];
 let quickCollectionScrollPositions = new Map();
 let activeInfoTooltipTarget = null;
@@ -291,6 +292,11 @@ const elements = {
   loanDeleteTitle: $("#loanDeleteTitle"),
   loanDeleteSummary: $("#loanDeleteSummary"),
   loanDeleteSubmit: $("#loanDeleteSubmit"),
+  clientDeleteDialog: $("#clientDeleteDialog"),
+  clientDeleteForm: $("#clientDeleteForm"),
+  clientDeleteTitle: $("#clientDeleteTitle"),
+  clientDeleteSummary: $("#clientDeleteSummary"),
+  clientDeleteSubmit: $("#clientDeleteSubmit"),
   plansGrid: $("#plansGrid"),
   planRequestDialog: $("#planRequestDialog"),
   planRequestForm: $("#planRequestForm"),
@@ -402,6 +408,7 @@ function bindEvents() {
   elements.editForm.addEventListener("submit", handleEditSubmit);
   elements.paymentForm.addEventListener("submit", handlePaymentSubmit);
   elements.loanDeleteForm.addEventListener("submit", handleLoanDeleteSubmit);
+  elements.clientDeleteForm.addEventListener("submit", handleClientDeleteSubmit);
   elements.planRequestForm.addEventListener("submit", handlePlanRequestSubmit);
   $$("[data-client-filter]").forEach((filter) => {
     filter.addEventListener("input", renderClients);
@@ -570,7 +577,8 @@ function bindEvents() {
     }
 
     if (deleteButton) {
-      deleteClient(deleteButton.dataset.deleteClient, deleteButton);
+      openClientDeleteDialog(deleteButton.dataset.deleteClient);
+      return;
     }
 
     if (planButton) {
@@ -5378,7 +5386,7 @@ function renderClients() {
             ${
               loan
                 ? `<button class="icon-button square-action delete-icon-action" title="Eliminar prestamo principal" aria-label="Eliminar prestamo principal" type="button" data-delete-client="${client.id}" data-delete-loan="${loan.id}">${icons.trash}</button>`
-                : `<button class="icon-button square-action delete-icon-action" title="Sin prestamo principal" aria-label="Sin prestamo principal" type="button" disabled>${icons.trash}</button>`
+                : `<button class="icon-button square-action delete-icon-action" title="Eliminar cliente sin prestamo" aria-label="Eliminar cliente sin prestamo" type="button" data-delete-client="${client.id}">${icons.trash}</button>`
             }
           </span>
           ${renderClientExtensions(client, extensions)}
@@ -5391,18 +5399,48 @@ function renderClients() {
   scheduleClientHorizontalScrollbarUpdate();
 }
 
-async function deleteClient(clientId, actionButton = null) {
-  if (clientDeletionInProgress) return;
-
+function openClientDeleteDialog(clientId) {
   const client = state.clients.find((item) => item.id === clientId);
   if (!client) return;
 
   const clientLoans = getLoansForClient(clientId);
   const paymentCount = state.payments.filter((payment) => payment.clientId === clientId).length;
-  const confirmed = window.confirm(
-    `Seguro que deseas eliminar a ${client.name}?\n\nSe eliminaran tambien sus prestamos, ampliaciones y ${paymentCount} cobro(s) registrados.\n\nEsta accion no se puede deshacer desde esta pantalla. Deseas continuar?`
-  );
-  if (!confirmed) return;
+  const hasPrimaryLoan = clientLoans.some(isPrimaryLoan);
+  pendingClientDelete = { clientId };
+  elements.clientDeleteTitle.textContent = hasPrimaryLoan ? "Eliminar cliente" : "Eliminar registro sin prestamo";
+  elements.clientDeleteSubmit.textContent = "Aceptar y eliminar";
+  elements.clientDeleteSummary.textContent = hasPrimaryLoan
+    ? `Advertencia: se eliminara a ${client.name}, sus prestamos, ampliaciones y ${paymentCount} cobro(s). Los indicadores se recalcularan sin esos datos. Esta accion no se puede deshacer desde esta pantalla.`
+    : `Advertencia: se eliminara el registro de ${client.name}. Actualmente figura sin prestamo principal; tambien se limpiara cualquier ampliacion, cobro o resto asociado para que los indicadores queden limpios.`;
+  elements.clientDeleteDialog.showModal();
+}
+
+async function handleClientDeleteSubmit(event) {
+  event.preventDefault();
+  if (!pendingClientDelete || clientDeletionInProgress) return;
+
+  const submitButton = event.submitter || elements.clientDeleteForm.querySelector("button[type='submit']");
+  const deleted = await deleteClient(pendingClientDelete.clientId, submitButton, { skipConfirm: true, successMessage: "Registro eliminado correctamente." });
+  if (deleted) {
+    pendingClientDelete = null;
+    elements.clientDeleteDialog.close();
+  }
+}
+
+async function deleteClient(clientId, actionButton = null, options = {}) {
+  if (clientDeletionInProgress) return false;
+
+  const client = state.clients.find((item) => item.id === clientId);
+  if (!client) return false;
+
+  const clientLoans = getLoansForClient(clientId);
+  const paymentCount = state.payments.filter((payment) => payment.clientId === clientId).length;
+  if (!options.skipConfirm) {
+    const confirmed = window.confirm(
+      `Seguro que deseas eliminar a ${client.name}?\n\nSe eliminaran tambien sus prestamos, ampliaciones y ${paymentCount} cobro(s) registrados.\n\nEsta accion no se puede deshacer desde esta pantalla. Deseas continuar?`
+    );
+    if (!confirmed) return false;
+  }
 
   clientDeletionInProgress = true;
   setButtonBusy(actionButton, true, "Eliminando...");
@@ -5420,12 +5458,14 @@ async function deleteClient(clientId, actionButton = null) {
 
     saveState();
     render();
-    window.alert("Cliente eliminado correctamente.");
+    window.alert(options.successMessage || "Cliente eliminado correctamente.");
+    return true;
   } catch (error) {
     if (isCloudMode()) {
       await reloadAfterCloudError();
     }
     window.alert(error.message || "No se pudo eliminar el cliente.");
+    return false;
   } finally {
     clientDeletionInProgress = false;
     setButtonBusy(actionButton, false);

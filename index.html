@@ -926,6 +926,27 @@
       </form>
     </dialog>
 
+    <dialog id="clientDeleteDialog" class="modal">
+      <form id="clientDeleteForm" method="dialog" class="modal-panel form-grid">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Eliminar registro</p>
+            <h3 id="clientDeleteTitle">Eliminar cliente</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div id="clientDeleteSummary" class="payment-summary">
+          Esta accion eliminara el registro seleccionado y limpiara sus datos asociados.
+        </div>
+        <div class="choice-actions">
+          <button class="ghost-button" value="cancel" type="button" data-close-dialog>Cancelar</button>
+          <button id="clientDeleteSubmit" class="delete-button" type="submit">Aceptar y eliminar</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="planRequestDialog" class="modal">
       <form id="planRequestForm" method="dialog" class="modal-panel form-grid">
         <div class="section-heading">
