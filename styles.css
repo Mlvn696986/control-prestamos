@@ -1085,6 +1085,17 @@ input.field-success {
   border-color: rgba(0, 167, 111, 0.16);
 }
 
+.danger-menu-item {
+  color: var(--danger);
+}
+
+.danger-menu-item:hover,
+.danger-menu-item:focus-visible {
+  color: var(--danger);
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.22);
+}
+
 .data-menu-item::after {
   content: attr(data-tooltip);
   position: absolute;

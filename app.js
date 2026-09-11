@@ -230,6 +230,7 @@ const elements = {
   createBackupNowButton: $("#createBackupNow"),
   exportButton: $("#exportData"),
   exportExcelButton: $("#exportExcel"),
+  clearAllHistoryButton: $("#clearAllHistory"),
   openAddCapitalButton: $("#openAddCapital"),
   openWithdrawCapitalButton: $("#openWithdrawCapital"),
   restoreBackupButton: $("#restoreBackup"),
@@ -427,6 +428,7 @@ function bindEvents() {
   elements.capitalHistoryButton.addEventListener("click", () => openCapitalHistoryDialog(elements.capitalFormMode.value));
   elements.restoreBackupButton.addEventListener("click", restoreLatestBackup);
   elements.createBackupNowButton.addEventListener("click", createBackupNow);
+  elements.clearAllHistoryButton.addEventListener("click", clearAllHistory);
   elements.dataMenu.addEventListener("toggle", () => {
     if (elements.dataMenu.open) {
       refreshBackupStatus();
@@ -2330,6 +2332,50 @@ async function restoreLatestBackup() {
   }
 }
 
+async function clearAllHistory() {
+  const confirmed = window.confirm(
+    "Advertencia: se eliminaran todos tus clientes, prestamos, ampliaciones, cobros y movimientos de capital. El Resumen quedara en cero y podras empezar desde cero.\n\nAntes de borrar se intentara crear una copia de seguridad. Deseas continuar?"
+  );
+  if (!confirmed) return;
+
+  setButtonBusy(elements.clearAllHistoryButton, true, "Eliminando...");
+  try {
+    const safetyBackup = await ensureAutomaticBackup(true);
+    if (!safetyBackup.ok) {
+      throw new Error("No se pudo crear una copia de seguridad antes de eliminar el historial total. Intenta nuevamente desde Seguridad de datos.");
+    }
+
+    if (isCloudMode()) {
+      await clearCloudFinancialHistory();
+      await loadCloudState();
+    } else {
+      state.clients = [];
+      state.loans = [];
+      state.payments = [];
+      state.capitalMovements = [];
+      saveState();
+    }
+
+    if (elements.dataMenu?.open) elements.dataMenu.removeAttribute("open");
+    await refreshBackupStatus();
+    render();
+    window.alert("Historial total eliminado correctamente. El Resumen quedo limpio para empezar desde cero.");
+  } catch (error) {
+    if (/clear_user_financial_history|schema cache|function/i.test(error.message || "")) {
+      window.alert("Para usar Eliminar historial total en Supabase, primero ejecuta el SQL actualizado supabase-financial-integrity.sql.");
+    } else {
+      window.alert(error.message || "No se pudo eliminar el historial total.");
+    }
+  } finally {
+    setButtonBusy(elements.clearAllHistoryButton, false);
+  }
+}
+
+async function clearCloudFinancialHistory() {
+  const { error } = await saas.client.rpc("clear_user_financial_history");
+  if (error) throw error;
+}
+
 async function restoreCloudBackup(backupId) {
   const rpcRestore = await saas.client.rpc("restore_user_backup", { p_backup_id: backupId });
   if (!rpcRestore.error) return;
@@ -3187,9 +3233,6 @@ function buildDashboardData(options = {}) {
   if (range.invalid) {
     return buildInvalidDashboardData(filters, range);
   }
-  if (isPortfolioFullyCleared()) {
-    return buildClearedDashboardData(filters, range);
-  }
   const scopeLoans = state.loans.filter((loan) => loanMatchesDashboardScope(loan, filters));
   const scopePayments = state.payments.filter((payment) => paymentMatchesDashboardScope(payment, scopeLoans));
   const loans = scopeLoans.filter((loan) => loanWasInPortfolioDuringRange(loan, range));
@@ -3343,29 +3386,6 @@ function buildDashboardData(options = {}) {
   };
   dashboard.comparison = options.skipComparison ? null : buildDashboardComparison(dashboard);
   return dashboard;
-}
-
-function isPortfolioFullyCleared() {
-  return !state.clients.length && !state.loans.length && !state.payments.length;
-}
-
-function buildClearedDashboardData(filters, range) {
-  return {
-    filters: { ...filters, compare: "none" },
-    range,
-    loans: [],
-    scopeLoans: [],
-    payments: [],
-    activeLoans: [],
-    overdueLoans: [],
-    todayLoans: [],
-    soonLoans: [],
-    monthLoans: [],
-    metrics: createEmptyDashboardMetrics(),
-    charts: createEmptyDashboardCharts(),
-    lists: createEmptyDashboardLists(),
-    comparison: null,
-  };
 }
 
 function buildInvalidDashboardData(filters, range) {
@@ -5481,9 +5501,6 @@ async function deleteClient(clientId, actionButton = null, options = {}) {
     state.clients = state.clients.filter((item) => item.id !== clientId);
     state.loans = state.loans.filter((loan) => loan.clientId !== clientId);
     state.payments = state.payments.filter((payment) => payment.clientId !== clientId && !loanIds.has(payment.loanId));
-    if (isPortfolioFullyCleared()) {
-      state.capitalMovements = [];
-    }
 
     saveState();
     render();

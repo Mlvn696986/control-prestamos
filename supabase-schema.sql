@@ -1439,6 +1439,45 @@ $$;
 revoke all on function public.restore_user_backup(uuid) from public;
 grant execute on function public.restore_user_backup(uuid) to authenticated;
 
+create or replace function public.clear_user_financial_history()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_clients integer := 0;
+  v_loans integer := 0;
+  v_payments integer := 0;
+  v_capital_movements integer := 0;
+begin
+  if v_user_id is null then
+    raise exception 'Usuario no autenticado.';
+  end if;
+
+  select count(*) into v_clients from clients where user_id = v_user_id;
+  select count(*) into v_loans from loans where user_id = v_user_id;
+  select count(*) into v_payments from payments where user_id = v_user_id;
+  select count(*) into v_capital_movements from capital_movements where user_id = v_user_id;
+
+  delete from payments where user_id = v_user_id;
+  delete from loans where user_id = v_user_id;
+  delete from clients where user_id = v_user_id;
+  delete from capital_movements where user_id = v_user_id;
+
+  return jsonb_build_object(
+    'clients', v_clients,
+    'loans', v_loans,
+    'payments', v_payments,
+    'capitalMovements', v_capital_movements
+  );
+end;
+$$;
+
+revoke all on function public.clear_user_financial_history() from public;
+grant execute on function public.clear_user_financial_history() to authenticated;
+
 create or replace function public.register_payment(
   p_payment_id uuid,
   p_loan_id uuid,
