@@ -733,6 +733,14 @@ h3 {
   color: var(--ink);
 }
 
+.interest-applied-note {
+  min-height: 1.1rem;
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
 .text-button {
   justify-self: start;
   min-height: auto;

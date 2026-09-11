@@ -263,6 +263,7 @@ const elements = {
   clientNameTextLabel: $("#clientNameTextLabel"),
   clientNameSelectLabel: $("#clientNameSelectLabel"),
   clientNameSelect: $("#clientNameSelect"),
+  clientLoanAppliedInterest: $("#clientLoanAppliedInterest"),
   loanLimitHint: $("#loanLimitHint"),
   clientSubmitButton: $("#clientSubmitButton"),
   interestInfoButton: $("#interestInfoButton"),
@@ -279,6 +280,7 @@ const elements = {
   filterDueDate: $("#filterDueDate"),
   editDialog: $("#editDialog"),
   editForm: $("#editForm"),
+  editLoanAppliedInterest: $("#editLoanAppliedInterest"),
   paymentDialog: $("#paymentDialog"),
   paymentForm: $("#paymentForm"),
   paymentTitle: $("#paymentTitle"),
@@ -488,9 +490,17 @@ function bindEvents() {
   elements.summaryComparePreviousMonth.addEventListener("click", setDashboardPreviousMonthComparison);
   elements.summaryExport.addEventListener("click", exportDashboardSummary);
   $("#clientLoanStartDate").addEventListener("change", () => updateSuggestedDueDate("clientLoan"));
-  $("#clientLoanInterestMode").addEventListener("change", () => updateSuggestedDueDate("clientLoan"));
+  $("#clientLoanInterestMode").addEventListener("change", () => {
+    updateSuggestedDueDate("clientLoan");
+    updateAppliedInterestNote("clientLoan");
+  });
+  $("#clientLoanRate").addEventListener("input", () => updateAppliedInterestNote("clientLoan"));
   $("#editLoanStartDate").addEventListener("change", () => updateSuggestedDueDate("editLoan"));
-  $("#editLoanInterestMode").addEventListener("change", () => updateSuggestedDueDate("editLoan"));
+  $("#editLoanInterestMode").addEventListener("change", () => {
+    updateSuggestedDueDate("editLoan");
+    updateAppliedInterestNote("editLoan");
+  });
+  $("#editLoanRate").addEventListener("input", () => updateAppliedInterestNote("editLoan"));
 
   $("#openClientView").addEventListener("click", () => {
     openClientChoiceDialog();
@@ -6423,6 +6433,7 @@ function openEditDialog(clientId, loanId = null) {
   $("#editLoanInterestMode").value = normalizeInterestMode(loan?.interestMode);
   $("#editLoanStartDate").value = loan ? loan.startDate : todayISO();
   $("#editLoanDueDate").value = loan ? loan.nextDueDate : getSuggestedDueDate(todayISO(), $("#editLoanInterestMode").value);
+  updateAppliedInterestNote("editLoan");
   elements.editDialog.showModal();
 }
 
@@ -6450,6 +6461,7 @@ function openClientDialog(mode = "new") {
   setDefaultDates();
   $("#clientLoanInterestMode").value = "monthly";
   updateSuggestedDueDate("clientLoan");
+  updateAppliedInterestNote("clientLoan");
   elements.clientFormMode.value = isExtension ? "extension" : "new";
   elements.clientDialogEyebrow.textContent = isExtension ? "Ampliacion" : "Registro";
   elements.clientDialogTitle.textContent = isExtension ? "Ampliacion de prestamo" : "Nuevo cliente";
@@ -7162,6 +7174,31 @@ function getInterestModeShortLabel(mode) {
 function getDisplayPeriodRate(loan) {
   const mode = normalizeInterestMode(loan?.interestMode);
   return roundMoney(Number(loan?.monthlyRate || 0) * INTEREST_MODES[mode].rateFactor);
+}
+
+function updateAppliedInterestNote(prefix) {
+  const rateInput = $(`#${prefix}Rate`);
+  const modeInput = $(`#${prefix}InterestMode`);
+  const note = elements[`${prefix}AppliedInterest`];
+  if (!rateInput || !modeInput || !note) return;
+
+  const rawRate = rateInput.value.trim();
+  const monthlyRate = Number(rawRate);
+  if (!rawRate || !Number.isFinite(monthlyRate) || monthlyRate < 0) {
+    note.textContent = "";
+    return;
+  }
+
+  const mode = normalizeInterestMode(modeInput.value);
+  const appliedRate = roundMoney(monthlyRate * INTEREST_MODES[mode].rateFactor);
+  const shortLabel = getInterestModeShortLabel(mode);
+  const formattedAppliedRate = formatDisplayPercent(appliedRate);
+  const formattedMonthlyRate = formatDisplayPercent(monthlyRate);
+
+  note.textContent =
+    mode === "monthly"
+      ? `Interes mensual aplicado: ${formattedAppliedRate}%`
+      : `Interes ${shortLabel} aplicado: ${formattedAppliedRate}% equivalente desde ${formattedMonthlyRate}% mensual`;
 }
 
 function formatDisplayPercent(value) {
