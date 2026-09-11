@@ -318,10 +318,10 @@ const elements = {
   summaryCriticalGrid: $("#summaryCriticalGrid"),
   summaryIndicatorsGrid: $("#summaryIndicatorsGrid"),
   resetIndicatorOrder: $("#resetIndicatorOrder"),
+  summaryTenDayList: $("#summaryTenDayList"),
+  summaryTwoDayList: $("#summaryTwoDayList"),
   summaryTodayList: $("#summaryTodayList"),
   summaryOverdueList: $("#summaryOverdueList"),
-  summarySoonList: $("#summarySoonList"),
-  summaryMonthList: $("#summaryMonthList"),
   summaryManagementGrid: $("#summaryManagementGrid"),
   summaryMonthlyChart: $("#summaryMonthlyChart"),
   summaryLoansChart: $("#summaryLoansChart"),
@@ -3259,12 +3259,11 @@ function buildDashboardData(options = {}) {
     });
   const overdueLoans = activeLoans.filter((loan) => isOverdueAt(loan, range.end));
   const todayLoans = scopeLoans.filter((loan) => loan.status === "active" && loan.nextDueDate === todayISO()).sort(sortLoansByDueDate);
-  const soonLoans = scopeLoans
-    .filter((loan) => loan.status === "active" && !isOverdue(loan) && daysBetween(todayISO(), loan.nextDueDate) > 0 && daysBetween(todayISO(), loan.nextDueDate) <= 7)
+  const upcomingActiveLoans = scopeLoans
+    .filter((loan) => loan.status === "active" && !isOverdue(loan) && daysBetween(todayISO(), loan.nextDueDate) > 0)
     .sort(sortLoansByDueDate);
-  const monthLoans = scopeLoans
-    .filter((loan) => loan.status === "active" && !isOverdue(loan) && daysBetween(todayISO(), loan.nextDueDate) > 7 && daysBetween(todayISO(), loan.nextDueDate) <= 30)
-    .sort(sortLoansByDueDate);
+  const tenDayLoans = upcomingActiveLoans.filter((loan) => daysBetween(todayISO(), loan.nextDueDate) <= 10);
+  const twoDayLoans = upcomingActiveLoans.filter((loan) => daysBetween(todayISO(), loan.nextDueDate) <= 2);
   const loansStartedInPeriod = scopeLoans.filter((loan) => dateInRange(loan.startDate, range));
   const extensionLoans = loansStartedInPeriod.filter((loan) => !isPrimaryLoan(loan));
   const activeExtensions = activeLoans.filter((loan) => !isPrimaryLoan(loan));
@@ -3326,8 +3325,8 @@ function buildDashboardData(options = {}) {
     activeLoans,
     overdueLoans,
     todayLoans,
-    soonLoans,
-    monthLoans,
+    tenDayLoans,
+    twoDayLoans,
     metrics: {
       capitalTotal,
       availableCapital,
@@ -3408,8 +3407,8 @@ function buildInvalidDashboardData(filters, range) {
     activeLoans: [],
     overdueLoans: [],
     todayLoans: [],
-    soonLoans: [],
-    monthLoans: [],
+    tenDayLoans: [],
+    twoDayLoans: [],
     metrics: createEmptyDashboardMetrics(),
     charts: createEmptyDashboardCharts(),
     lists: createEmptyDashboardLists(),
@@ -4646,10 +4645,10 @@ function clamp(value, min, max) {
 }
 
 function renderDashboardCollections(dashboard) {
+  renderLoanMiniList(elements.summaryTenDayList, dashboard.tenDayLoans, "No hay cobros en los proximos 10 dias.");
+  renderLoanMiniList(elements.summaryTwoDayList, dashboard.twoDayLoans, "No hay cobros en los proximos 2 dias.");
   renderLoanMiniList(elements.summaryTodayList, dashboard.todayLoans, "No hay cobros para hoy.");
   renderLoanMiniList(elements.summaryOverdueList, dashboard.overdueLoans.sort(sortLoansByDueDate), "No hay cobros vencidos.");
-  renderLoanMiniList(elements.summarySoonList, dashboard.soonLoans, "No hay cobros en los proximos 7 dias.");
-  renderLoanMiniList(elements.summaryMonthList, dashboard.monthLoans, "No hay cobros en los proximos 30 dias.");
 }
 
 function renderLoanMiniList(container, loans, emptyMessage) {
@@ -5187,13 +5186,13 @@ function buildSummaryCollectionsSheet(dashboard, alerts) {
       excelTitleRow("COBRANZA RAPIDA", 7),
       excelMetaRow("Fecha de reporte", formatDate(todayISO()), "Periodo", dashboardRangeText(dashboard)),
       excelSpacerRow(),
+      ...dashboardLoanSectionRows("PROXIMOS 10 DIAS", dashboard.tenDayLoans),
+      excelSpacerRow(),
+      ...dashboardLoanSectionRows("PROXIMOS 2 DIAS", dashboard.twoDayLoans),
+      excelSpacerRow(),
       ...dashboardLoanSectionRows("COBRAR HOY", dashboard.todayLoans),
       excelSpacerRow(),
       ...dashboardLoanSectionRows("COBROS VENCIDOS", dashboard.overdueLoans.slice().sort(sortLoansByDueDate)),
-      excelSpacerRow(),
-      ...dashboardLoanSectionRows("PROXIMOS 7 DIAS", dashboard.soonLoans),
-      excelSpacerRow(),
-      ...dashboardLoanSectionRows("PROXIMOS 30 DIAS", dashboard.monthLoans),
       excelSpacerRow(),
       excelSectionRow("ALERTAS DEL RESUMEN", 7),
       excelHeaderRow(["Alerta"]),
