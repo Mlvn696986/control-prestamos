@@ -6817,23 +6817,12 @@ function openPaymentDialog(loanId) {
   if (elements.paymentExtensionFields) {
     elements.paymentExtensionFields.innerHTML = renderPaymentExtensionFields(paymentExtensions);
   }
-  const adjustment = getFirstMonthlyCollectionAdjustment(loan);
-  const displayedRate = adjustment ? adjustment.appliedRate : getDisplayPeriodRate(loan);
   elements.paymentSummary.innerHTML = `
     <div class="payment-summary-list">
-      <span>Cobro programado: <strong>${formatDate(loan.nextDueDate)}</strong></span>
-      <span>Tasa base: <strong>${formatDisplayPercent(loan.monthlyRate)}% mensual</strong></span>
-      <span>Modalidad: <strong>${getInterestModeLabel(loan.interestMode)}</strong></span>
-      <span>Tasa de este cobro: <strong>${formatDisplayPercent(displayedRate)}%</strong></span>
-      <span>Interes esperado: <strong>${money(period.expectedInterest)}</strong></span>
-      <span>Ya pagado: <strong>${money(period.paidInterest)}</strong></span>
-      <span>Interes pendiente: <strong>${money(period.pendingInterest)}</strong></span>
-      <span>Capital pendiente: <strong>${money(loan.remainingCapital)}</strong></span>
-      ${
-        adjustment
-          ? `<small>Primer cobro ajustado segun los dias transcurridos (${adjustment.days} dia(s)). Tasa aplicada en este primer cobro: ${formatDisplayPercent(adjustment.appliedRate)}%.</small>`
-          : ""
-      }
+      ${renderPaymentOperationSummary("Prestamo principal", loan, period)}
+      ${paymentExtensions
+        .map((extension, index) => renderPaymentOperationSummary(`Ampliacion ${index + 1}`, extension, buildPaymentPeriodSummary(extension)))
+        .join("")}
     </div>
   `;
   elements.paymentDialog.showModal();
@@ -6843,6 +6832,18 @@ function getActiveExtensionLoansForPayment(baseLoan) {
   const client = getClient(baseLoan?.clientId);
   if (!client) return [];
   return getLoansForClient(client.id).filter((loan) => !isPrimaryLoan(loan) && loan.status === "active" && loan.id !== baseLoan.id);
+}
+
+function renderPaymentOperationSummary(title, loan, period) {
+  return `
+    <section class="payment-summary-operation">
+      <h4 class="payment-operation-title">${title}</h4>
+      <span>Cobro programado: <strong>${formatDate(loan.nextDueDate)}</strong></span>
+      <span>Tasa base: <strong>${formatDisplayPercent(loan.monthlyRate)}% mensual</strong></span>
+      <span>Interes pendiente: <strong>${money(period.pendingInterest)}</strong></span>
+      <span>Capital pendiente: <strong>${money(loan.remainingCapital)}</strong></span>
+    </section>
+  `;
 }
 
 function renderPaymentExtensionFields(extensions) {
