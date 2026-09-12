@@ -1181,7 +1181,10 @@ assertFileIncludes(htmlCode, 'id="loanDeleteTitle">Eliminar prestamo</h3>', "Cli
 assertFileIncludes(appCode, "clientLoans.find(isPrimaryLoan) || null", "Clientes: la fila principal debe mostrar solo el prestamo principal, no tomar una ampliacion como principal.");
 assertFileIncludes(appCode, "const hasExplicitOperationTypes = clientLoans.some", "Clientes: la normalizacion no debe convertir ampliaciones explicitas en principal.");
 assertFileIncludes(appCode, "return hasExplicitOperationTypes ? null : loans[0] || null;", "Clientes: no debe inventarse prestamo principal desde la primera ampliacion explicita.");
-assertFileIncludes(appCode, 'title="Eliminar prestamo principal"', "Clientes: el tachito de la fila principal debe borrar el prestamo principal.");
+assertFileIncludes(htmlCode, 'id="loanActionDialog"', "Clientes: debe existir selector de operacion para editar o eliminar cuando hay ampliaciones.");
+assertFileIncludes(appCode, "openClientLoanAction", "Clientes: editar/eliminar debe pasar por selector cuando hay ampliaciones.");
+assertFileIncludes(appCode, "handleLoanActionChoice", "Clientes: el selector debe ejecutar editar o eliminar sobre la operacion elegida.");
+assertFileIncludes(appCode, 'title="Eliminar operacion"', "Clientes: el tachito principal debe permitir elegir prestamo principal o ampliacion.");
 assertFileIncludes(appCode, "El cliente y sus ampliaciones se mantendran en la cartera.", "Clientes: al borrar el prestamo principal se deben conservar las ampliaciones.");
 assertFileIncludes(appCode, "loan.parentLoanId === loanId ? { ...loan, parentLoanId: null }", "Clientes: al borrar el principal se deben desvincular las ampliaciones locales sin eliminarlas.");
 assertFileIncludes(appCode, "principals.length > 1", "Clientes: la auditoria debe permitir clientes con ampliaciones y sin prestamo principal.");
@@ -1191,6 +1194,8 @@ assertFileIncludes(appCode, 'aria-expanded="${String(isExpanded)}"', "Clientes: 
 assertFileIncludes(appCode, 'aria-label="${escapeHTML(label)}"', "Clientes: el chevron debe tener aria-label accesible.");
 assertCondition(!appCode.includes("Ampliaciones de ${escapeHTML(client.name)}"), "Clientes: no debe mostrarse el encabezado Ampliaciones de en la tabla.");
 assertCondition(!stylesCode.includes(".client-extension-heading"), "Clientes: no debe conservar estilos del encabezado de ampliaciones.");
+assertFileIncludes(appCode, 'class="row-actions extension-actions-muted"', "Clientes: las filas de ampliacion no deben mostrar botones propios.");
+assertFileIncludes(stylesCode, ".extension-actions-muted", "Clientes: la columna de acciones de ampliacion debe conservar alineacion sin botones.");
 assertFileIncludes(appCode, "Ampliacion ${index + 1}", "Clientes: cada ampliacion debe indicar Ampliacion 1, Ampliacion 2, etc.");
 assertFileIncludes(appCode, "<strong>${escapeHTML(client.name)}</strong>", "Clientes: cada ampliacion debe mostrar primero el nombre del cliente.");
 assertFileIncludes(appCode, '<small class="extension-client-name">Ampliacion ${index + 1}</small>', "Clientes: cada ampliacion debe mostrar Ampliacion debajo del nombre del cliente.");

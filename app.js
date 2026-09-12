@@ -113,6 +113,7 @@ let backupStatusNotice = "";
 let adminClaimFilter = "all";
 let adminInboxFilter = "all";
 let expandedClientIds = new Set();
+let pendingLoanAction = null;
 let pendingAdminClaimId = null;
 let claimSubmissionInProgress = false;
 let privacyRequestSubmissionInProgress = false;
@@ -287,6 +288,12 @@ const elements = {
   paymentWhatsAppButton: $("#paymentWhatsAppButton"),
   paymentTitle: $("#paymentTitle"),
   paymentSummary: $("#paymentSummary"),
+  paymentExtensionFields: $("#paymentExtensionFields"),
+  loanActionDialog: $("#loanActionDialog"),
+  loanActionEyebrow: $("#loanActionEyebrow"),
+  loanActionTitle: $("#loanActionTitle"),
+  loanActionSummary: $("#loanActionSummary"),
+  loanActionList: $("#loanActionList"),
   historyDialog: $("#historyDialog"),
   historyTitle: $("#historyTitle"),
   historySummary: $("#historySummary"),
@@ -574,9 +581,15 @@ function bindEvents() {
     const adminMessageButton = event.target.closest("[data-admin-message]");
     const adminClaimButton = event.target.closest("[data-admin-claim]");
     const adminClaimStatusButton = event.target.closest("[data-admin-claim-status]");
+    const loanActionChoice = event.target.closest("[data-loan-action-choice]");
     const quickScrollButton = event.target.closest("[data-scroll-quick-list]");
     if (quickScrollButton) {
       scrollQuickCollection(quickScrollButton.dataset.scrollQuickList);
+      return;
+    }
+
+    if (loanActionChoice) {
+      handleLoanActionChoice(loanActionChoice.dataset.loanActionChoice);
       return;
     }
 
@@ -591,7 +604,8 @@ function bindEvents() {
     }
 
     if (editButton) {
-      openEditDialog(editButton.dataset.editClient);
+      openClientLoanAction("edit", editButton.dataset.editClient);
+      return;
     }
 
     if (paymentButton) {
@@ -603,7 +617,7 @@ function bindEvents() {
     }
 
     if (deleteLoanButton) {
-      openLoanDeleteDialog(deleteLoanButton.dataset.deleteClient, deleteLoanButton.dataset.deleteLoan);
+      openClientLoanAction("delete", deleteLoanButton.dataset.deleteClient, deleteLoanButton.dataset.deleteLoan);
       return;
     }
 
@@ -2919,6 +2933,7 @@ async function handlePaymentSubmit(event) {
   const scheduledDueDate = loan.nextDueDate;
   const interestPaid = toNumber($("#paymentInterest").value);
   const capitalPaid = toNumber($("#paymentCapital").value);
+  let extensionPayments = [];
   if (!$("#paymentInterest").value.trim()) {
     window.alert("Ingresa el interes pagado antes de registrar el cobro.");
     return;
@@ -2935,19 +2950,33 @@ async function handlePaymentSubmit(event) {
     window.alert("El capital pagado no puede ser mayor que el capital pendiente.");
     return;
   }
-  if (interestPaid === 0 && capitalPaid === 0) {
+  try {
+    extensionPayments = collectPaymentExtensionRequests(paymentDate, $("#paymentNote").value.trim());
+  } catch (error) {
+    window.alert(error.message || "Revisa los montos de ampliacion.");
+    return;
+  }
+  const primaryHasPayment = interestPaid > 0 || capitalPaid > 0;
+  if (!primaryHasPayment && !extensionPayments.length) {
     window.alert("Registra interes o capital pagado para guardar el cobro.");
     return;
   }
 
-  let transaction;
+  let transactions = [];
   try {
-    transaction = buildPaymentTransactionPreview(loan, {
-      paymentDate,
-      scheduledDueDate,
-      interestPaid,
-      capitalPaid,
-      note: $("#paymentNote").value.trim(),
+    if (primaryHasPayment) {
+      transactions.push(
+        buildPaymentTransactionPreview(loan, {
+          paymentDate,
+          scheduledDueDate,
+          interestPaid,
+          capitalPaid,
+          note: $("#paymentNote").value.trim(),
+        })
+      );
+    }
+    extensionPayments.forEach((extensionPayment) => {
+      transactions.push(buildPaymentTransactionPreview(extensionPayment.loan, extensionPayment));
     });
   } catch (error) {
     window.alert(error.message || "No se pudo preparar el cobro.");
@@ -2957,18 +2986,23 @@ async function handlePaymentSubmit(event) {
   const submitButton = event.submitter || elements.paymentForm.querySelector("button[type='submit']");
   paymentSubmissionInProgress = true;
   setButtonBusy(submitButton, true, "Registrando...");
-  const { payment, updatedLoan } = transaction;
 
   try {
     await ensureAutomaticBackup();
 
     if (isCloudMode()) {
-      const result = await createCloudPaymentAndUpdateLoan(payment);
-      if (result?.loan) Object.assign(loan, loanFromRow(result.loan));
-      state.payments.push(result?.payment ? paymentFromRow(result.payment) : payment);
+      for (const transaction of transactions) {
+        const targetLoan = getLoan(transaction.payment.loanId);
+        const result = await createCloudPaymentAndUpdateLoan(transaction.payment);
+        if (result?.loan && targetLoan) Object.assign(targetLoan, loanFromRow(result.loan));
+        state.payments.push(result?.payment ? paymentFromRow(result.payment) : transaction.payment);
+      }
     } else {
-      Object.assign(loan, updatedLoan);
-      state.payments.push(payment);
+      transactions.forEach((transaction) => {
+        const targetLoan = getLoan(transaction.payment.loanId);
+        if (targetLoan) Object.assign(targetLoan, transaction.updatedLoan);
+        state.payments.push(transaction.payment);
+      });
     }
   } catch (error) {
     window.alert(error.message || "No se pudo registrar el cobro en la nube.");
@@ -2983,6 +3017,34 @@ async function handlePaymentSubmit(event) {
   elements.paymentDialog.close();
   saveState();
   render();
+}
+
+function collectPaymentExtensionRequests(paymentDate, baseNote = "") {
+  return Array.from(document.querySelectorAll("[data-extension-payment]"))
+    .map((section) => {
+      const loan = getLoan(section.dataset.extensionPayment);
+      if (!loan || loan.status !== "active") return null;
+      const interestInput = section.querySelector("[data-extension-interest]");
+      const capitalInput = section.querySelector("[data-extension-capital]");
+      const interestPaid = toNumber(interestInput?.value);
+      const capitalPaid = toNumber(capitalInput?.value);
+      if (!isNonNegativeMoney(interestPaid) || !isNonNegativeMoney(capitalPaid)) {
+        throw new Error("Los montos de ampliacion no pueden ser negativos.");
+      }
+      if (capitalPaid > Number(loan.remainingCapital || 0)) {
+        throw new Error("El capital de ampliacion pagado no puede ser mayor que su capital pendiente.");
+      }
+      if (interestPaid === 0 && capitalPaid === 0) return null;
+      return {
+        loan,
+        paymentDate,
+        scheduledDueDate: loan.nextDueDate,
+        interestPaid,
+        capitalPaid,
+        note: baseNote || "Cobro de ampliacion registrado junto al prestamo principal.",
+      };
+    })
+    .filter(Boolean);
 }
 
 function handlePaymentWhatsAppClick() {
@@ -3009,8 +3071,9 @@ function buildPaymentWhatsAppMessage(loan, client) {
   const capitalToPay = toNumber($("#paymentCapital")?.value);
   const capitalLine = capitalToPay > 0 ? money(capitalToPay) : "opcional";
   const loanType = isPrimaryLoan(loan) ? "Préstamo principal" : "Ampliación";
+  const extensionLines = buildPaymentWhatsAppExtensionLines();
 
-  return [
+  const lines = [
     `Hola, soy ${senderName}.`,
     "",
     "Te escribo con referencia al préstamo que mantienes vigente.",
@@ -3025,9 +3088,35 @@ function buildPaymentWhatsAppMessage(loan, client) {
     "",
     `Fecha programada de cobro: ${formatDate(loan.nextDueDate)}`,
     "",
-    "",
+  ];
+
+  if (extensionLines.length) {
+    lines.push("Ampliaciones a pagar:", ...extensionLines, "");
+  }
+
+  lines.push(
     "Si ya realizaste algún pago, por favor envíame el comprobante para actualizar tu registro. Gracias.",
-  ].join("\n");
+  );
+
+  return lines.join("\n");
+}
+
+function buildPaymentWhatsAppExtensionLines() {
+  return Array.from(document.querySelectorAll("[data-extension-payment]"))
+    .map((section, index) => {
+      const loan = getLoan(section.dataset.extensionPayment);
+      if (!loan) return null;
+      const interestPaid = toNumber(section.querySelector("[data-extension-interest]")?.value);
+      const capitalPaid = toNumber(section.querySelector("[data-extension-capital]")?.value);
+      if (interestPaid === 0 && capitalPaid === 0) return null;
+      return [
+        `- Ampliación ${index + 1}:`,
+        `  Interés de ampliación: ${money(interestPaid)}`,
+        `  Capital de ampliación: ${capitalPaid > 0 ? money(capitalPaid) : "opcional"}`,
+        `  Capital pendiente de ampliación: ${money(loan.remainingCapital)}`,
+      ].join("\n");
+    })
+    .filter(Boolean);
 }
 
 function getCollectionSenderName() {
@@ -5499,8 +5588,9 @@ function renderClients() {
     .map((client) => {
       const clientLoans = getLoansForClient(client.id);
       const loan = clientLoans.find(isPrimaryLoan) || null;
-      const activeLoan = loan?.status === "active" ? loan : null;
       const extensions = clientLoans.filter((loan) => !isPrimaryLoan(loan));
+      const activeExtension = extensions.find((loan) => loan.status === "active") || null;
+      const activeLoan = loan?.status === "active" ? loan : activeExtension;
       const hasExtensions = extensions.length > 0;
       const extensionsExpanded = hasExtensions && expandedClientIds.has(client.id);
       const paymentCount = state.payments.filter((payment) => payment.clientId === client.id).length;
@@ -5529,8 +5619,8 @@ function renderClients() {
               <span class="history-count">${paymentCount}</span>
             </button>
             ${
-              loan
-                ? `<button class="icon-button square-action delete-icon-action" title="Eliminar prestamo principal" aria-label="Eliminar prestamo principal" type="button" data-delete-client="${client.id}" data-delete-loan="${loan.id}">${icons.trash}</button>`
+              loan || extensions.length
+                ? `<button class="icon-button square-action delete-icon-action" title="Eliminar operacion" aria-label="Eliminar operacion" type="button" data-delete-client="${client.id}" data-delete-loan="${loan?.id || extensions[0]?.id || ""}">${icons.trash}</button>`
                 : `<button class="icon-button square-action delete-icon-action" title="Eliminar cliente sin prestamo" aria-label="Eliminar cliente sin prestamo" type="button" data-delete-client="${client.id}">${icons.trash}</button>`
             }
           </span>
@@ -5686,11 +5776,6 @@ function renderClientExtensions(client, extensions, isExpanded = false) {
         ${extensions
           .map((loan, index) => {
             const status = getLoanStatus(loan);
-            const paymentCount = state.payments.filter((payment) => payment.clientId === client.id).length;
-            const paymentButton =
-              loan.status === "active"
-                ? `<button class="primary-button small-button" type="button" data-pay-loan="${loan.id}">${icons.coin} Cobro</button>`
-                : `<button class="ghost-button small-button" type="button" disabled>Sin cobro</button>`;
             return `
               <article class="client-extension-table client-extension-row">
                 <span data-label="Nombre" class="client-name-cell">
@@ -5702,18 +5787,7 @@ function renderClientExtensions(client, extensions, isExpanded = false) {
                 <span data-label="Capital pendiente">${renderLoanPendingCapital(loan)}</span>
                 <span data-label="Fecha prestada">${formatDate(loan.startDate)}</span>
                 <span data-label="Fecha de cobro">${loan.status === "active" ? formatDate(loan.nextDueDate) : "Cerrado"}</span>
-                <span class="row-actions" data-label="Acciones">
-                  <button class="ghost-button small-button" type="button" data-edit-client="${client.id}" data-edit-loan="${loan.id}">${icons.edit} Editar</button>
-                  ${paymentButton}
-                  <button class="delete-button small-button history-action" type="button" data-history-client="${client.id}">
-                    ${icons.history}
-                    Historial
-                    <span class="history-count">${paymentCount}</span>
-                  </button>
-                  <button class="icon-button square-action delete-icon-action" title="Eliminar ampliacion" aria-label="Eliminar ampliacion" type="button" data-delete-client="${client.id}" data-delete-loan="${loan.id}">
-                    ${icons.trash}
-                  </button>
-                </span>
+                <span class="row-actions extension-actions-muted" data-label="Acciones"></span>
               </article>
             `;
           })
@@ -5721,6 +5795,64 @@ function renderClientExtensions(client, extensions, isExpanded = false) {
       </div>
     </div>
   `;
+}
+
+function openClientLoanAction(action, clientId, fallbackLoanId = null) {
+  const client = getClient(clientId);
+  if (!client) return;
+
+  const loans = getLoansForClient(clientId);
+  const principal = loans.find(isPrimaryLoan) || null;
+  const extensions = loans.filter((loan) => !isPrimaryLoan(loan));
+  const selectedLoan = fallbackLoanId ? getLoan(fallbackLoanId) : null;
+  const shouldChoose = extensions.length > 0 && (!selectedLoan || isPrimaryLoan(selectedLoan) || !principal);
+
+  if (!shouldChoose) {
+    const directLoan = selectedLoan || principal || loans[0] || null;
+    if (!directLoan) return;
+    if (action === "edit") openEditDialog(clientId, directLoan.id);
+    if (action === "delete") openLoanDeleteDialog(clientId, directLoan.id);
+    return;
+  }
+
+  pendingLoanAction = { action, clientId };
+  const actionLabel = action === "delete" ? "eliminar" : "editar";
+  elements.loanActionEyebrow.textContent = action === "delete" ? "Eliminar operacion" : "Editar operacion";
+  elements.loanActionTitle.textContent = `Que deseas ${actionLabel}?`;
+  elements.loanActionSummary.textContent = principal
+    ? `${client.name} tiene un prestamo principal y ${extensions.length} ampliacion(es). Elige exactamente que operacion deseas ${actionLabel}.`
+    : `${client.name} tiene ${extensions.length} ampliacion(es). Elige exactamente que operacion deseas ${actionLabel}.`;
+  let extensionNumber = 0;
+  elements.loanActionList.innerHTML = [principal, ...extensions]
+    .filter(Boolean)
+    .map((loan) => {
+      if (isPrimaryLoan(loan)) return renderLoanActionChoice(client, loan, "Prestamo principal");
+      extensionNumber += 1;
+      return renderLoanActionChoice(client, loan, `Ampliacion ${extensionNumber}`);
+    })
+    .join("");
+  elements.loanActionDialog.showModal();
+}
+
+function renderLoanActionChoice(client, loan, label) {
+  return `
+    <button class="loan-action-choice" type="button" data-loan-action-choice="${loan.id}">
+      <span>
+        <strong>${escapeHTML(label)}</strong>
+        <small>${escapeHTML(client.phone || "Sin telefono")} · ${loan.status === "active" ? formatDate(loan.nextDueDate) : "Cerrado"}</small>
+      </span>
+      <b>${money(loan.remainingCapital)}</b>
+    </button>
+  `;
+}
+
+function handleLoanActionChoice(loanId) {
+  if (!pendingLoanAction) return;
+  const { action, clientId } = pendingLoanAction;
+  pendingLoanAction = null;
+  elements.loanActionDialog.close();
+  if (action === "edit") openEditDialog(clientId, loanId);
+  if (action === "delete") openLoanDeleteDialog(clientId, loanId);
 }
 
 function openLoanDeleteDialog(clientId, loanId) {
@@ -6679,6 +6811,9 @@ function openPaymentDialog(loanId) {
   $("#paymentCapital").value = "0";
   $("#paymentNote").value = "";
   elements.paymentTitle.textContent = client?.name || "Registrar pago";
+  if (elements.paymentExtensionFields) {
+    elements.paymentExtensionFields.innerHTML = renderPaymentExtensionFields(loan);
+  }
   const adjustment = getFirstMonthlyCollectionAdjustment(loan);
   const displayedRate = adjustment ? adjustment.appliedRate : getDisplayPeriodRate(loan);
   elements.paymentSummary.innerHTML = `
@@ -6701,6 +6836,49 @@ function openPaymentDialog(loanId) {
   elements.paymentDialog.showModal();
 }
 
+function renderPaymentExtensionFields(baseLoan) {
+  const client = getClient(baseLoan?.clientId);
+  if (!client) return "";
+  const extensions = getLoansForClient(client.id).filter((loan) => !isPrimaryLoan(loan) && loan.status === "active" && loan.id !== baseLoan.id);
+  if (!extensions.length) return "";
+
+  return `
+    <section class="payment-extension-box">
+      <div class="payment-extension-heading">
+        <strong>Ampliaciones activas</strong>
+        <small>Opcional: registra interes o capital de ampliacion en este mismo cobro.</small>
+      </div>
+      ${extensions
+        .map((loan, index) => {
+          const period = buildPaymentPeriodSummary(loan);
+          const rate = getDisplayPeriodRate(loan);
+          return `
+            <article class="payment-extension-item" data-extension-payment="${loan.id}">
+              <div class="payment-extension-summary">
+                <strong>Ampliacion ${index + 1}</strong>
+                <span>Capital pendiente: ${money(loan.remainingCapital)}</span>
+                <span>Interes pendiente: ${money(period.pendingInterest)}</span>
+                <span>Cobro programado: ${formatDate(loan.nextDueDate)}</span>
+                <span>Tasa de este cobro: ${formatDisplayPercent(rate)}%</span>
+              </div>
+              <div class="field-row">
+                <label>
+                  Interes de ampliacion
+                  <input data-extension-interest type="number" min="0" step="0.01" value="0" />
+                </label>
+                <label>
+                  Capital voluntario de ampliacion
+                  <input data-extension-capital type="number" min="0" step="0.01" value="0" />
+                </label>
+              </div>
+            </article>
+          `;
+        })
+        .join("")}
+    </section>
+  `;
+}
+
 function openHistoryDialog(clientId) {
   const client = getClient(clientId);
   if (!client) return;
@@ -6720,6 +6898,8 @@ function openHistoryDialog(clientId) {
         <div class="history-section-title">Cobros</div>
         ${payments
         .map((payment) => {
+          const paymentLoan = getLoan(payment.loanId);
+          const operationLabel = paymentLoan ? (isPrimaryLoan(paymentLoan) ? "Prestamo principal" : "Ampliacion") : "Operacion no encontrada";
           const capitalText = payment.capitalPaid > 0 ? `Capital abonado: ${money(payment.capitalPaid)}` : "No pago capital";
           const periodStatus = normalizePaymentPeriodStatus(payment.periodStatus);
           const pendingInterest = Number(payment.pendingInterest || 0);
@@ -6728,6 +6908,7 @@ function openHistoryDialog(clientId) {
             <article class="history-item">
               <div>
                 <strong>${formatDate(payment.date)}</strong>
+                <span>Operacion: ${operationLabel}</span>
                 <span>Periodo: ${getPaymentPeriodStatusLabel(periodStatus)}</span>
                 <span>Interes esperado: ${money(payment.expectedInterest ?? payment.interestPaid)}</span>
                 <span>Interes pagado: ${money(payment.interestPaid)}</span>

@@ -3127,6 +3127,10 @@ input.field-success {
   gap: 5px;
 }
 
+.extension-actions-muted {
+  min-height: 58px;
+}
+
 .client-extension-row .small-button {
   min-height: 32px;
   padding: 0 8px;
@@ -3228,6 +3232,48 @@ input.field-success {
   display: grid;
   gap: 10px;
   margin-top: 14px;
+}
+
+.loan-action-list {
+  display: grid;
+  gap: 10px;
+}
+
+.loan-action-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 14px;
+  color: var(--ink);
+  text-align: left;
+  background: rgba(0, 167, 111, 0.06);
+  border: 1px solid rgba(0, 167, 111, 0.18);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.loan-action-choice:hover,
+.loan-action-choice:focus-visible {
+  background: rgba(0, 167, 111, 0.12);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.loan-action-choice span {
+  display: grid;
+  gap: 3px;
+}
+
+.loan-action-choice strong,
+.loan-action-choice b {
+  font-weight: 950;
+}
+
+.loan-action-choice small {
+  color: var(--muted);
+  font-weight: 800;
 }
 
 .history-section-title {
@@ -3366,6 +3412,52 @@ input.field-success {
   grid-column: 1 / -1;
   padding-top: 6px;
   color: var(--accent-strong);
+}
+
+.payment-extension-fields:empty {
+  display: none;
+}
+
+.payment-extension-box {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(0, 167, 111, 0.06);
+  border: 1px solid rgba(0, 167, 111, 0.16);
+  border-radius: 8px;
+}
+
+.payment-extension-heading {
+  display: grid;
+  gap: 3px;
+}
+
+.payment-extension-heading strong,
+.payment-extension-item strong {
+  color: var(--ink);
+  font-weight: 950;
+}
+
+.payment-extension-heading small,
+.payment-extension-summary span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.payment-extension-item {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.payment-extension-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 12px;
 }
 
 .success-modal {

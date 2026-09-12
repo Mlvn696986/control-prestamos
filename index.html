@@ -892,6 +892,7 @@
           Capital voluntario
           <input id="paymentCapital" type="number" min="0" step="0.01" value="0" />
         </label>
+        <div id="paymentExtensionFields" class="payment-extension-fields"></div>
         <label>
           Nota
           <textarea id="paymentNote" rows="3"></textarea>
@@ -901,6 +902,22 @@
         </button>
         <button class="primary-button" type="submit">Registrar pago</button>
       </form>
+    </dialog>
+
+    <dialog id="loanActionDialog" class="modal">
+      <section class="modal-panel form-grid">
+        <div class="section-heading">
+          <div>
+            <p id="loanActionEyebrow" class="eyebrow">Seleccionar operacion</p>
+            <h3 id="loanActionTitle">Que deseas hacer?</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div id="loanActionSummary" class="payment-summary"></div>
+        <div id="loanActionList" class="loan-action-list"></div>
+      </section>
     </dialog>
 
     <dialog id="historyDialog" class="modal">
