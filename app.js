@@ -112,6 +112,7 @@ let backupStatusCache = null;
 let backupStatusNotice = "";
 let adminClaimFilter = "all";
 let adminInboxFilter = "all";
+let expandedClientIds = new Set();
 let pendingAdminClaimId = null;
 let claimSubmissionInProgress = false;
 let privacyRequestSubmissionInProgress = false;
@@ -422,11 +423,15 @@ function bindEvents() {
   elements.clientDeleteForm.addEventListener("submit", handleClientDeleteSubmit);
   elements.planRequestForm.addEventListener("submit", handlePlanRequestSubmit);
   $$("[data-client-filter]").forEach((filter) => {
-    filter.addEventListener("input", renderClients);
+    filter.addEventListener("input", () => {
+      expandedClientIds.clear();
+      renderClients();
+    });
   });
   elements.clientTabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       activeClientTab = tab.dataset.clientTab || "all";
+      expandedClientIds.clear();
       renderClients();
     });
   });
@@ -559,6 +564,7 @@ function bindEvents() {
 
     const editButton = event.target.closest("[data-edit-client]");
     const editLoanButton = event.target.closest("[data-edit-loan]");
+    const extensionToggle = event.target.closest("[data-toggle-extensions]");
     const paymentButton = event.target.closest("[data-pay-loan]");
     const historyButton = event.target.closest("[data-history-client]");
     const deleteLoanButton = event.target.closest("[data-delete-loan]");
@@ -571,6 +577,11 @@ function bindEvents() {
     const quickScrollButton = event.target.closest("[data-scroll-quick-list]");
     if (quickScrollButton) {
       scrollQuickCollection(quickScrollButton.dataset.scrollQuickList);
+      return;
+    }
+
+    if (extensionToggle) {
+      toggleClientExtensions(extensionToggle.dataset.toggleExtensions);
       return;
     }
 
@@ -5490,6 +5501,8 @@ function renderClients() {
       const loan = clientLoans.find(isPrimaryLoan) || null;
       const activeLoan = loan?.status === "active" ? loan : null;
       const extensions = clientLoans.filter((loan) => !isPrimaryLoan(loan));
+      const hasExtensions = extensions.length > 0;
+      const extensionsExpanded = hasExtensions && expandedClientIds.has(client.id);
       const paymentCount = state.payments.filter((payment) => payment.clientId === client.id).length;
       const status = getLoanStatus(loan);
       const paymentButton = activeLoan
@@ -5501,6 +5514,7 @@ function renderClients() {
           <span data-label="Nombre" class="client-name-cell">
             <strong>${escapeHTML(client.name)}</strong>
             <span class="status-pill ${status.className}">${status.label}</span>
+            ${renderClientExtensionsToggle(client, extensions.length, extensionsExpanded)}
           </span>
           <span data-label="Telefono">${escapeHTML(client.phone || "Sin telefono")}</span>
           <span data-label="Capital pendiente">${renderLoanPendingCapital(loan)}</span>
@@ -5520,7 +5534,7 @@ function renderClients() {
                 : `<button class="icon-button square-action delete-icon-action" title="Eliminar cliente sin prestamo" aria-label="Eliminar cliente sin prestamo" type="button" data-delete-client="${client.id}">${icons.trash}</button>`
             }
           </span>
-          ${renderClientExtensions(client, extensions)}
+          ${renderClientExtensions(client, extensions, extensionsExpanded)}
         </article>
       `;
     })
@@ -5618,12 +5632,55 @@ function matchesClientTab(client, loans = getLoansForClient(client.id)) {
   return true;
 }
 
-function renderClientExtensions(client, extensions) {
+function renderClientExtensionsToggle(client, extensionCount, isExpanded) {
+  if (!extensionCount) return "";
+  const label = isExpanded ? `Ocultar ampliaciones de ${client.name}` : `Mostrar ampliaciones de ${client.name}`;
+  return `
+    <button
+      class="extension-toggle"
+      type="button"
+      data-toggle-extensions="${client.id}"
+      aria-expanded="${String(isExpanded)}"
+      aria-label="${escapeHTML(label)}"
+    >
+      ${isExpanded ? "⌃" : "⌄"}
+    </button>
+  `;
+}
+
+function toggleClientExtensions(clientId) {
+  if (!clientId) return;
+  const isExpanded = !expandedClientIds.has(clientId);
+  const button = document.querySelector(`[data-toggle-extensions="${CSS.escape(clientId)}"]`);
+  const panel = document.querySelector(`[data-extension-panel="${CSS.escape(clientId)}"]`);
+
+  if (isExpanded) {
+    expandedClientIds.add(clientId);
+  } else {
+    expandedClientIds.delete(clientId);
+  }
+
+  if (!button || !panel) {
+    renderClients();
+    return;
+  }
+
+  const client = getClient(clientId);
+  button.textContent = isExpanded ? "⌃" : "⌄";
+  button.setAttribute("aria-expanded", String(isExpanded));
+  button.setAttribute("aria-label", `${isExpanded ? "Ocultar" : "Mostrar"} ampliaciones de ${client?.name || "cliente"}`);
+  panel.classList.toggle("is-expanded", isExpanded);
+  panel.classList.toggle("is-collapsed", !isExpanded);
+  panel.setAttribute("aria-hidden", String(!isExpanded));
+}
+
+function renderClientExtensions(client, extensions, isExpanded = false) {
   if (!extensions.length) return "";
 
   return `
-    <div class="client-extension-panel">
+    <div class="client-extension-panel ${isExpanded ? "is-expanded" : "is-collapsed"}" data-extension-panel="${client.id}" aria-hidden="${String(!isExpanded)}">
       <div class="client-extension-list">
+        <div class="client-extension-heading">Ampliaciones de ${escapeHTML(client.name)} (${extensions.length})</div>
         ${extensions
           .map((loan, index) => {
             const status = getLoanStatus(loan);
