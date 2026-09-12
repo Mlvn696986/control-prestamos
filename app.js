@@ -3068,12 +3068,12 @@ function handlePaymentWhatsAppClick() {
 }
 
 function buildPaymentWhatsAppMessage(loan, client) {
-  const period = buildPaymentPeriodSummary(loan);
   const senderName = getCollectionSenderName();
+  const interestToPay = toNumber($("#paymentInterest")?.value);
   const capitalToPay = toNumber($("#paymentCapital")?.value);
   const capitalLine = capitalToPay > 0 ? money(capitalToPay) : "opcional";
-  const loanType = isPrimaryLoan(loan) ? "Préstamo principal" : "Ampliación";
-  const extensionLines = buildPaymentWhatsAppExtensionLines();
+  const extensionDetail = buildPaymentWhatsAppExtensionDetail();
+  const totalToPay = roundMoney(interestToPay + capitalToPay + extensionDetail.total);
 
   const lines = [
     `Hola, soy ${senderName}.`,
@@ -3082,43 +3082,53 @@ function buildPaymentWhatsAppMessage(loan, client) {
     "",
     "Detalle:",
     `Cliente: ${client?.name || "Cliente"}`,
-    `Operación: ${loanType}`,
     `Monto prestado: ${money(loan.amount)}`,
     `Capital pendiente: ${money(loan.remainingCapital)}`,
-    `Interés pendiente del cobro: ${money(period.pendingInterest)}`,
+    `Interés a pagar: ${money(interestToPay)}`,
     `Capital a pagar: ${capitalLine}`,
     "",
     `Fecha programada de cobro: ${formatDate(loan.nextDueDate)}`,
     "",
   ];
 
-  if (extensionLines.length) {
-    lines.push("Ampliaciones a pagar:", ...extensionLines, "");
+  if (extensionDetail.lines.length) {
+    lines.push("Ampliaciones", ...extensionDetail.lines, "");
   }
 
   lines.push(
+    `Total a pagar hoy: ${money(totalToPay)}`,
+    "",
     "Si ya realizaste algún pago, por favor envíame el comprobante para actualizar tu registro. Gracias.",
   );
 
   return lines.join("\n");
 }
 
-function buildPaymentWhatsAppExtensionLines() {
-  return Array.from(document.querySelectorAll("[data-extension-payment]"))
+function buildPaymentWhatsAppExtensionDetail() {
+  const details = Array.from(document.querySelectorAll("[data-extension-payment]"))
     .map((section, index) => {
       const loan = getLoan(section.dataset.extensionPayment);
       if (!loan) return null;
       const interestPaid = toNumber(section.querySelector("[data-extension-interest]")?.value);
       const capitalPaid = toNumber(section.querySelector("[data-extension-capital]")?.value);
-      if (interestPaid === 0 && capitalPaid === 0) return null;
-      return [
-        `- Ampliación ${index + 1}:`,
-        `  Interés de ampliación: ${money(interestPaid)}`,
-        `  Capital de ampliación: ${capitalPaid > 0 ? money(capitalPaid) : "opcional"}`,
-        `  Capital pendiente de ampliación: ${money(loan.remainingCapital)}`,
-      ].join("\n");
+      return {
+        total: roundMoney(interestPaid + capitalPaid),
+        lines: [
+          `Ampliación ${index + 1}:`,
+          `Monto prestado: ${money(loan.amount)}`,
+          `Capital pendiente: ${money(loan.remainingCapital)}`,
+          `Interés a pagar: ${money(interestPaid)}`,
+          `Capital a pagar: ${capitalPaid > 0 ? money(capitalPaid) : "opcional"}`,
+          `Fecha programada de cobro: ${formatDate(loan.nextDueDate)}`,
+        ],
+      };
     })
     .filter(Boolean);
+
+  return {
+    total: roundMoney(details.reduce((sum, detail) => sum + detail.total, 0)),
+    lines: details.flatMap((detail, index) => (index ? ["", ...detail.lines] : detail.lines)),
+  };
 }
 
 function getCollectionSenderName() {
