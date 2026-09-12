@@ -3020,13 +3020,23 @@ async function handlePaymentSubmit(event) {
 }
 
 function collectPaymentExtensionRequests(paymentDate, baseNote = "") {
+  const extensionCapitalAmount = toNumber(document.querySelector("[data-extension-capital-amount]")?.value);
+  const selectedExtensionCapitalIds = new Set(
+    Array.from(document.querySelectorAll("[data-extension-capital-choice]:checked")).map((input) => input.value),
+  );
+  if (!isNonNegativeMoney(extensionCapitalAmount)) {
+    throw new Error("El capital voluntario de ampliacion no puede ser negativo.");
+  }
+  if (extensionCapitalAmount > 0 && selectedExtensionCapitalIds.size === 0) {
+    throw new Error("Selecciona la ampliacion a la que quieres aplicar el capital voluntario.");
+  }
+
   return Array.from(document.querySelectorAll("[data-extension-payment]"))
     .map((section) => {
       const loan = getLoan(section.dataset.extensionPayment);
       if (!loan || loan.status !== "active") return null;
-      const capitalInput = document.querySelector(`[data-extension-capital-row="${CSS.escape(loan.id)}"] [data-extension-capital]`);
       const interestPaid = toNumber(section.dataset.extensionPendingInterest);
-      const capitalPaid = toNumber(capitalInput?.value);
+      const capitalPaid = selectedExtensionCapitalIds.has(loan.id) ? extensionCapitalAmount : 0;
       if (!isNonNegativeMoney(interestPaid) || !isNonNegativeMoney(capitalPaid)) {
         throw new Error("Los montos de ampliacion no pueden ser negativos.");
       }
@@ -3101,12 +3111,16 @@ function buildPaymentWhatsAppMessage(loan, client) {
 }
 
 function buildPaymentWhatsAppExtensionLines() {
+  const extensionCapitalAmount = toNumber(document.querySelector("[data-extension-capital-amount]")?.value);
+  const selectedExtensionCapitalIds = new Set(
+    Array.from(document.querySelectorAll("[data-extension-capital-choice]:checked")).map((input) => input.value),
+  );
   return Array.from(document.querySelectorAll("[data-extension-payment]"))
     .map((section, index) => {
       const loan = getLoan(section.dataset.extensionPayment);
       if (!loan) return null;
       const interestPaid = toNumber(section.dataset.extensionPendingInterest);
-      const capitalPaid = toNumber(document.querySelector(`[data-extension-capital-row="${CSS.escape(loan.id)}"] [data-extension-capital]`)?.value);
+      const capitalPaid = selectedExtensionCapitalIds.has(loan.id) ? extensionCapitalAmount : 0;
       if (interestPaid === 0 && capitalPaid === 0) return null;
       return [
         `- Ampliación ${index + 1}:`,
@@ -6879,21 +6893,31 @@ function renderPaymentExtensionSummary(extensions) {
 
 function renderPaymentExtensionFields(extensions) {
   if (!extensions.length) return "";
+  const choiceCount = Math.max(5, extensions.length);
 
   return `
-      <details class="payment-extension-capital">
-        <summary>Capital voluntario de la ampliacion</summary>
-        <div class="payment-extension-capital-list">
-          ${extensions
-            .map((loan, index) => `
-              <label data-extension-capital-row="${loan.id}">
-                Ampliacion ${index + 1}
-                <input data-extension-capital type="number" min="0" step="0.01" value="0" />
+      <div class="payment-extension-capital">
+        <label class="payment-extension-capital-input">
+          Capital voluntario de la ampliacion
+          <input data-extension-capital-amount type="number" min="0" step="0.01" value="0" />
+        </label>
+        <div class="payment-extension-choice-group" aria-label="Seleccionar ampliaciones">
+          ${Array.from({ length: choiceCount }, (_, index) => {
+            const loan = extensions[index];
+            return `
+              <label class="payment-extension-choice ${loan ? "" : "is-disabled"}">
+                <input
+                  data-extension-capital-choice
+                  type="checkbox"
+                  value="${escapeHTML(loan?.id || "")}"
+                  ${loan ? "" : "disabled"}
+                />
+                <span>${index + 1}</span>
               </label>
-            `)
-            .join("")}
+            `;
+          }).join("")}
         </div>
-      </details>
+      </div>
   `;
 }
 

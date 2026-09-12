@@ -3459,38 +3459,69 @@ input.field-success {
 }
 
 .payment-extension-capital {
-  background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.payment-extension-capital summary {
-  min-height: 42px;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  color: var(--ink);
-  cursor: pointer;
-  font-weight: 950;
-}
-
-.payment-extension-capital summary:hover,
-.payment-extension-capital summary:focus-visible {
-  color: var(--accent-strong);
-  outline: none;
-}
-
-.payment-extension-capital-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  padding: 10px;
-  border-top: 1px solid var(--line);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
 }
 
-.payment-extension-capital-list label {
+.payment-extension-capital-input {
   min-width: 0;
+}
+
+.payment-extension-choice-group {
+  display: grid;
+  grid-template-columns: repeat(5, 34px);
+  gap: 7px;
+  align-self: end;
+  padding-bottom: 1px;
+}
+
+.payment-extension-choice {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  height: 34px;
+}
+
+.payment-extension-choice input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.payment-extension-choice span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: var(--accent-strong);
+  background: #ffffff;
+  border: 1px solid rgba(0, 167, 111, 0.32);
+  border-radius: 8px;
+  font-weight: 950;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+
+.payment-extension-choice input:checked + span {
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.payment-extension-choice input:focus-visible + span {
+  outline: 3px solid rgba(0, 167, 111, 0.22);
+  outline-offset: 2px;
+}
+
+.payment-extension-choice.is-disabled {
+  opacity: 0.38;
+}
+
+.payment-extension-choice.is-disabled input {
+  cursor: not-allowed;
 }
 
 .success-modal {
@@ -3711,8 +3742,12 @@ input.field-success {
 
   .payment-summary-list,
   .payment-extension-summary-row,
-  .payment-extension-capital-list {
+  .payment-extension-capital {
     grid-template-columns: 1fr;
+  }
+
+  .payment-extension-choice-group {
+    justify-self: start;
   }
 
   .payment-extension-summary-row {
