@@ -3418,110 +3418,30 @@ input.field-success {
   display: none;
 }
 
-.payment-extension-heading {
+.payment-operation-block {
   display: grid;
-  gap: 3px;
+  gap: 10px;
 }
 
-.payment-extension-heading strong,
-.payment-extension-summary-row strong {
+.payment-operation-title {
+  margin: 0;
   color: var(--ink);
+  font-size: 0.95rem;
   font-weight: 950;
 }
 
-.payment-extension-heading small,
-.payment-extension-summary-row span {
-  color: var(--muted);
-  font-size: 0.84rem;
-  font-weight: 800;
+.payment-extension-fields {
+  display: grid;
+  gap: 12px;
 }
 
-.payment-summary-extensions {
-  grid-column: 1 / -1;
-  display: grid;
-  gap: 8px;
-  margin-top: 2px;
-  padding-top: 10px;
+.payment-extension-operation {
+  padding-top: 12px;
   border-top: 1px solid rgba(0, 167, 111, 0.18);
 }
 
-.payment-extension-summary-list {
-  display: grid;
-  gap: 5px;
-}
-
-.payment-extension-summary-row {
-  display: grid;
-  grid-template-columns: minmax(110px, 0.8fr) repeat(4, minmax(0, 1fr));
-  gap: 5px 12px;
-  align-items: center;
-  min-height: 28px;
-}
-
-.payment-extension-capital {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-}
-
-.payment-extension-capital-input {
-  min-width: 0;
-}
-
-.payment-extension-choice-group {
-  display: grid;
-  grid-template-columns: repeat(5, 34px);
-  gap: 7px;
-  align-self: end;
-  padding-bottom: 1px;
-}
-
-.payment-extension-choice {
-  position: relative;
-  display: grid;
-  place-items: center;
-  min-width: 34px;
-  height: 34px;
-}
-
-.payment-extension-choice input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.payment-extension-choice span {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
+.payment-extension-operation .payment-operation-title {
   color: var(--accent-strong);
-  background: #ffffff;
-  border: 1px solid rgba(0, 167, 111, 0.32);
-  border-radius: 8px;
-  font-weight: 950;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
-}
-
-.payment-extension-choice input:checked + span {
-  color: #ffffff;
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.payment-extension-choice input:focus-visible + span {
-  outline: 3px solid rgba(0, 167, 111, 0.22);
-  outline-offset: 2px;
-}
-
-.payment-extension-choice.is-disabled {
-  opacity: 0.38;
-}
-
-.payment-extension-choice.is-disabled input {
-  cursor: not-allowed;
 }
 
 .success-modal {
@@ -3740,25 +3660,8 @@ input.field-success {
     grid-template-columns: 1fr;
   }
 
-  .payment-summary-list,
-  .payment-extension-summary-row,
-  .payment-extension-capital {
+  .payment-summary-list {
     grid-template-columns: 1fr;
-  }
-
-  .payment-extension-choice-group {
-    justify-self: start;
-  }
-
-  .payment-extension-summary-row {
-    gap: 2px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid rgba(6, 24, 38, 0.08);
-  }
-
-  .payment-extension-summary-row:last-child {
-    padding-bottom: 0;
-    border-bottom: 0;
   }
 
   .claim-book-notice,

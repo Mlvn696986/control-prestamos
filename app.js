@@ -3020,23 +3020,13 @@ async function handlePaymentSubmit(event) {
 }
 
 function collectPaymentExtensionRequests(paymentDate, baseNote = "") {
-  const extensionCapitalAmount = toNumber(document.querySelector("[data-extension-capital-amount]")?.value);
-  const selectedExtensionCapitalIds = new Set(
-    Array.from(document.querySelectorAll("[data-extension-capital-choice]:checked")).map((input) => input.value),
-  );
-  if (!isNonNegativeMoney(extensionCapitalAmount)) {
-    throw new Error("El capital voluntario de ampliacion no puede ser negativo.");
-  }
-  if (extensionCapitalAmount > 0 && selectedExtensionCapitalIds.size === 0) {
-    throw new Error("Selecciona la ampliacion a la que quieres aplicar el capital voluntario.");
-  }
-
   return Array.from(document.querySelectorAll("[data-extension-payment]"))
     .map((section) => {
       const loan = getLoan(section.dataset.extensionPayment);
       if (!loan || loan.status !== "active") return null;
-      const interestPaid = toNumber(section.dataset.extensionPendingInterest);
-      const capitalPaid = selectedExtensionCapitalIds.has(loan.id) ? extensionCapitalAmount : 0;
+      const extensionDate = section.querySelector("[data-extension-date]")?.value || paymentDate;
+      const interestPaid = toNumber(section.querySelector("[data-extension-interest]")?.value);
+      const capitalPaid = toNumber(section.querySelector("[data-extension-capital]")?.value);
       if (!isNonNegativeMoney(interestPaid) || !isNonNegativeMoney(capitalPaid)) {
         throw new Error("Los montos de ampliacion no pueden ser negativos.");
       }
@@ -3044,9 +3034,12 @@ function collectPaymentExtensionRequests(paymentDate, baseNote = "") {
         throw new Error("El capital de ampliacion pagado no puede ser mayor que su capital pendiente.");
       }
       if (interestPaid === 0 && capitalPaid === 0) return null;
+      if (!extensionDate) {
+        throw new Error("Selecciona la fecha de pago de la ampliacion.");
+      }
       return {
         loan,
-        paymentDate,
+        paymentDate: extensionDate,
         scheduledDueDate: loan.nextDueDate,
         interestPaid,
         capitalPaid,
@@ -3111,16 +3104,12 @@ function buildPaymentWhatsAppMessage(loan, client) {
 }
 
 function buildPaymentWhatsAppExtensionLines() {
-  const extensionCapitalAmount = toNumber(document.querySelector("[data-extension-capital-amount]")?.value);
-  const selectedExtensionCapitalIds = new Set(
-    Array.from(document.querySelectorAll("[data-extension-capital-choice]:checked")).map((input) => input.value),
-  );
   return Array.from(document.querySelectorAll("[data-extension-payment]"))
     .map((section, index) => {
       const loan = getLoan(section.dataset.extensionPayment);
       if (!loan) return null;
-      const interestPaid = toNumber(section.dataset.extensionPendingInterest);
-      const capitalPaid = selectedExtensionCapitalIds.has(loan.id) ? extensionCapitalAmount : 0;
+      const interestPaid = toNumber(section.querySelector("[data-extension-interest]")?.value);
+      const capitalPaid = toNumber(section.querySelector("[data-extension-capital]")?.value);
       if (interestPaid === 0 && capitalPaid === 0) return null;
       return [
         `- Ampliación ${index + 1}:`,
@@ -6840,7 +6829,6 @@ function openPaymentDialog(loanId) {
       <span>Ya pagado: <strong>${money(period.paidInterest)}</strong></span>
       <span>Interes pendiente: <strong>${money(period.pendingInterest)}</strong></span>
       <span>Capital pendiente: <strong>${money(loan.remainingCapital)}</strong></span>
-      ${renderPaymentExtensionSummary(paymentExtensions)}
       ${
         adjustment
           ? `<small>Primer cobro ajustado segun los dias transcurridos (${adjustment.days} dia(s)). Tasa aplicada en este primer cobro: ${formatDisplayPercent(adjustment.appliedRate)}%.</small>`
@@ -6857,67 +6845,34 @@ function getActiveExtensionLoansForPayment(baseLoan) {
   return getLoansForClient(client.id).filter((loan) => !isPrimaryLoan(loan) && loan.status === "active" && loan.id !== baseLoan.id);
 }
 
-function renderPaymentExtensionSummary(extensions) {
-  if (!extensions.length) return "";
-
-  return `
-    <div class="payment-summary-extensions">
-      <div class="payment-extension-heading">
-        <strong>Ampliaciones activas</strong>
-        <small>Se cobrara el interes pendiente de cada ampliacion activa en este mismo pago.</small>
-      </div>
-      <div class="payment-extension-summary-list">
-        ${extensions
-          .map((loan, index) => {
-            const period = buildPaymentPeriodSummary(loan);
-            const rate = getDisplayPeriodRate(loan);
-            return `
-              <article
-                class="payment-extension-summary-row"
-                data-extension-payment="${loan.id}"
-                data-extension-pending-interest="${period.pendingInterest}"
-              >
-                <strong>${index + 1}. Ampliacion</strong>
-                <span>Capital pendiente: ${money(loan.remainingCapital)}</span>
-                <span>Interes pendiente: ${money(period.pendingInterest)}</span>
-                <span>Cobro programado: ${formatDate(loan.nextDueDate)}</span>
-                <span>Tasa: ${formatDisplayPercent(rate)}%</span>
-              </article>
-            `;
-          })
-          .join("")}
-      </div>
-    </div>
-  `;
-}
-
 function renderPaymentExtensionFields(extensions) {
   if (!extensions.length) return "";
-  const choiceCount = Math.max(5, extensions.length);
 
   return `
-      <div class="payment-extension-capital">
-        <label class="payment-extension-capital-input">
-          Capital voluntario de la ampliacion
-          <input data-extension-capital-amount type="number" min="0" step="0.01" value="0" />
-        </label>
-        <div class="payment-extension-choice-group" aria-label="Seleccionar ampliaciones">
-          ${Array.from({ length: choiceCount }, (_, index) => {
-            const loan = extensions[index];
-            return `
-              <label class="payment-extension-choice ${loan ? "" : "is-disabled"}">
-                <input
-                  data-extension-capital-choice
-                  type="checkbox"
-                  value="${escapeHTML(loan?.id || "")}"
-                  ${loan ? "" : "disabled"}
-                />
-                <span>${index + 1}</span>
+      ${extensions
+        .map((loan, index) => {
+          const period = buildPaymentPeriodSummary(loan);
+          return `
+            <section class="payment-operation-block payment-extension-operation" data-extension-payment="${loan.id}">
+              <h4 class="payment-operation-title">Ampliacion ${index + 1}</h4>
+              <div class="field-row">
+                <label>
+                  Fecha de pago
+                  <input data-extension-date type="date" value="${todayISO()}" />
+                </label>
+                <label>
+                  Interes pagado
+                  <input data-extension-interest type="number" min="0" step="0.01" value="${period.pendingInterest.toFixed(2)}" />
+                </label>
+              </div>
+              <label>
+                Capital voluntario
+                <input data-extension-capital type="number" min="0" step="0.01" value="0" />
               </label>
-            `;
-          }).join("")}
-        </div>
-      </div>
+            </section>
+          `;
+        })
+        .join("")}
   `;
 }
 
