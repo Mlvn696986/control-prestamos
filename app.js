@@ -5643,7 +5643,7 @@ function renderClientExtensionsToggle(client, extensionCount, isExpanded) {
       aria-expanded="${String(isExpanded)}"
       aria-label="${escapeHTML(label)}"
     >
-      ${isExpanded ? "⌃" : "⌄"}
+      ${renderExtensionChevron()}
     </button>
   `;
 }
@@ -5666,12 +5666,15 @@ function toggleClientExtensions(clientId) {
   }
 
   const client = getClient(clientId);
-  button.textContent = isExpanded ? "⌃" : "⌄";
   button.setAttribute("aria-expanded", String(isExpanded));
   button.setAttribute("aria-label", `${isExpanded ? "Ocultar" : "Mostrar"} ampliaciones de ${client?.name || "cliente"}`);
   panel.classList.toggle("is-expanded", isExpanded);
   panel.classList.toggle("is-collapsed", !isExpanded);
   panel.setAttribute("aria-hidden", String(!isExpanded));
+}
+
+function renderExtensionChevron() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 }
 
 function renderClientExtensions(client, extensions, isExpanded = false) {
