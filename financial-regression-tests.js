@@ -1189,7 +1189,8 @@ assertFileIncludes(appCode, "let expandedClientIds = new Set();", "Clientes: las
 assertFileIncludes(appCode, "renderClientExtensionsToggle", "Clientes: falta el chevron discreto para desplegar ampliaciones.");
 assertFileIncludes(appCode, 'aria-expanded="${String(isExpanded)}"', "Clientes: el chevron debe exponer aria-expanded.");
 assertFileIncludes(appCode, 'aria-label="${escapeHTML(label)}"', "Clientes: el chevron debe tener aria-label accesible.");
-assertFileIncludes(appCode, "Ampliaciones de ${escapeHTML(client.name)} (${extensions.length})", "Clientes: el encabezado de ampliaciones debe existir dentro del bloque desplegable.");
+assertCondition(!appCode.includes("Ampliaciones de ${escapeHTML(client.name)}"), "Clientes: no debe mostrarse el encabezado Ampliaciones de en la tabla.");
+assertCondition(!stylesCode.includes(".client-extension-heading"), "Clientes: no debe conservar estilos del encabezado de ampliaciones.");
 assertFileIncludes(appCode, "Ampliacion ${index + 1}", "Clientes: cada ampliacion debe indicar Ampliacion 1, Ampliacion 2, etc.");
 assertFileIncludes(appCode, "<strong>${escapeHTML(client.name)}</strong>", "Clientes: cada ampliacion debe mostrar primero el nombre del cliente.");
 assertFileIncludes(appCode, '<small class="extension-client-name">Ampliacion ${index + 1}</small>', "Clientes: cada ampliacion debe mostrar Ampliacion debajo del nombre del cliente.");

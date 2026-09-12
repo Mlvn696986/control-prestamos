@@ -5683,7 +5683,6 @@ function renderClientExtensions(client, extensions, isExpanded = false) {
   return `
     <div class="client-extension-panel ${isExpanded ? "is-expanded" : "is-collapsed"}" data-extension-panel="${client.id}" aria-hidden="${String(!isExpanded)}">
       <div class="client-extension-list">
-        <div class="client-extension-heading">Ampliaciones de ${escapeHTML(client.name)} (${extensions.length})</div>
         ${extensions
           .map((loan, index) => {
             const status = getLoanStatus(loan);

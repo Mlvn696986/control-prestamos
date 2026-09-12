@@ -3030,18 +3030,6 @@ input.field-success {
   background: var(--client-extension-bg);
 }
 
-.client-extension-heading {
-  padding: 9px 18px 8px;
-  color: var(--accent-strong);
-  background: var(--client-extension-bg);
-  border-left: 4px solid var(--accent);
-  border-bottom: 1px solid var(--line);
-  font-size: 0.86rem;
-  font-weight: 950;
-  line-height: 1.15;
-  text-transform: uppercase;
-}
-
 .client-extension-table {
   display: grid;
   grid-template-columns: var(--client-table-columns);
