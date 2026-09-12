@@ -3418,46 +3418,79 @@ input.field-success {
   display: none;
 }
 
-.payment-extension-box {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  background: rgba(0, 167, 111, 0.06);
-  border: 1px solid rgba(0, 167, 111, 0.16);
-  border-radius: 8px;
-}
-
 .payment-extension-heading {
   display: grid;
   gap: 3px;
 }
 
 .payment-extension-heading strong,
-.payment-extension-item strong {
+.payment-extension-summary-row strong {
   color: var(--ink);
   font-weight: 950;
 }
 
 .payment-extension-heading small,
-.payment-extension-summary span {
+.payment-extension-summary-row span {
   color: var(--muted);
   font-size: 0.84rem;
   font-weight: 800;
 }
 
-.payment-extension-item {
+.payment-summary-extensions {
+  grid-column: 1 / -1;
   display: grid;
-  gap: 10px;
-  padding: 10px;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 167, 111, 0.18);
+}
+
+.payment-extension-summary-list {
+  display: grid;
+  gap: 5px;
+}
+
+.payment-extension-summary-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.8fr) repeat(4, minmax(0, 1fr));
+  gap: 5px 12px;
+  align-items: center;
+  min-height: 28px;
+}
+
+.payment-extension-capital {
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 8px;
+  overflow: hidden;
 }
 
-.payment-extension-summary {
+.payment-extension-capital summary {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 950;
+}
+
+.payment-extension-capital summary:hover,
+.payment-extension-capital summary:focus-visible {
+  color: var(--accent-strong);
+  outline: none;
+}
+
+.payment-extension-capital-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px 12px;
+  gap: 10px;
+  padding: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.payment-extension-capital-list label {
+  min-width: 0;
 }
 
 .success-modal {
@@ -3674,6 +3707,23 @@ input.field-success {
 
   .modal-actions {
     grid-template-columns: 1fr;
+  }
+
+  .payment-summary-list,
+  .payment-extension-summary-row,
+  .payment-extension-capital-list {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-extension-summary-row {
+    gap: 2px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(6, 24, 38, 0.08);
+  }
+
+  .payment-extension-summary-row:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
   }
 
   .claim-book-notice,
