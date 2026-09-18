@@ -1225,10 +1225,12 @@ function updateAdminProfileCache(user) {
 function showProfileToast() {
   if (!elements.profileToast) return;
   window.clearTimeout(profileToastTimer);
-  elements.profileToast.classList.remove("is-hidden");
+  elements.profileToast.setAttribute("aria-hidden", "false");
+  elements.profileToast.classList.add("is-visible");
   profileToastTimer = window.setTimeout(() => {
-    elements.profileToast.classList.add("is-hidden");
-  }, 3600);
+    elements.profileToast.classList.remove("is-visible");
+    elements.profileToast.setAttribute("aria-hidden", "true");
+  }, 5000);
 }
 
 function updateConfirmPasswordFeedback() {

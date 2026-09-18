@@ -142,6 +142,9 @@
         <header class="topbar">
           <div class="topbar-meta">
             <p class="topbar-date-pill" id="todayLabel">📅 Hoy</p>
+            <div id="profileToast" class="profile-toast" role="status" aria-live="polite" aria-hidden="true">
+              🎉 ¡Felicitaciones! Has actualizado tu perfil correctamente.
+            </div>
             <h2 id="viewTitle" class="sr-only">Resumen</h2>
           </div>
           <div class="topbar-actions">
@@ -1124,10 +1127,6 @@
         </div>
       </form>
     </dialog>
-
-    <div id="profileToast" class="profile-toast is-hidden" role="status" aria-live="polite">
-      🎉 ¡Felicitaciones! Has actualizado tu perfil correctamente.
-    </div>
 
     <dialog id="passwordSuccessDialog" class="modal success-modal">
       <section class="modal-panel success-panel">
