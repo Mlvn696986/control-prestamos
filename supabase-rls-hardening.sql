@@ -2,6 +2,8 @@
 -- Ejecuta este archivo en Supabase SQL Editor despues de supabase-financial-integrity.sql.
 -- No borra tablas, usuarios ni registros financieros.
 
+alter table profiles add column if not exists phone text;
+
 alter table profiles enable row level security;
 alter table subscriptions enable row level security;
 alter table clients enable row level security;
@@ -83,8 +85,8 @@ using (auth.uid() = id);
 
 create policy "profiles own update"
 on profiles for update
-using (auth.uid() = id and is_admin = false)
-with check (auth.uid() = id and is_admin = false);
+using (auth.uid() = id)
+with check (auth.uid() = id);
 
 create policy "profiles admin select"
 on profiles for select
@@ -360,7 +362,7 @@ revoke all on account_deletion_requests from anon, authenticated;
 revoke all on email_outbox from anon, authenticated;
 
 grant select on profiles to authenticated;
-grant update (business_name, owner_name, currency) on profiles to authenticated;
+grant update (business_name, owner_name, phone, currency) on profiles to authenticated;
 grant select on subscriptions to authenticated;
 grant select, insert, update, delete on clients to authenticated;
 grant select, delete on loans to authenticated;

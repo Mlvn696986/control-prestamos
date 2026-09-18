@@ -1035,7 +1035,7 @@ assertFileIncludes(schemaCode, "create trigger trg_enforce_capital_movement_rule
 assertFileIncludes(schemaCode, "capital movements own restore delete", "Esquema base debe restringir borrado de movimientos de capital.");
 assertFileIncludes(rlsCode, "revoke all on subscriptions from anon, authenticated", "RLS: migracion debe retirar permisos directos amplios de suscripciones.");
 assertFileIncludes(rlsCode, "grant select on subscriptions to authenticated", "RLS: usuarios normales solo deben leer su suscripcion.");
-assertFileIncludes(rlsCode, "grant update (business_name, owner_name, currency) on profiles to authenticated", "RLS: profiles solo debe permitir columnas editables.");
+assertFileIncludes(rlsCode, "grant update (business_name, owner_name, phone, currency) on profiles to authenticated", "RLS: profiles solo debe permitir columnas editables.");
 assertFileIncludes(rlsCode, "create or replace function public.initialize_user_account", "RLS: migracion debe crear RPC segura de inicializacion.");
 assertFileIncludes(rlsCode, "values (v_user_id, 'free', 'active', 10, now(), now())", "RLS: inicializacion solo debe crear plan gratis.");
 assertFileIncludes(rlsCode, "create or replace function public.admin_update_user_plan", "RLS: migracion debe crear RPC controlada para cambios de plan admin.");
@@ -1046,7 +1046,7 @@ assertFileIncludes(rlsCode, "grant select on capital_movements to authenticated"
 assertFileIncludes(rlsCode, "grant select, delete on loans to authenticated", "RLS: prestamos mantienen borrado propio sin permitir insert/update directo.");
 assertFileIncludes(rlsCode, "create policy \"subscriptions admin select\"", "RLS: admin solo necesita select global de suscripciones.");
 assertFileIncludes(schemaCode, "revoke all on subscriptions from anon, authenticated", "Esquema base debe retirar permisos directos amplios de suscripciones.");
-assertFileIncludes(schemaCode, "grant update (business_name, owner_name, currency) on profiles to authenticated", "Esquema base debe proteger is_admin con permisos de columna.");
+assertFileIncludes(schemaCode, "grant update (business_name, owner_name, phone, currency) on profiles to authenticated", "Esquema base debe proteger is_admin con permisos de columna.");
 assertCondition(!sqlCode.includes("El cliente supera el limite de S/1,000"), "Regla actual: servidor no debe bloquear por limite S/1,000 por cliente.");
 assertFileIncludes(sqlCode, "create or replace function public.enforce_client_plan_limit", "Planes: servidor debe validar limite de clientes por plan.");
 assertFileIncludes(sqlCode, "create trigger trg_enforce_client_plan_limit", "Planes: falta trigger servidor para bloquear exceso de clientes.");
@@ -1091,6 +1091,11 @@ assertFileIncludes(stylesCode, ".section-helper", "Resumen: el texto de ayuda de
 assertFileIncludes(htmlCode, 'src="assets/ermif-logo.png"', "Marca: el login debe usar el logo completo ERMIF.");
 assertFileIncludes(htmlCode, 'src="assets/ermif-mark.png"', "Marca: la barra lateral debe usar el simbolo compacto ERMIF.");
 assertFileIncludes(htmlCode, '<span id="ownerLabel" class="is-hidden">Prestamista</span>', "Sidebar: Prestamista no debe mostrarse visualmente debajo del nombre del negocio.");
+assertFileIncludes(htmlCode, 'id="profileEditTrigger"', "Perfil: el nombre del sidebar debe abrir edicion de perfil.");
+assertFileIncludes(htmlCode, 'id="profileEditDialog"', "Perfil: debe existir modal Editar mi perfil.");
+assertFileIncludes(htmlCode, 'id="profilePhone"', "Perfil: debe permitir editar telefono del usuario.");
+assertFileIncludes(appCode, '.from("profiles")', "Perfil: debe guardar cambios en la tabla profiles existente.");
+assertFileIncludes(appCode, "showProfileToast", "Perfil: debe mostrar confirmacion despues del guardado.");
 assertCondition(!htmlCode.includes('class="plan-card"'), "Sidebar: el plan actual no debe mostrarse como tarjeta separada.");
 assertFileIncludes(htmlCode, 'id="planInlineStatus"', "Sidebar: el estado del plan debe mostrarse debajo del nombre.");
 assertFileIncludes(appCode, "getPlanInlineStatusText", "Sidebar: el estado del plan debe armarse en una sola linea.");

@@ -216,6 +216,7 @@ create table if not exists user_backups (
 );
 
 alter table profiles add column if not exists email text;
+alter table profiles add column if not exists phone text;
 alter table profiles add column if not exists is_admin boolean not null default false;
 alter table profiles add column if not exists terms_version text;
 alter table profiles add column if not exists terms_accepted_at timestamptz;
@@ -358,8 +359,8 @@ with check (auth.uid() = id and is_admin = false);
 
 create policy "profiles own update"
 on profiles for update
-using (auth.uid() = id and is_admin = false)
-with check (auth.uid() = id and is_admin = false);
+using (auth.uid() = id)
+with check (auth.uid() = id);
 
 create policy "profiles admin select"
 on profiles for select
@@ -1885,7 +1886,7 @@ revoke all on email_outbox from anon, authenticated;
 revoke all on user_backups from anon, authenticated;
 
 grant select on profiles to authenticated;
-grant update (business_name, owner_name, currency) on profiles to authenticated;
+grant update (business_name, owner_name, phone, currency) on profiles to authenticated;
 grant select on subscriptions to authenticated;
 grant select, insert, update, delete on clients to authenticated;
 grant select, delete on loans to authenticated;

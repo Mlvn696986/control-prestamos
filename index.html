@@ -94,11 +94,14 @@
       <aside class="sidebar">
         <div class="brand-lockup compact brand-sidebar-lockup">
           <img class="brand-logo brand-logo-sidebar" src="assets/ermif-mark.png" alt="" aria-hidden="true" />
-          <div>
-            <strong id="businessLabel">Control</strong>
-            <span id="ownerLabel" class="is-hidden">Prestamista</span>
-            <small id="planInlineStatus" class="plan-inline-status">Plan Gratis · 0 de 10 clientes</small>
-          </div>
+          <button id="profileEditTrigger" class="profile-edit-trigger" type="button" title="Editar mi perfil" aria-label="Editar mi perfil">
+            <span class="profile-sidebar-copy">
+              <strong id="businessLabel">Control</strong>
+              <span id="ownerLabel" class="is-hidden">Prestamista</span>
+              <small id="planInlineStatus" class="plan-inline-status">Plan Gratis · 0 de 10 clientes</small>
+            </span>
+            <span class="profile-edit-icon" aria-hidden="true">✎</span>
+          </button>
         </div>
 
         <nav class="nav-tabs" aria-label="Vistas principales">
@@ -1082,6 +1085,49 @@
         </div>
       </form>
     </dialog>
+
+    <dialog id="profileEditDialog" class="modal">
+      <form id="profileEditForm" method="dialog" class="modal-panel form-grid" novalidate>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Perfil</p>
+            <h3>Editar mi perfil</h3>
+          </div>
+          <button class="icon-button" value="cancel" title="Cerrar" type="button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+          </button>
+        </div>
+        <div id="profileEditNotice" class="auth-notice is-hidden" role="alert"></div>
+        <label>
+          Tu nombre
+          <input id="profileOwnerName" name="profileOwnerName" type="text" maxlength="80" required />
+          <small id="profileOwnerNameError" class="field-feedback" aria-live="polite"></small>
+        </label>
+        <label>
+          Nombre del negocio
+          <input id="profileBusinessName" name="profileBusinessName" type="text" maxlength="90" />
+          <small id="profileBusinessNameError" class="field-feedback" aria-live="polite"></small>
+        </label>
+        <label>
+          Telefono
+          <input id="profilePhone" name="profilePhone" type="tel" maxlength="20" inputmode="tel" />
+          <small id="profilePhoneError" class="field-feedback" aria-live="polite"></small>
+        </label>
+        <label>
+          Correo electronico
+          <input id="profileEmail" type="email" readonly />
+          <small class="profile-readonly-note">Solo lectura. El correo de acceso no se cambia desde este formulario.</small>
+        </label>
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" data-close-dialog>Cancelar</button>
+          <button id="profileSaveButton" class="primary-button" type="submit">Guardar cambios</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="profileToast" class="profile-toast is-hidden" role="status" aria-live="polite">
+      🎉 ¡Felicitaciones! Has actualizado tu perfil correctamente.
+    </div>
 
     <dialog id="passwordSuccessDialog" class="modal success-modal">
       <section class="modal-panel success-panel">

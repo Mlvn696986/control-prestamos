@@ -119,6 +119,8 @@ let claimSubmissionInProgress = false;
 let privacyRequestSubmissionInProgress = false;
 let accountDeletionSubmissionInProgress = false;
 let adminClaimResponseSubmissionInProgress = false;
+let profileEditSubmissionInProgress = false;
+let profileToastTimer = null;
 const saas = {
   client: null,
   session: null,
@@ -220,6 +222,19 @@ const elements = {
   businessLabel: $("#businessLabel"),
   ownerLabel: $("#ownerLabel"),
   planInlineStatus: $("#planInlineStatus"),
+  profileEditTrigger: $("#profileEditTrigger"),
+  profileEditDialog: $("#profileEditDialog"),
+  profileEditForm: $("#profileEditForm"),
+  profileEditNotice: $("#profileEditNotice"),
+  profileOwnerName: $("#profileOwnerName"),
+  profileOwnerNameError: $("#profileOwnerNameError"),
+  profileBusinessName: $("#profileBusinessName"),
+  profileBusinessNameError: $("#profileBusinessNameError"),
+  profilePhone: $("#profilePhone"),
+  profilePhoneError: $("#profilePhoneError"),
+  profileEmail: $("#profileEmail"),
+  profileSaveButton: $("#profileSaveButton"),
+  profileToast: $("#profileToast"),
   todayLabel: $("#todayLabel"),
   viewTitle: $("#viewTitle"),
   dataMenu: $(".data-menu"),
@@ -422,6 +437,11 @@ function bindEvents() {
   elements.googleAuthButton.addEventListener("click", handleGoogleAuth);
   elements.completeProfileForm.addEventListener("submit", handleCompleteProfileSubmit);
   elements.completeProfileLogout.addEventListener("click", handleCompleteProfileLogout);
+  elements.profileEditTrigger?.addEventListener("click", openProfileEditDialog);
+  elements.profileEditForm?.addEventListener("submit", handleProfileEditSubmit);
+  [elements.profileOwnerName, elements.profileBusinessName, elements.profilePhone].forEach((input) => {
+    input?.addEventListener("input", clearProfileEditFeedback);
+  });
   elements.clientForm.addEventListener("submit", handleClientSubmit);
   elements.editForm.addEventListener("submit", handleEditSubmit);
   elements.paymentForm.addEventListener("submit", handlePaymentSubmit);
@@ -1082,6 +1102,133 @@ async function handleCompleteProfileLogout() {
   await saas.client?.auth.signOut();
   state = createEmptyState();
   render();
+}
+
+function openProfileEditDialog() {
+  if (!state.user || !elements.profileEditDialog) return;
+  clearProfileEditFeedback();
+  elements.profileOwnerName.value = state.user.ownerName || "";
+  elements.profileBusinessName.value = state.user.businessName || "";
+  elements.profilePhone.value = state.user.phone || "";
+  elements.profileEmail.value = state.user.email || "";
+  elements.profileEditDialog.showModal();
+  elements.profileOwnerName.focus();
+}
+
+function clearProfileEditFeedback() {
+  [elements.profileOwnerNameError, elements.profileBusinessNameError, elements.profilePhoneError].forEach((item) => {
+    if (item) item.textContent = "";
+  });
+  [elements.profileOwnerName, elements.profileBusinessName, elements.profilePhone].forEach((input) => {
+    input?.classList.remove("field-error");
+  });
+  if (elements.profileEditNotice) {
+    elements.profileEditNotice.textContent = "";
+    elements.profileEditNotice.classList.add("is-hidden");
+  }
+}
+
+function normalizeProfileText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function setProfileFieldError(input, errorElement, message) {
+  if (input) input.classList.add("field-error");
+  if (errorElement) errorElement.textContent = message;
+}
+
+function validateProfileEditForm() {
+  clearProfileEditFeedback();
+  const ownerName = normalizeProfileText(elements.profileOwnerName.value);
+  const businessName = normalizeProfileText(elements.profileBusinessName.value);
+  const phone = normalizeProfileText(elements.profilePhone.value);
+  let isValid = true;
+
+  if (ownerName.length < 2) {
+    setProfileFieldError(elements.profileOwnerName, elements.profileOwnerNameError, "Escribe tu nombre con al menos 2 caracteres.");
+    isValid = false;
+  }
+  if (businessName.length > 90) {
+    setProfileFieldError(elements.profileBusinessName, elements.profileBusinessNameError, "El nombre del negocio debe tener 90 caracteres o menos.");
+    isValid = false;
+  }
+  const phoneDigits = normalizePhone(phone);
+  if (phone && (phoneDigits.length < 6 || phoneDigits.length > 15)) {
+    setProfileFieldError(elements.profilePhone, elements.profilePhoneError, "Ingresa un telefono valido de 6 a 15 digitos.");
+    isValid = false;
+  }
+
+  if (!isValid) return null;
+  return {
+    ownerName,
+    businessName: businessName || ownerName,
+    phone,
+  };
+}
+
+async function handleProfileEditSubmit(event) {
+  event.preventDefault();
+  if (profileEditSubmissionInProgress || !state.user) return;
+
+  const profile = validateProfileEditForm();
+  if (!profile) return;
+
+  profileEditSubmissionInProgress = true;
+  setButtonBusy(elements.profileSaveButton, true, "Guardando...");
+
+  try {
+    let updatedUser = { ...state.user, ...profile };
+
+    if (isCloudMode()) {
+      const { data, error } = await saas.client
+        .from("profiles")
+        .update({
+          owner_name: profile.ownerName,
+          business_name: profile.businessName,
+          phone: profile.phone,
+        })
+        .eq("id", state.user.id)
+        .select("*")
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) throw new Error("No se pudo confirmar la actualizacion del perfil.");
+      updatedUser = profileFromRow(data, state.user.email);
+    }
+
+    state.user = updatedUser;
+    updateAdminProfileCache(updatedUser);
+    saveState();
+    render();
+    elements.profileEditDialog.close();
+    showProfileToast();
+  } catch (error) {
+    if (elements.profileEditNotice) {
+      elements.profileEditNotice.textContent = error.message || "No pudimos actualizar tu perfil. Intentalo nuevamente.";
+      elements.profileEditNotice.classList.remove("is-hidden");
+    }
+  } finally {
+    profileEditSubmissionInProgress = false;
+    setButtonBusy(elements.profileSaveButton, false);
+  }
+}
+
+function updateAdminProfileCache(user) {
+  if (!user?.id || !Array.isArray(adminState.profiles)) return;
+  const profile = adminState.profiles.find((item) => item.id === user.id);
+  if (!profile) return;
+  profile.owner_name = user.ownerName;
+  profile.business_name = user.businessName;
+  profile.phone = user.phone || "";
+}
+
+function showProfileToast() {
+  if (!elements.profileToast) return;
+  window.clearTimeout(profileToastTimer);
+  elements.profileToast.classList.remove("is-hidden");
+  profileToastTimer = window.setTimeout(() => {
+    elements.profileToast.classList.add("is-hidden");
+  }, 3600);
 }
 
 function updateConfirmPasswordFeedback() {
@@ -1818,6 +1965,7 @@ function profileFromRow(row, email) {
     email: row.email || email,
     businessName: row.business_name,
     ownerName: row.owner_name,
+    phone: row.phone || "",
     currency: row.currency,
     isAdmin: Boolean(row.is_admin),
     createdAt: row.created_at,
@@ -3375,8 +3523,7 @@ function render() {
   if (!state.user.isAdmin && $("#adminView").classList.contains("active-view")) {
     setView("dashboard");
   }
-  elements.businessLabel.textContent = state.user.businessName;
-  elements.ownerLabel.textContent = state.user.ownerName;
+  renderSidebarProfile();
   elements.planInlineStatus.textContent = getPlanInlineStatusText();
   elements.todayLabel.textContent = `📅 ${formatTopbarDate(todayISO())}`;
   renderBackupStatus();
@@ -3385,6 +3532,18 @@ function render() {
   renderClients();
   renderPlans();
   renderAdmin();
+}
+
+function renderSidebarProfile() {
+  const businessName = normalizeProfileText(state.user?.businessName);
+  const ownerName = normalizeProfileText(state.user?.ownerName);
+  const fallback = state.user?.email || "Mi perfil";
+  const primaryLabel = businessName || ownerName || fallback;
+  const secondaryLabel = ownerName && ownerName !== primaryLabel ? ownerName : "";
+
+  elements.businessLabel.textContent = primaryLabel;
+  elements.ownerLabel.textContent = secondaryLabel;
+  elements.ownerLabel.classList.toggle("is-hidden", !secondaryLabel);
 }
 
 function setView(view) {
