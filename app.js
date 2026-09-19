@@ -121,6 +121,7 @@ let accountDeletionSubmissionInProgress = false;
 let adminClaimResponseSubmissionInProgress = false;
 let profileEditSubmissionInProgress = false;
 let profileToastTimer = null;
+let paymentSuccessToastTimer = null;
 const saas = {
   client: null,
   session: null,
@@ -300,6 +301,7 @@ const elements = {
   editLoanAppliedInterest: $("#editLoanAppliedInterest"),
   paymentDialog: $("#paymentDialog"),
   paymentForm: $("#paymentForm"),
+  paymentSuccessToast: $("#paymentSuccessToast"),
   paymentWhatsAppButton: $("#paymentWhatsAppButton"),
   paymentTitle: $("#paymentTitle"),
   paymentSummary: $("#paymentSummary"),
@@ -1230,6 +1232,17 @@ function showProfileToast() {
   profileToastTimer = window.setTimeout(() => {
     elements.profileToast.classList.remove("is-visible");
     elements.profileToast.setAttribute("aria-hidden", "true");
+  }, 4000);
+}
+
+function showPaymentSuccessToast() {
+  if (!elements.paymentSuccessToast) return;
+  window.clearTimeout(paymentSuccessToastTimer);
+  elements.paymentSuccessToast.setAttribute("aria-hidden", "false");
+  elements.paymentSuccessToast.classList.add("is-visible");
+  paymentSuccessToastTimer = window.setTimeout(() => {
+    elements.paymentSuccessToast.classList.remove("is-visible");
+    elements.paymentSuccessToast.setAttribute("aria-hidden", "true");
   }, 4000);
 }
 
@@ -3167,6 +3180,7 @@ async function handlePaymentSubmit(event) {
   elements.paymentDialog.close();
   saveState();
   render();
+  showPaymentSuccessToast();
 }
 
 function collectPaymentExtensionRequests(paymentDate, baseNote = "") {

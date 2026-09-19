@@ -718,6 +718,40 @@ h3 {
   transform: translate3d(0, 0, 0) scale(1);
 }
 
+.payment-success-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 120;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 14px 18px;
+  pointer-events: none;
+  color: var(--ink);
+  background: rgba(246, 255, 251, 0.98);
+  border: 1px solid rgba(0, 167, 111, 0.42);
+  border-left: 5px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 20px 45px rgba(6, 24, 38, 0.22);
+  font-size: 0.98rem;
+  font-weight: 950;
+  line-height: 1.25;
+  text-align: center;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate3d(-50%, calc(-50% + 8px), 0) scale(0.98);
+  transition:
+    opacity 0.24s ease,
+    transform 0.24s ease,
+    visibility 0.24s ease;
+}
+
+.payment-success-toast.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate3d(-50%, -50%, 0) scale(1);
+}
+
 .legal-check {
   display: flex;
   align-items: flex-start;

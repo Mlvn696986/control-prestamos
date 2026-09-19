@@ -984,6 +984,12 @@ assertCondition(!appCode.includes('.from("plan_requests").update'), "RLS: fronte
 assertCondition(!appCode.includes('.from("capital_movements").insert'), "Capital: frontend no debe insertar movimientos de capital directo en la tabla.");
 assertCondition(!appCode.includes("restoreCloudCapitalMovements"), "Test 10: restauracion no debe duplicar delete/insert de capital_movements en frontend.");
 assertFileIncludes(appCode, "paymentSubmissionInProgress", "Prueba H: debe existir proteccion de doble clic en cobro.");
+assertFileIncludes(htmlCode, 'id="paymentSuccessToast"', "Pagos: debe existir aviso de exito independiente del formulario.");
+assertFileIncludes(htmlCode, "✅ Pago registrado con éxito", "Pagos: el aviso debe mostrar el mensaje de exito solicitado.");
+assertFileIncludes(appCode, "function showPaymentSuccessToast()", "Pagos: debe existir funcion dedicada para mostrar el aviso de exito.");
+assertFileIncludes(appCode, "showPaymentSuccessToast();", "Pagos: el aviso debe mostrarse solo despues del guardado exitoso.");
+assertFileIncludes(stylesCode, ".payment-success-toast {\n  position: fixed;", "Pagos: el aviso de exito debe flotar sin mover el layout.");
+assertFileIncludes(stylesCode, "translate3d(-50%, -50%, 0) scale(1)", "Pagos: el aviso de exito debe quedar centrado en pantalla.");
 assertFileIncludes(appCode, "clientSubmissionInProgress", "Prueba H: debe existir proteccion de doble clic al guardar cliente/ampliacion.");
 assertFileIncludes(appCode, "loanDeletionInProgress", "Prueba H: debe existir proteccion de doble clic al eliminar ampliacion.");
 assertFileIncludes(appCode, "clientDeletionInProgress", "Prueba H: debe existir proteccion de doble clic al eliminar cliente.");
