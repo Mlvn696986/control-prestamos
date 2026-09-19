@@ -1094,10 +1094,13 @@ assertFileIncludes(htmlCode, '<span id="ownerLabel" class="is-hidden">Prestamist
 assertFileIncludes(htmlCode, 'id="profileEditTrigger"', "Perfil: el nombre del sidebar debe abrir edicion de perfil.");
 assertFileIncludes(htmlCode, 'id="profileEditDialog"', "Perfil: debe existir modal Editar mi perfil.");
 assertFileIncludes(htmlCode, 'id="profilePhone"', "Perfil: debe permitir editar telefono del usuario.");
-assertFileIncludes(htmlCode, '<div id="profileToast" class="profile-toast" role="status" aria-live="polite" aria-hidden="true">', "Perfil: la confirmacion debe vivir en el encabezado como aviso inline.");
+assertFileIncludes(htmlCode, '<div id="profileToast" class="profile-toast" role="status" aria-live="polite" aria-hidden="true">', "Perfil: la confirmacion debe vivir anclada al bloque del sidebar.");
 assertFileIncludes(appCode, '.from("profiles")', "Perfil: debe guardar cambios en la tabla profiles existente.");
 assertFileIncludes(appCode, "showProfileToast", "Perfil: debe mostrar confirmacion despues del guardado.");
-assertFileIncludes(appCode, 'elements.profileToast.classList.add("is-visible")', "Perfil: la confirmacion debe mostrarse como aviso inline visible.");
+assertFileIncludes(appCode, "}, 2000);", "Perfil: la confirmacion debe ocultarse automaticamente a los 2 segundos.");
+assertFileIncludes(appCode, 'elements.profileToast.classList.add("is-visible")', "Perfil: la confirmacion debe mostrarse como aviso flotante visible.");
+assertFileIncludes(stylesCode, ".brand-lockup.compact.brand-sidebar-lockup {\n  align-items: center;\n  gap: 10px;\n  position: relative;", "Perfil: el aviso flotante debe anclarse al bloque superior del sidebar.");
+assertFileIncludes(stylesCode, ".profile-toast {\n  position: absolute;", "Perfil: la confirmacion no debe empujar el layout.");
 assertCondition(!stylesCode.includes("position: fixed;\n  right: 22px;\n  bottom: 22px;"), "Perfil: la confirmacion no debe seguir siendo toast flotante inferior.");
 assertCondition(!htmlCode.includes('class="plan-card"'), "Sidebar: el plan actual no debe mostrarse como tarjeta separada.");
 assertFileIncludes(htmlCode, 'id="planInlineStatus"', "Sidebar: el estado del plan debe mostrarse debajo del nombre.");

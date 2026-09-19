@@ -1230,7 +1230,7 @@ function showProfileToast() {
   profileToastTimer = window.setTimeout(() => {
     elements.profileToast.classList.remove("is-visible");
     elements.profileToast.setAttribute("aria-hidden", "true");
-  }, 5000);
+  }, 2000);
 }
 
 function updateConfirmPasswordFeedback() {

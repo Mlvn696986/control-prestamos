@@ -120,6 +120,8 @@ svg {
 .brand-lockup.compact.brand-sidebar-lockup {
   align-items: center;
   gap: 10px;
+  position: relative;
+  overflow: visible;
 }
 
 .brand-logo-sidebar {
@@ -433,10 +435,7 @@ h3 {
 }
 
 .topbar-meta {
-  flex: 0 1 auto;
-  display: grid;
-  gap: 8px;
-  min-width: 0;
+  flex: 0 0 auto;
 }
 
 .topbar-date-pill {
@@ -687,33 +686,36 @@ h3 {
 }
 
 .profile-toast {
-  max-width: min(520px, calc(100vw - 32px));
-  max-height: 0;
-  overflow: hidden;
-  padding: 0 13px;
+  position: absolute;
+  top: calc(100% - 12px);
+  left: 56px;
+  z-index: 70;
+  width: max-content;
+  max-width: min(210px, calc(var(--sidebar-width) - 72px));
+  padding: 10px 12px;
+  pointer-events: none;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(0, 167, 111, 0.28);
+  background: rgba(246, 255, 251, 0.98);
+  border: 1px solid rgba(0, 167, 111, 0.36);
   border-left: 4px solid var(--accent);
   border-radius: 8px;
-  box-shadow: 0 10px 24px rgba(6, 24, 38, 0.08);
-  font-size: 0.86rem;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
+  font-size: 0.78rem;
   font-weight: 900;
   line-height: 1.35;
   opacity: 0;
-  transform: translateY(-4px);
+  visibility: hidden;
+  transform: translate3d(0, -4px, 0) scale(0.98);
   transition:
-    max-height 0.22s ease,
     opacity 0.22s ease,
-    padding 0.22s ease,
-    transform 0.22s ease;
+    transform 0.22s ease,
+    visibility 0.22s ease;
 }
 
 .profile-toast.is-visible {
-  max-height: 72px;
-  padding: 10px 13px;
   opacity: 1;
-  transform: translateY(0);
+  visibility: visible;
+  transform: translate3d(0, 0, 0) scale(1);
 }
 
 .legal-check {
@@ -3720,6 +3722,11 @@ input.field-success {
 }
 
 @media (max-width: 620px) {
+  .profile-toast {
+    left: 54px;
+    max-width: min(200px, calc(100vw - 92px));
+  }
+
   .whatsapp-float {
     right: 16px;
     bottom: 16px;
