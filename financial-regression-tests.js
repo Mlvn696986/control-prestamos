@@ -299,6 +299,36 @@ assertMoney(dashboard.metrics.overdueAmount, 250, "Test 5: monto vencido muestra
 assertMoney(calculateFirstPeriodInterest(500, 10, "2026-08-01", "2026-08-31"), 50, "Test 6: primer periodo mensual de 30 dias cobra 10%.");
 assertMoney(calculateFirstPeriodInterest(500, 10, "2026-08-11", "2026-08-31"), 25, "Test 6: primer periodo mensual de 20 dias cobra 5%.");
 assertMoney(calculateFirstPeriodInterest(500, 10, "2026-08-24", "2026-08-31"), 0, "Test 6: primer periodo mensual de 7 dias no cobra interes.");
+const deferredDueDate = todayISO();
+const deferredStartDate = addDays(deferredDueDate, -10);
+const deferredMainLoan = testLoan({ id: "deferred-main", clientId: "deferred", amount: 1000, monthlyRate: 10, startDate: deferredStartDate, nextDueDate: deferredDueDate, operationType: "principal" });
+assertEqual(getLoanStatus(deferredMainLoan).label, FIRST_PERIOD_DATE_CHANGE_STATUS, "Primer periodo diferido: al llegar la fecha debe pedir cambiar siguiente fecha de pago.");
+assertEqual(isOverdue(deferredMainLoan), false, "Primer periodo diferido: no debe considerarse vencido en la fecha programada.");
+const deferredPastDueDate = addDays(todayISO(), -1);
+const deferredPastStartDate = addDays(deferredPastDueDate, -10);
+const deferredExtensionLoan = testLoan({ id: "deferred-extension", clientId: "deferred", amount: 500, monthlyRate: 10, startDate: deferredPastStartDate, nextDueDate: deferredPastDueDate, operationType: "ampliacion", parentLoanId: "deferred-main" });
+assertEqual(getLoanStatus(deferredExtensionLoan).label, FIRST_PERIOD_DATE_CHANGE_STATUS, "Primer periodo diferido: tambien debe aplicar a ampliaciones.");
+assertEqual(isOverdue(deferredExtensionLoan), false, "Primer periodo diferido: una ampliacion no debe pasar a vencida.");
+resetTestState({
+  clients: [testClient("deferred")],
+  loans: [deferredMainLoan, deferredExtensionLoan],
+  payments: [],
+  capitalMovements: [testCapitalMovement({ id: "deferred-capital", type: "deposit", amount: 2000, date: addDays(todayISO(), -20) })],
+});
+dashboard = buildDashboardData({
+  filters: { customStart: addDays(todayISO(), -20), customEnd: todayISO(), compare: "none", operation: "all" },
+  range: { start: addDays(todayISO(), -20), end: todayISO(), label: "Actual" },
+  skipComparison: true,
+});
+assertEqual(dashboard.todayLoans.length, 0, "Primer periodo diferido: no debe aparecer en cobrar hoy.");
+assertEqual(dashboard.overdueLoans.length, 0, "Primer periodo diferido: no debe aparecer en prestamos vencidos.");
+assertMoney(dashboard.metrics.overdueAmount, 0, "Primer periodo diferido: no debe sumar monto vencido.");
+assertEqual(dashboard.metrics.lateClients, 0, "Primer periodo diferido: no debe sumar clientes atrasados.");
+const editedDeferredLoan = { ...deferredMainLoan, nextDueDate: addDays(todayISO(), 30), dueDay: getDayOfMonth(addDays(todayISO(), 30)) };
+assertEqual(getLoanStatus(editedDeferredLoan).label !== FIRST_PERIOD_DATE_CHANGE_STATUS, true, "Primer periodo diferido: al editar nueva fecha debe salir del estado de cambio pendiente.");
+assertMoney(expectedInterest(editedDeferredLoan), 100, "Primer periodo diferido: al editar nueva fecha debe calcular interes normal sin cobrar retroactivo extra.");
+const zeroRateOverdueLoan = testLoan({ id: "zero-rate-overdue", clientId: "deferred", amount: 1000, monthlyRate: 0, startDate: addDays(todayISO(), -30), nextDueDate: addDays(todayISO(), -1) });
+assertEqual(getLoanStatus(zeroRateOverdueLoan).label, "Vencido", "Interes cero normal: no debe activar la regla especial si no viene de menos de 15 dias.");
 assertMoney(getDisplayPeriodRate(testLoan({ id: "rate-monthly", clientId: "reglas", amount: 1000, monthlyRate: 15, interestMode: "monthly", startDate: "2026-08-01", nextDueDate: "2026-09-01" })), 15, "Tasa visual mensual: debe mostrar la tasa base completa.");
 assertMoney(getDisplayPeriodRate(testLoan({ id: "rate-biweekly", clientId: "reglas", amount: 1000, monthlyRate: 15, interestMode: "biweekly", startDate: "2026-08-01", nextDueDate: "2026-08-16" })), 7.5, "Tasa visual quincenal: debe mostrar mitad de la tasa mensual.");
 assertMoney(getDisplayPeriodRate(testLoan({ id: "rate-weekly", clientId: "reglas", amount: 1000, monthlyRate: 15, interestMode: "weekly", startDate: "2026-08-01", nextDueDate: "2026-08-08" })), 3.5, "Tasa visual semanal: debe mostrar tasa mensual x 7/30.");

@@ -2757,6 +2757,16 @@ input.field-success {
   background: var(--warn-soft);
 }
 
+.status-pill.date-change {
+  max-width: 142px;
+  min-height: 30px;
+  justify-content: center;
+  padding: 5px 9px;
+  line-height: 1.12;
+  text-align: center;
+  white-space: normal;
+}
+
 .status-pill.danger {
   color: var(--ink);
   background: var(--danger-soft);

@@ -44,6 +44,7 @@ const INTEREST_MODES = {
   weekly: { label: "Semanal", shortLabel: "semanal", days: 7, rateFactor: 7 / 30 },
   daily: { label: "Diario", shortLabel: "diario", days: 1, rateFactor: 1 / 30 },
 };
+const FIRST_PERIOD_DATE_CHANGE_STATUS = "Cambiar siguiente fecha de pago";
 const PLAN_CATALOG = {
   free: {
     id: "free",
@@ -3610,8 +3611,10 @@ function buildDashboardData(options = {}) {
       const snapshot = loanSnapshotAtDate(loan, range.end, scopePaymentsByLoanId);
       return { ...snapshot, expectedInterest: getLoanExpectedInterest(snapshot, paymentsToRangeEndByLoanId) };
     });
-  const overdueLoans = activeLoans.filter((loan) => isOverdueAt(loan, range.end));
-  const todayLoans = scopeLoans.filter((loan) => loan.status === "active" && loan.nextDueDate === todayISO()).sort(sortLoansByDueDate);
+  const overdueLoans = activeLoans.filter((loan) => isOverdueAt(loan, range.end, paymentsToRangeEndByLoanId));
+  const todayLoans = scopeLoans
+    .filter((loan) => loan.status === "active" && loan.nextDueDate === todayISO() && !isFirstPeriodDateChangeRequiredAt(loan, todayISO()))
+    .sort(sortLoansByDueDate);
   const upcomingActiveLoans = scopeLoans
     .filter((loan) => loan.status === "active" && !isOverdue(loan) && daysBetween(todayISO(), loan.nextDueDate) > 0)
     .sort(sortLoansByDueDate);
@@ -3664,7 +3667,7 @@ function buildDashboardData(options = {}) {
     return closedDate && dateInRange(closedDate, range);
   });
   const statusSegments = [
-    { label: "Activos", value: activeLoans.filter((loan) => !isOverdueAt(loan, range.end)).length, color: "#00a76f" },
+    { label: "Activos", value: activeLoans.filter((loan) => !isOverdueAt(loan, range.end, paymentsToRangeEndByLoanId)).length, color: "#00a76f" },
     { label: "Vencidos", value: overdueLoans.length, color: "#061826" },
     { label: "Cerrados", value: closedLoansInPeriod.length, color: "#ffb000" },
   ];
@@ -3744,7 +3747,7 @@ function buildDashboardData(options = {}) {
         { label: "Egresos", value: periodCashOutflows, color: "#ffb000" },
       ],
     },
-    lists: buildDashboardLists(activeLoans, payments, scopeLoans, loansStartedInPeriod, range),
+    lists: buildDashboardLists(activeLoans, payments, scopeLoans, loansStartedInPeriod, range, paymentsToRangeEndByLoanId),
   };
   dashboard.comparison = options.skipComparison ? null : buildDashboardComparison(dashboard);
   return dashboard;
@@ -4153,8 +4156,9 @@ function getLoanClosedDate(loan) {
   return loan?.closedAt ? String(loan.closedAt).slice(0, 10) : null;
 }
 
-function isOverdueAt(loan, dateString) {
+function isOverdueAt(loan, dateString, payments = state.payments) {
   if (!loan?.nextDueDate) return false;
+  if (isFirstPeriodDateChangeRequiredAt(loan, dateString, payments)) return false;
   return startOfDay(loan.nextDueDate) < startOfDay(dateString);
 }
 
@@ -5252,7 +5256,7 @@ function buildDelinquencySeries(loans, range, payments = state.payments) {
     const overdueAtMonthEnd = loans
       .filter((loan) => loanWasActiveOnDate(loan, monthEnd, paymentsByLoanId))
       .map((loan) => loanSnapshotAtDate(loan, monthEnd, paymentsByLoanId))
-      .filter((loan) => isOverdueAt(loan, monthEnd)).length;
+      .filter((loan) => isOverdueAt(loan, monthEnd, paymentsByLoanId)).length;
     return {
       label: month.label,
       value: overdueAtMonthEnd,
@@ -5349,7 +5353,7 @@ function renderProjectionChart(container, projections) {
     .join("");
 }
 
-function buildDashboardLists(activeLoans, payments, scopeLoans, periodLoans, range) {
+function buildDashboardLists(activeLoans, payments, scopeLoans, periodLoans, range, paymentsForStatus = state.payments) {
   const clients = state.clients.map((client) => {
     const clientLoans = activeLoans.filter((loan) => loan.clientId === client.id);
     const clientScopeLoans = scopeLoans.filter((loan) => loan.clientId === client.id);
@@ -5359,7 +5363,7 @@ function buildDashboardLists(activeLoans, payments, scopeLoans, periodLoans, ran
       debt: clientLoans.filter((loan) => loan.status === "active").reduce((total, loan) => total + loan.remainingCapital, 0),
       profit: clientPayments.reduce((total, payment) => total + payment.interestPaid, 0),
       extensions: clientScopeLoans.filter((loan) => !isPrimaryLoan(loan)).length,
-      overdue: clientLoans.filter((loan) => isOverdueAt(loan, range.end)).length,
+      overdue: clientLoans.filter((loan) => isOverdueAt(loan, range.end, paymentsForStatus)).length,
       punctual: clientPayments.filter((payment) => payment.scheduledDueDate && startOfDay(payment.date) <= startOfDay(payment.scheduledDueDate)).length,
     };
   });
@@ -5905,7 +5909,9 @@ function renderClientTabs() {
 function matchesClientTab(client, loans = getLoansForClient(client.id)) {
   if (activeClientTab === "closed") return isClientCompletelyClosed(client.id);
   if (activeClientTab === "overdue") return loans.some((loan) => loan.status !== "closed" && isOverdue(loan));
-  if (activeClientTab === "today") return loans.some((loan) => loan.status !== "closed" && loan.nextDueDate === todayISO());
+  if (activeClientTab === "today") {
+    return loans.some((loan) => loan.status !== "closed" && loan.nextDueDate === todayISO() && !isFirstPeriodDateChangeRequiredAt(loan, todayISO()));
+  }
   return true;
 }
 
@@ -7717,7 +7723,20 @@ function getFirstMonthlyCollectionAdjustment(loan, payments = state.payments) {
   };
 }
 
-function isOverdue(loan) {
+function isFirstPeriodDeferredByShortMonthlyCycle(loan, payments = state.payments) {
+  if (!loan || loan.status !== "active" || Number(loan.remainingCapital || 0) <= 0 || !loan.nextDueDate) return false;
+  if (normalizeInterestMode(loan.interestMode) !== "monthly") return false;
+  if (!isFirstInterestPeriod(loan, payments)) return false;
+  return daysBetween(loan.startDate, loan.nextDueDate) < 15 && calculateFirstPeriodInterestFactor(loan.startDate, loan.nextDueDate) === 0;
+}
+
+function isFirstPeriodDateChangeRequiredAt(loan, dateString = todayISO(), payments = state.payments) {
+  if (!isFirstPeriodDeferredByShortMonthlyCycle(loan, payments)) return false;
+  return startOfDay(loan.nextDueDate) <= startOfDay(dateString);
+}
+
+function isOverdue(loan, payments = state.payments) {
+  if (!loan?.nextDueDate || isFirstPeriodDateChangeRequiredAt(loan, todayISO(), payments)) return false;
   return startOfDay(loan.nextDueDate) < startOfDay(todayISO());
 }
 
@@ -7848,6 +7867,7 @@ function getLoan(id) {
 function getLoanStatus(loan) {
   if (!loan) return { label: "Sin prestamo", className: "muted" };
   if (loan.status === "closed") return { label: "Cerrado", className: "muted" };
+  if (isFirstPeriodDateChangeRequiredAt(loan)) return { label: FIRST_PERIOD_DATE_CHANGE_STATUS, className: "warn date-change" };
   if (isOverdue(loan)) return { label: "Vencido", className: "danger" };
   if (daysBetween(todayISO(), loan.nextDueDate) <= 5) return { label: "Por cobrar", className: "warn" };
   return { label: "Al dia", className: "ok" };
