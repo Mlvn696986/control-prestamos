@@ -320,14 +320,14 @@ grant execute on function public.admin_update_user_plan(uuid, text, uuid) to aut
 alter function public.create_client_with_loan(uuid, text, text, text, uuid, numeric, numeric, text, date, date, integer, text, timestamptz) security definer;
 alter function public.create_loan_operation(uuid, uuid, numeric, numeric, text, text, uuid, date, date, integer, text, timestamptz) security definer;
 alter function public.update_client_with_loan(uuid, text, text, text, uuid, numeric, numeric, numeric, text, date, date, integer, text, text, timestamptz) security definer;
-alter function public.register_payment(uuid, uuid, uuid, date, date, numeric, numeric, text, timestamptz) security definer;
+alter function public.register_payment(uuid, uuid, uuid, date, date, numeric, numeric, date, text, timestamptz) security definer;
 alter function public.register_capital_movement(uuid, text, numeric, date, text, timestamptz) security definer;
 alter function public.restore_user_backup(uuid) security definer;
 
 revoke all on function public.create_client_with_loan(uuid, text, text, text, uuid, numeric, numeric, text, date, date, integer, text, timestamptz) from public;
 revoke all on function public.create_loan_operation(uuid, uuid, numeric, numeric, text, text, uuid, date, date, integer, text, timestamptz) from public;
 revoke all on function public.update_client_with_loan(uuid, text, text, text, uuid, numeric, numeric, numeric, text, date, date, integer, text, text, timestamptz) from public;
-revoke all on function public.register_payment(uuid, uuid, uuid, date, date, numeric, numeric, text, timestamptz) from public;
+revoke all on function public.register_payment(uuid, uuid, uuid, date, date, numeric, numeric, date, text, timestamptz) from public;
 revoke all on function public.register_capital_movement(uuid, text, numeric, date, text, timestamptz) from public;
 revoke all on function public.create_user_backup() from public;
 revoke all on function public.restore_user_backup(uuid) from public;
@@ -338,7 +338,7 @@ revoke all on function public.validate_capital_movement_rules(uuid, text, numeri
 grant execute on function public.create_client_with_loan(uuid, text, text, text, uuid, numeric, numeric, text, date, date, integer, text, timestamptz) to authenticated;
 grant execute on function public.create_loan_operation(uuid, uuid, numeric, numeric, text, text, uuid, date, date, integer, text, timestamptz) to authenticated;
 grant execute on function public.update_client_with_loan(uuid, text, text, text, uuid, numeric, numeric, numeric, text, date, date, integer, text, text, timestamptz) to authenticated;
-grant execute on function public.register_payment(uuid, uuid, uuid, date, date, numeric, numeric, text, timestamptz) to authenticated;
+grant execute on function public.register_payment(uuid, uuid, uuid, date, date, numeric, numeric, date, text, timestamptz) to authenticated;
 grant execute on function public.register_capital_movement(uuid, text, numeric, date, text, timestamptz) to authenticated;
 grant execute on function public.create_user_backup() to authenticated;
 grant execute on function public.restore_user_backup(uuid) to authenticated;

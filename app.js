@@ -305,6 +305,7 @@ const elements = {
   paymentSuccessToast: $("#paymentSuccessToast"),
   paymentWhatsAppButton: $("#paymentWhatsAppButton"),
   paymentTitle: $("#paymentTitle"),
+  paymentNextDueDate: $("#paymentNextDueDate"),
   paymentSummary: $("#paymentSummary"),
   paymentExtensionFields: $("#paymentExtensionFields"),
   loanActionDialog: $("#loanActionDialog"),
@@ -448,6 +449,8 @@ function bindEvents() {
   elements.clientForm.addEventListener("submit", handleClientSubmit);
   elements.editForm.addEventListener("submit", handleEditSubmit);
   elements.paymentForm.addEventListener("submit", handlePaymentSubmit);
+  elements.paymentForm.addEventListener("input", handlePaymentFormInput);
+  elements.paymentForm.addEventListener("change", handlePaymentFormInput);
   elements.paymentWhatsAppButton?.addEventListener("click", handlePaymentWhatsAppClick);
   elements.loanDeleteForm.addEventListener("submit", handleLoanDeleteSubmit);
   elements.clientDeleteForm.addEventListener("submit", handleClientDeleteSubmit);
@@ -1565,6 +1568,7 @@ async function createCloudPaymentAndUpdateLoan(payment) {
     p_client_id: payment.clientId,
     p_date: payment.date,
     p_scheduled_due_date: payment.scheduledDueDate,
+    p_next_due_date_after: payment.nextDueDateAfter,
     p_interest_paid: payment.interestPaid,
     p_capital_paid: payment.capitalPaid,
     p_note: payment.note,
@@ -3097,6 +3101,7 @@ async function handlePaymentSubmit(event) {
   const scheduledDueDate = loan.nextDueDate;
   const interestPaid = toNumber($("#paymentInterest").value);
   const capitalPaid = toNumber($("#paymentCapital").value);
+  const nextDueDateAfter = elements.paymentNextDueDate?.value || "";
   let extensionPayments = [];
   if (!$("#paymentInterest").value.trim()) {
     window.alert("Ingresa el interes pagado antes de registrar el cobro.");
@@ -3133,6 +3138,7 @@ async function handlePaymentSubmit(event) {
         buildPaymentTransactionPreview(loan, {
           paymentDate,
           scheduledDueDate,
+          nextDueDateAfter,
           interestPaid,
           capitalPaid,
           note: $("#paymentNote").value.trim(),
@@ -3184,12 +3190,56 @@ async function handlePaymentSubmit(event) {
   showPaymentSuccessToast();
 }
 
+function handlePaymentFormInput(event) {
+  const target = event.target;
+  if (!target) return;
+  if (target.id === "paymentDate") {
+    updatePrimaryPaymentNextDueSuggestion();
+    return;
+  }
+  if (target.id === "paymentNextDueDate") {
+    target.dataset.manualNextDue = "true";
+    return;
+  }
+  if (target.matches?.("[data-extension-date]")) {
+    updateExtensionPaymentNextDueSuggestion(target.closest("[data-extension-payment]"));
+    return;
+  }
+  if (target.matches?.("[data-extension-next-due]")) {
+    target.dataset.manualNextDue = "true";
+  }
+}
+
+function getSuggestedPaymentNextDueDate(paymentDate) {
+  if (!paymentDate) return "";
+  return addMonthsKeepingDay(paymentDate, getDayOfMonth(paymentDate), 1);
+}
+
+function updatePrimaryPaymentNextDueSuggestion(force = false) {
+  if (!elements.paymentNextDueDate) return;
+  const paymentDate = $("#paymentDate")?.value || todayISO();
+  if (!force && elements.paymentNextDueDate.dataset.manualNextDue === "true") return;
+  elements.paymentNextDueDate.value = getSuggestedPaymentNextDueDate(paymentDate);
+  elements.paymentNextDueDate.dataset.manualNextDue = "false";
+}
+
+function updateExtensionPaymentNextDueSuggestion(section, force = false) {
+  if (!section) return;
+  const dateInput = section.querySelector("[data-extension-date]");
+  const nextDueInput = section.querySelector("[data-extension-next-due]");
+  if (!dateInput || !nextDueInput) return;
+  if (!force && nextDueInput.dataset.manualNextDue === "true") return;
+  nextDueInput.value = getSuggestedPaymentNextDueDate(dateInput.value || todayISO());
+  nextDueInput.dataset.manualNextDue = "false";
+}
+
 function collectPaymentExtensionRequests(paymentDate, baseNote = "") {
   return Array.from(document.querySelectorAll("[data-extension-payment]"))
     .map((section) => {
       const loan = getLoan(section.dataset.extensionPayment);
       if (!loan || loan.status !== "active") return null;
       const extensionDate = section.querySelector("[data-extension-date]")?.value || paymentDate;
+      const extensionNextDueDate = section.querySelector("[data-extension-next-due]")?.value || getSuggestedPaymentNextDueDate(extensionDate);
       const interestPaid = toNumber(section.querySelector("[data-extension-interest]")?.value);
       const capitalPaid = toNumber(section.querySelector("[data-extension-capital]")?.value);
       if (!isNonNegativeMoney(interestPaid) || !isNonNegativeMoney(capitalPaid)) {
@@ -3206,6 +3256,7 @@ function collectPaymentExtensionRequests(paymentDate, baseNote = "") {
         loan,
         paymentDate: extensionDate,
         scheduledDueDate: loan.nextDueDate,
+        nextDueDateAfter: extensionNextDueDate,
         interestPaid,
         capitalPaid,
         note: baseNote || "Cobro de ampliacion registrado junto al prestamo principal.",
@@ -3435,6 +3486,7 @@ function buildPaymentTransactionPreview(loan, paymentData) {
   const interestPaid = roundMoney(Number(paymentData.interestPaid || 0));
   const capitalPaid = roundMoney(Number(paymentData.capitalPaid || 0));
   const period = buildPaymentPeriodSummary(loan, scheduledDueDate, paymentData.payments || state.payments);
+  const requestedNextDueDateAfter = paymentData.nextDueDateAfter || getSuggestedPaymentNextDueDate(paymentData.paymentDate);
   if (interestPaid > period.pendingInterest) {
     throw new Error(`El interes pagado no puede superar el interes pendiente del periodo (${money(period.pendingInterest)}).`);
   }
@@ -3445,8 +3497,16 @@ function buildPaymentTransactionPreview(loan, paymentData) {
   if (remainingCapitalAfter <= 0 && !periodClosed) {
     throw new Error("Para cerrar el prestamo debes completar primero el interes pendiente de este periodo.");
   }
+  if (periodClosed && remainingCapitalAfter > 0) {
+    if (!isBusinessDate(requestedNextDueDateAfter)) {
+      throw new Error("Selecciona la proxima fecha de pago antes de registrar el cobro.");
+    }
+    if (startOfDay(requestedNextDueDateAfter) <= startOfDay(paymentData.paymentDate)) {
+      throw new Error("La proxima fecha de pago debe ser posterior a la fecha real del pago.");
+    }
+  }
 
-  const nextDueDateAfter = periodClosed ? (remainingCapitalAfter <= 0 ? null : getNextDueDateAfterPayment(loan)) : scheduledDueDate;
+  const nextDueDateAfter = periodClosed ? (remainingCapitalAfter <= 0 ? null : requestedNextDueDateAfter) : scheduledDueDate;
   const updatedLoan = {
     ...loan,
     remainingCapital: remainingCapitalAfter,
@@ -7002,6 +7062,10 @@ function openPaymentDialog(loanId) {
   $("#paymentDate").value = todayISO();
   $("#paymentInterest").value = period.pendingInterest.toFixed(2);
   $("#paymentCapital").value = "0";
+  if (elements.paymentNextDueDate) {
+    elements.paymentNextDueDate.dataset.manualNextDue = "false";
+    elements.paymentNextDueDate.value = getSuggestedPaymentNextDueDate($("#paymentDate").value);
+  }
   $("#paymentNote").value = "";
   elements.paymentTitle.textContent = client?.name || "Registrar pago";
   const paymentExtensions = getActiveExtensionLoansForPayment(loan);
@@ -7044,13 +7108,15 @@ function renderPaymentExtensionFields(extensions) {
       ${extensions
         .map((loan, index) => {
           const period = buildPaymentPeriodSummary(loan);
+          const extensionPaymentDate = todayISO();
+          const extensionNextDueDate = getSuggestedPaymentNextDueDate(extensionPaymentDate);
           return `
             <section class="payment-operation-block payment-extension-operation" data-extension-payment="${loan.id}">
               <h4 class="payment-operation-title">Ampliacion ${index + 1}</h4>
               <div class="field-row">
                 <label>
                   Fecha de pago
-                  <input data-extension-date type="date" value="${todayISO()}" />
+                  <input data-extension-date type="date" value="${extensionPaymentDate}" />
                 </label>
                 <label>
                   Interes pagado
@@ -7060,6 +7126,10 @@ function renderPaymentExtensionFields(extensions) {
               <label>
                 Capital voluntario
                 <input data-extension-capital type="number" min="0" step="0.01" value="0" />
+              </label>
+              <label>
+                Próxima fecha de pago
+                <input data-extension-next-due type="date" value="${extensionNextDueDate}" />
               </label>
             </section>
           `;
@@ -7096,7 +7166,7 @@ function openHistoryDialog(clientId) {
           return `
             <article class="history-item">
               <div>
-                <strong>${formatDate(payment.date)}</strong>
+                <strong>Fecha de pago: ${formatDate(payment.date)}</strong>
                 <span>Operacion: ${operationLabel}</span>
                 <span>Periodo: ${getPaymentPeriodStatusLabel(periodStatus)}</span>
                 <span>Interes esperado: ${money(payment.expectedInterest ?? payment.interestPaid)}</span>
@@ -7104,7 +7174,7 @@ function openHistoryDialog(clientId) {
                 <span>Interes pendiente: ${money(pendingInterest)}</span>
                 <span>${capitalText}</span>
                 <span>Capital pendiente despues: ${money(payment.remainingCapitalAfter)}</span>
-                <span>Proximo cobro: ${payment.nextDueDateAfter ? formatDate(payment.nextDueDateAfter) : "Prestamo cerrado"}</span>
+                <span>Próxima fecha de pago: ${payment.nextDueDateAfter ? formatDate(payment.nextDueDateAfter) : "Prestamo cerrado"}</span>
                 ${payment.note ? `<small>${escapeHTML(payment.note)}</small>` : ""}
               </div>
               <span class="status-pill ${capitalClass}">${getPaymentPeriodStatusLabel(periodStatus)}</span>
@@ -7317,7 +7387,7 @@ function exportClientsExcel() {
           "Estado del periodo",
           "Capital pagado",
           "Capital pendiente despues",
-          "Proximo cobro",
+          "Proxima fecha de pago",
           "Nota",
         ],
         ...paymentRows,
@@ -7657,14 +7727,6 @@ function updateSuggestedDueDate(prefix) {
   const dueInput = $(`#${prefix}DueDate`);
   if (!startInput || !modeInput || !dueInput || !startInput.value) return;
   dueInput.value = getSuggestedDueDate(startInput.value, modeInput.value);
-}
-
-function getNextDueDateAfterPayment(loan) {
-  const mode = normalizeInterestMode(loan.interestMode);
-  if (mode === "monthly") {
-    return addOneMonthKeepingDay(loan.nextDueDate, loan.dueDay);
-  }
-  return addDays(loan.nextDueDate, INTEREST_MODES[mode].days);
 }
 
 function getInterestModeLabel(mode) {

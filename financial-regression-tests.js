@@ -511,7 +511,20 @@ preview = buildPaymentTransactionPreview(state.loans[0], {
 });
 assertMoney(preview.payment.pendingInterest, 0, "Cierre de periodo: al pagar lo pendiente debe quedar en cero.");
 assertEqual(preview.payment.periodStatus, "closed", "Cierre de periodo: debe marcar el periodo como cerrado.");
-assertEqual(preview.updatedLoan.nextDueDate, "2026-10-01", "Cierre de periodo: recien ahi debe avanzar la fecha.");
+assertEqual(preview.updatedLoan.nextDueDate, "2026-10-03", "Cierre de periodo: debe avanzar usando la fecha real de pago + 1 mes por defecto.");
+assertEqual(preview.payment.date, "2026-09-03", "Cierre de periodo: la fecha real de pago debe quedar historica.");
+assertEqual(preview.payment.nextDueDateAfter, "2026-10-03", "Cierre de periodo: el historial debe guardar la proxima fecha configurada.");
+preview = buildPaymentTransactionPreview(state.loans[0], {
+  paymentDate: "2026-09-03",
+  scheduledDueDate: "2026-09-01",
+  nextDueDateAfter: "2026-10-25",
+  interestPaid: 80,
+  capitalPaid: 0,
+});
+assertEqual(preview.updatedLoan.nextDueDate, "2026-10-25", "Proxima fecha manual: debe guardar la fecha elegida por el usuario.");
+assertEqual(preview.payment.date, "2026-09-03", "Proxima fecha manual: no debe reemplazar la fecha real del pago.");
+assertEqual(preview.payment.nextDueDateAfter, "2026-10-25", "Proxima fecha manual: el historial debe diferenciar la siguiente fecha.");
+assertEqual(getSuggestedPaymentNextDueDate("2026-01-31"), "2026-02-28", "Proxima fecha sugerida: si el mes siguiente no tiene dia 31 debe usar ultimo dia valido.");
 assertThrows(
   () => buildPaymentTransactionPreview(state.loans[0], { paymentDate: "2026-09-04", scheduledDueDate: "2026-09-01", interestPaid: 90, capitalPaid: 700 }),
   "superar el interes pendiente",
@@ -1002,6 +1015,14 @@ function assertCondition(condition, message) {
 });
 
 assertFileIncludes(appCode, 'saas.client.rpc("register_payment"', "Prueba E/F: el cobro en nube debe usar RPC transaccional.");
+assertFileIncludes(htmlCode, 'id="paymentNextDueDate"', "Pagos: el formulario debe separar la proxima fecha de pago de la fecha real del pago.");
+assertFileIncludes(appCode, "getSuggestedPaymentNextDueDate", "Pagos: debe sugerir proxima fecha de pago desde la fecha real del pago.");
+assertFileIncludes(appCode, "p_next_due_date_after", "Pagos: la RPC debe recibir la proxima fecha de pago dentro de la transaccion.");
+assertFileIncludes(appCode, "data-extension-next-due", "Pagos: las ampliaciones deben tener proxima fecha de pago independiente.");
+assertFileIncludes(appCode, "Próxima fecha de pago:", "Historial: debe diferenciar fecha real de pago y proxima fecha.");
+assertFileIncludes(sqlCode, "p_next_due_date_after date default null", "Pagos SQL: register_payment debe aceptar proxima fecha de pago.");
+assertFileIncludes(sqlCode, "v_next_due := p_next_due_date_after", "Pagos SQL: register_payment debe aplicar la proxima fecha elegida en la misma transaccion.");
+assertFileIncludes(rlsCode, "register_payment(uuid, uuid, uuid, date, date, numeric, numeric, date, text, timestamptz)", "RLS: permisos deben apuntar a la nueva firma de register_payment.");
 assertFileIncludes(appCode, 'saas.client.rpc("create_client_with_loan"', "Test 11: crear cliente + prestamo debe usar RPC atomica.");
 assertFileIncludes(appCode, 'saas.client.rpc("update_client_with_loan"', "Editar cliente + prestamo debe usar RPC atomica.");
 assertFileIncludes(appCode, 'saas.client.rpc("create_loan_operation"', "Crear ampliacion debe usar RPC atomica de operacion.");

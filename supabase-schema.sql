@@ -1479,6 +1479,7 @@ $$;
 revoke all on function public.clear_user_financial_history() from public;
 grant execute on function public.clear_user_financial_history() to authenticated;
 
+drop function if exists public.register_payment(uuid, uuid, uuid, date, date, numeric, numeric, text, timestamptz);
 create or replace function public.register_payment(
   p_payment_id uuid,
   p_loan_id uuid,
@@ -1487,6 +1488,7 @@ create or replace function public.register_payment(
   p_scheduled_due_date date,
   p_interest_paid numeric,
   p_capital_paid numeric,
+  p_next_due_date_after date default null,
   p_note text default '',
   p_created_at timestamptz default now()
 )
@@ -1650,6 +1652,13 @@ begin
     raise exception 'Para cerrar el prestamo debes completar primero el interes pendiente de este periodo.';
   end if;
 
+  if v_period_closed and v_new_remaining > 0 and p_next_due_date_after is not null then
+    if p_next_due_date_after <= p_date then
+      raise exception 'La proxima fecha de pago debe ser posterior a la fecha real del pago.';
+    end if;
+    v_next_due := p_next_due_date_after;
+  end if;
+
   update loans
   set
     remaining_capital = v_new_remaining,
@@ -1707,8 +1716,8 @@ begin
 end;
 $$;
 
-revoke all on function public.register_payment(uuid, uuid, uuid, date, date, numeric, numeric, text, timestamptz) from public;
-grant execute on function public.register_payment(uuid, uuid, uuid, date, date, numeric, numeric, text, timestamptz) to authenticated;
+revoke all on function public.register_payment(uuid, uuid, uuid, date, date, numeric, numeric, date, text, timestamptz) from public;
+grant execute on function public.register_payment(uuid, uuid, uuid, date, date, numeric, numeric, date, text, timestamptz) to authenticated;
 
 do $$
 begin
