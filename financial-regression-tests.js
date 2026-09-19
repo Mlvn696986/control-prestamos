@@ -1097,7 +1097,7 @@ assertFileIncludes(htmlCode, 'id="profilePhone"', "Perfil: debe permitir editar 
 assertFileIncludes(htmlCode, '<div id="profileToast" class="profile-toast" role="status" aria-live="polite" aria-hidden="true">', "Perfil: la confirmacion debe vivir anclada al bloque del sidebar.");
 assertFileIncludes(appCode, '.from("profiles")', "Perfil: debe guardar cambios en la tabla profiles existente.");
 assertFileIncludes(appCode, "showProfileToast", "Perfil: debe mostrar confirmacion despues del guardado.");
-assertFileIncludes(appCode, "}, 2000);", "Perfil: la confirmacion debe ocultarse automaticamente a los 2 segundos.");
+assertFileIncludes(appCode, "}, 4000);", "Perfil: la confirmacion debe ocultarse automaticamente a los 4 segundos.");
 assertFileIncludes(appCode, 'elements.profileToast.classList.add("is-visible")', "Perfil: la confirmacion debe mostrarse como aviso flotante visible.");
 assertFileIncludes(stylesCode, ".brand-lockup.compact.brand-sidebar-lockup {\n  align-items: center;\n  gap: 10px;\n  position: relative;", "Perfil: el aviso flotante debe anclarse al bloque superior del sidebar.");
 assertFileIncludes(stylesCode, ".profile-toast {\n  position: absolute;", "Perfil: la confirmacion no debe empujar el layout.");
