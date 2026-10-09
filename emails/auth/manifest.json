@@ -1,0 +1,80 @@
+[
+  {
+    "key": "confirmation",
+    "subject": "Confirma tu cuenta de ERMIF",
+    "file": "confirmation.html",
+    "requiresSecurityNotificationToggle": false
+  },
+  {
+    "key": "invite",
+    "subject": "Invitación a ERMIF",
+    "file": "invite.html",
+    "requiresSecurityNotificationToggle": false
+  },
+  {
+    "key": "magic_link",
+    "subject": "Tu enlace de acceso a ERMIF",
+    "file": "magic_link.html",
+    "requiresSecurityNotificationToggle": false
+  },
+  {
+    "key": "email_change",
+    "subject": "Confirma tu nuevo correo en ERMIF",
+    "file": "email_change.html",
+    "requiresSecurityNotificationToggle": false
+  },
+  {
+    "key": "recovery",
+    "subject": "Restablece tu contraseña de ERMIF",
+    "file": "recovery.html",
+    "requiresSecurityNotificationToggle": false
+  },
+  {
+    "key": "reauthentication",
+    "subject": "Tu código de verificación de ERMIF",
+    "file": "reauthentication.html",
+    "requiresSecurityNotificationToggle": false
+  },
+  {
+    "key": "password_changed_notification",
+    "subject": "Tu contraseña de ERMIF ha cambiado",
+    "file": "password_changed_notification.html",
+    "requiresSecurityNotificationToggle": true
+  },
+  {
+    "key": "email_changed_notification",
+    "subject": "Tu correo de ERMIF ha cambiado",
+    "file": "email_changed_notification.html",
+    "requiresSecurityNotificationToggle": true
+  },
+  {
+    "key": "phone_changed_notification",
+    "subject": "Tu teléfono de ERMIF ha cambiado",
+    "file": "phone_changed_notification.html",
+    "requiresSecurityNotificationToggle": true
+  },
+  {
+    "key": "identity_linked_notification",
+    "subject": "Nuevo método de acceso en ERMIF",
+    "file": "identity_linked_notification.html",
+    "requiresSecurityNotificationToggle": true
+  },
+  {
+    "key": "identity_unlinked_notification",
+    "subject": "Método de acceso retirado de ERMIF",
+    "file": "identity_unlinked_notification.html",
+    "requiresSecurityNotificationToggle": true
+  },
+  {
+    "key": "mfa_factor_enrolled_notification",
+    "subject": "Verificación de seguridad añadida en ERMIF",
+    "file": "mfa_factor_enrolled_notification.html",
+    "requiresSecurityNotificationToggle": true
+  },
+  {
+    "key": "mfa_factor_unenrolled_notification",
+    "subject": "Verificación de seguridad retirada de ERMIF",
+    "file": "mfa_factor_unenrolled_notification.html",
+    "requiresSecurityNotificationToggle": true
+  }
+]

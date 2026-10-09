@@ -1,6 +1,14 @@
 const fs = require("fs");
 const vm = require("vm");
 
+// Reloj propio de las fixtures; nunca modifica la app ni el reloj del sistema.
+process.env.TZ = "America/Lima";
+const FIXTURE_NOW = Date.parse("2026-09-19T12:00:00-05:00");
+class FixtureDate extends Date {
+  constructor(...args) { super(...(args.length ? args : [FIXTURE_NOW])); }
+  static now() { return FIXTURE_NOW; }
+}
+
 const readText = (path) => fs.readFileSync(path, "utf8").replace(/\r\n/g, "\n");
 
 const appCode = readText("app.js");
@@ -54,7 +62,7 @@ function createElement() {
 const context = {
   console,
   Intl,
-  Date,
+  Date: FixtureDate,
   Math,
   Number,
   String,
@@ -296,6 +304,12 @@ state.loans[0].nextDueDate = addDays(todayISO(), -1);
 dashboard = buildDashboardData({ filters: { customStart: "", customEnd: "", compare: "none", operation: "all" }, skipComparison: true });
 assertMoney(dashboard.metrics.capitalPlaced, 550, "Test 5: prestamo vencido sigue contando como capital prestado.");
 assertMoney(dashboard.metrics.overdueAmount, 250, "Test 5: monto vencido muestra solo capital pendiente vencido.");
+const afterExtensionDue = buildDashboardData({
+  filters: { customStart: "2026-08-01", customEnd: "2026-10-08", compare: "none", operation: "all" },
+  range: { start: "2026-08-01", end: "2026-10-08", label: "Despues del vencimiento" },
+  skipComparison: true,
+});
+assertMoney(afterExtensionDue.metrics.overdueAmount, 550, "Test 5b: despues del 2 de octubre ambos capitales estan vencidos.");
 assertMoney(calculateFirstPeriodInterest(500, 10, "2026-08-01", "2026-08-31"), 50, "Test 6: primer periodo mensual de 30 dias cobra 10%.");
 assertMoney(calculateFirstPeriodInterest(500, 10, "2026-08-11", "2026-08-31"), 25, "Test 6: primer periodo mensual de 20 dias cobra 5%.");
 assertMoney(calculateFirstPeriodInterest(500, 10, "2026-08-24", "2026-08-31"), 0, "Test 6: primer periodo mensual de 7 dias no cobra interes.");
@@ -1361,7 +1375,7 @@ assertFileIncludes(readText("DATA-TRANSFER-REVIEW.md"), "Region conocida", "Tran
 assertFileIncludes(readText("ANPD-REGISTRATION-CHECKLIST.md"), "Codigo RNPDP: PENDIENTE", "ANPD: no debe afirmar banco inscrito.");
 assertFileIncludes(readText("DATA-PROCESSING-TERMS.md"), "ERMIF procesa tecnicamente", "Encargo: debe diferenciar al prestamista de ERMIF.");
 assertFileIncludes(readText("SECURITY-INCIDENT-PLAYBOOK.md"), "48 horas", "Incidentes: debe documentar evaluacion de notificacion.");
-assertFileIncludes(readText("EMAIL-SETUP.md"), "no existe un transporte real de email confirmado", "Email: debe documentar ausencia de proveedor real.");
+// Correo: transporte, permisos y estados se verifican en tests/email-*.test.mjs.
 assertFileIncludes(htmlCode, "HOYOS BUENO MELVIN", "Legal: los terminos deben incluir titular legal.");
 assertFileIncludes(htmlCode, "10735063818", "Legal: los terminos deben incluir RUC correcto.");
 assertFileIncludes(htmlCode, "MLVN696986@GMAIL.COM", "Legal: los terminos deben incluir correo de soporte.");

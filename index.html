@@ -567,6 +567,13 @@
           </section>
 
           <section class="panel admin-panel">
+            <div class="section-heading"><div><p class="eyebrow">Comunicaciones</p><h3>Correos automáticos</h3></div></div>
+            <p id="adminEmailMode"></p>
+            <p class="muted">Últimos 100 registros. La aceptación por el servidor de destino no confirma lectura ni llegada a Recibidos.</p>
+            <div id="adminEmailsList" class="admin-list empty-target"></div>
+          </section>
+
+          <section class="panel admin-panel">
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Usuarios</p>
@@ -594,6 +601,15 @@
       </a>
     </main>
 
+    <dialog id="privacyReplyDialog" class="modal">
+      <form id="privacyReplyForm" class="modal-panel form-grid">
+        <h2>Responder solicitud de privacidad</h2><p id="privacyReplyCode"></p>
+        <label class="full-width">Respuesta<textarea name="response" rows="7" maxlength="2500" required></textarea></label>
+        <p>Al guardar, se preparará un correo con esta respuesta para el solicitante.</p>
+        <p id="privacyReplyResult" role="status"></p>
+        <div class="form-actions"><button id="privacyReplyCancel" type="button" class="ghost-button">Cancelar</button><button type="submit" class="primary-button">Guardar respuesta</button></div>
+      </form>
+    </dialog>
     <dialog id="capitalDialog" class="modal">
       <form id="capitalForm" method="dialog" class="modal-panel form-grid">
         <div class="section-heading">

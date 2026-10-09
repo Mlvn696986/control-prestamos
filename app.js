@@ -514,6 +514,7 @@ function bindEvents() {
   elements.privacyRequestForm.addEventListener("submit", handlePrivacyRequestSubmit);
   elements.accountDeletionForm.addEventListener("submit", handleAccountDeletionSubmit);
   elements.adminClaimForm.addEventListener("submit", handleAdminClaimResponseSubmit);
+  initEmailAdminHandlers();
   elements.adminRefresh.addEventListener("click", refreshAdminPanel);
   elements.adminIntegrityCheck.addEventListener("click", openIntegrityDialog);
   elements.adminClaimFilters.addEventListener("click", (event) => {
@@ -1465,6 +1466,9 @@ async function loadAdminState() {
     planRequests: requestsResult.data || [],
     claims: legalResult.data?.claims || [],
     privacyRequests: legalResult.data?.privacyRequests || [],
+    emails: legalResult.data?.emails || [],
+    emailMode: legalResult.data?.emailMode || "disabled",
+    emailLimits: legalResult.data?.emailLimits || null,
     accountDeletionRequests: legalResult.data?.accountDeletionRequests || [],
     error: "",
   };
@@ -1967,7 +1971,11 @@ function getEmailStatusLabel(status) {
   return {
     pending_configuration: "pendiente de configuracion",
     pending: "pendiente",
-    sent: "enviado",
+    sent: "enviado (registro anterior)",
+    sending: "procesando", retry: "reintento programado", accepted: "aceptado por Cloudflare",
+    delivered: "aceptado por el servidor de destino", deferred: "entrega aplazada",
+    bounced: "devuelto", rejected: "rechazado", failed: "no entregado", complained: "marcado como spam",
+    unknown: "requiere revisión del envío",
     error: "error",
     skipped: "no configurado",
   }[status] || "pendiente de configuracion";
@@ -6428,6 +6436,16 @@ function renderAdminClaims() {
 }
 
 function renderAdminPrivacy() {
+  const emailList = document.getElementById('adminEmailsList');
+  if (emailList) {
+    document.getElementById('adminEmailMode').textContent = adminState.emailMode === 'enabled' ? 'Envíos habilitados; consulta aquí sus resultados.' : 'Envíos de la aplicación pendientes de activar.';
+    if (adminState.emailLimits) {
+      const limits = adminState.emailLimits;
+      document.getElementById('adminEmailMode').textContent += ' Límite de la aplicación: ' + limits.daily_limit + ' intentos diarios y ' + limits.monthly_limit + ' mensuales.';
+    }
+    emailList.innerHTML = (adminState.emails || []).map(email => `<article class="admin-row"><div><strong>${escapeHTML(email.subject)}</strong><span>${escapeHTML(email.recipient)}</span><small>${formatLegalDate(email.created_at)} · Intentos: ${Number(email.attempts || 0)}</small></div><div class="admin-plan-cell"><span class="status-pill muted">${escapeHTML(getEmailStatusLabel(email.delivery_status || email.status))}</span>${email.last_error ? '<small>' + escapeHTML(email.last_error) + '</small>' : ''}</div></article>`).join('');
+    renderEmpty(emailList, 'Todavía no hay correos registrados.');
+  }
   const privacyRows = (adminState.privacyRequests || []).map(normalizePrivacyRequest).sort(compareLegalByDueDate);
   const deletionRows = (adminState.accountDeletionRequests || []).map(normalizeDeletionRequest).sort(compareLegalByDueDate);
 
@@ -6441,7 +6459,7 @@ function renderAdminPrivacy() {
             <span>${escapeHTML(PRIVACY_REQUEST_LABELS[request.requestType] || request.requestType)} - ${escapeHTML(request.requesterName)}</span>
             <small>${escapeHTML(request.requesterEmail)} - Limite: ${formatLegalDate(request.dueAt)}</small>
           </div>
-          <span class="status-pill ${urgency.pillClass}">${escapeHTML(LEGAL_STATUS_LABELS[request.status] || request.status)}</span>
+          <div><span class="status-pill ${urgency.pillClass}">${escapeHTML(LEGAL_STATUS_LABELS[request.status] || request.status)}</span><button type="button" class="ghost-button small-button" data-privacy-response="${escapeHTML(request.id)}">Responder</button></div>
         </article>
       `;
     })
@@ -8021,4 +8039,34 @@ function escapeHTML(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function initEmailAdminHandlers() {
+  const privacyReplyDialog = document.getElementById('privacyReplyDialog');
+  document.getElementById('adminPrivacyList')?.addEventListener('click', event => {
+    const button = event.target.closest('[data-privacy-response]');
+    if (!button || !state.user?.isAdmin) return;
+    const row = (adminState.privacyRequests || []).find(item => item.id === button.dataset.privacyResponse);
+    if (!row) return;
+    const form = document.getElementById('privacyReplyForm');
+    form.dataset.requestId = row.id;
+    form.elements.response.value = row.response || '';
+    document.getElementById('privacyReplyCode').textContent = row.request_code;
+    document.getElementById('privacyReplyResult').textContent = '';
+    privacyReplyDialog.showModal();
+  });
+  document.getElementById('privacyReplyCancel')?.addEventListener('click', () => privacyReplyDialog.close());
+  document.getElementById('privacyReplyForm')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget, button = form.querySelector('[type="submit"]');
+    button.disabled = true;
+    try {
+      await apiFetch('/api/admin/privacidad/' + encodeURIComponent(form.dataset.requestId) + '/respond', { method: 'POST', body: { response: form.elements.response.value } });
+      privacyReplyDialog.close();
+      await loadAdminState();
+      render();
+    } catch (error) { document.getElementById('privacyReplyResult').textContent = error.message || 'No se pudo guardar.'; }
+    finally { button.disabled = false; }
+  });
+
 }
