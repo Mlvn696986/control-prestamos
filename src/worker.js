@@ -1,3 +1,6 @@
+import { enqueueTransactionalEmail } from "./transactional-email.mjs";
+import { dispatchEmails, consumeEmailEvents } from "./email-dispatcher.mjs";
+
 const SUPABASE_URL_FALLBACK = "https://kltozglqvivknbdcnnyj.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY_FALLBACK = "sb_publishable_5mT2ypc9r4SYz7DzShUHyg_esdpoD2x";
 const PUBLIC_BASE_URL_FALLBACK = "https://ermif.com";
@@ -38,6 +41,12 @@ const CLAIM_STATUSES = new Set(["received", "in_review", "answered", "closed"]);
 const PRIVACY_REQUEST_TYPES = new Set(["informacion", "acceso", "rectificacion", "cancelacion", "oposicion"]);
 
 export default {
+  async scheduled(_event, env) {
+    return dispatchEmails(env, (name, body) => supabaseFetch(env, 'rpc/' + name, { method: 'POST', body }));
+  },
+  async queue(batch, env) {
+    return consumeEmailEvents(batch, env, (name, body) => supabaseFetch(env, 'rpc/' + name, { method: 'POST', body }));
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
 
@@ -46,6 +55,10 @@ export default {
     }
 
     try {
+      // La demostracion local nunca ejecuta operaciones contra servicios reales.
+      if (env.ENVIRONMENT === "local" && url.pathname.startsWith("/api/")) {
+        return json({ error: "API externa deshabilitada en la demostracion local. Usa pruebas con servicios simulados." }, 503);
+      }
       if (url.pathname === "/api/billing/checkout" && request.method === "POST") {
         return await handleCheckout(request, env);
       }
@@ -70,6 +83,8 @@ export default {
         return await handleAdminLegalList(request, env);
       }
 
+      const privacyResponseMatch = url.pathname.match(/^\/api\/admin\/privacidad\/([^/]+)\/respond$/);
+      if (privacyResponseMatch && request.method === 'POST') return await handleAdminPrivacyResponse(request, env, privacyResponseMatch[1]);
       const adminClaimResponseMatch = url.pathname.match(/^\/api\/admin\/reclamaciones\/([^/]+)\/respond$/);
       if (adminClaimResponseMatch && request.method === "POST") {
         return await handleAdminClaimResponse(request, env, adminClaimResponseMatch[1]);
@@ -298,11 +313,12 @@ async function handleAdminLegalList(request, env) {
   const user = await getAuthenticatedUser(request, env);
   await assertAdminUser(env, user.id);
 
-  const [claims, claimEvents, privacyRequests, accountDeletionRequests] = await Promise.all([
+  const [claims, claimEvents, privacyRequests, accountDeletionRequests, emails] = await Promise.all([
     supabaseSelect(env, "claim_book_entries?select=*&order=created_at.desc"),
     supabaseSelect(env, "claim_book_events?select=*&order=created_at.asc"),
     supabaseSelect(env, "privacy_requests?select=*&order=submitted_at.desc"),
     supabaseSelect(env, "account_deletion_requests?select=*&order=requested_at.desc"),
+    supabaseSelect(env, "email_outbox?select=id,event_key,recipient,subject,status,attempts,last_error,created_at,sent_at" + (env.EMAIL_OUTBOX_VERSION === "2" ? ",accepted_at,delivery_status,delivery_at,provider_message_id" : "") + "&order=created_at.desc&limit=100"),
   ]);
   const eventsByClaim = new Map();
   claimEvents.forEach((event) => {
@@ -310,10 +326,15 @@ async function handleAdminLegalList(request, env) {
     eventsByClaim.get(event.claim_id).push(event);
   });
 
+  const emailSettings = env.EMAIL_OUTBOX_VERSION === '2'
+    ? (await supabaseSelect(env, 'email_settings?select=enabled,daily_limit,budget_used,monthly_limit,monthly_used&limit=1'))[0] : null;
   return json({
     claims: claims.map((claim) => ({ ...claim, events: eventsByClaim.get(claim.id) || [] })),
     privacyRequests,
     accountDeletionRequests,
+    emails,
+    emailMode: env.EMAIL_MODE === "enabled" && emailSettings?.enabled ? "enabled" : "disabled",
+    emailLimits: emailSettings,
   });
 }
 
@@ -325,9 +346,14 @@ async function handleAdminClaimResponse(request, env, claimId) {
   const body = await request.json().catch(() => ({}));
   const response = requiredText(body.response, "Escribe la respuesta al consumidor.", 2500);
   const claim = await getClaimById(env, claimId);
+  if (claim.response === response && claim.status === 'answered') return json({ claimCode: claim.claim_code, status: 'answered', respondedAt: claim.responded_at, responseEmailStatus: claim.response_email_status });
   const now = new Date().toISOString();
   const responseVersion = Number(claim.response_version || 0) + 1;
 
+  const updated = await supabaseUpdate(env, "claim_book_entries", `id=eq.${encodeURIComponent(claim.id)}&response_version=eq.${Number(claim.response_version || 0)}`, {
+    status: "answered", response, response_version: responseVersion, responded_at: now, updated_at: now,
+  });
+  if (!updated.length) throw httpError("Otra persona actualizó el reclamo. Recarga antes de responder.", 409);
   const emailResult = await queueTransactionalEmail(env, {
     eventKey: `claim_response:${claim.id}:${responseVersion}`,
     recipient: claim.email,
@@ -340,17 +366,7 @@ async function handleAdminClaimResponse(request, env, claimId) {
       contactEmail: claim.provider_email || "MLVN696986@GMAIL.COM",
     },
   });
-
-  const updated = await supabaseUpdate(env, "claim_book_entries", `id=eq.${encodeURIComponent(claim.id)}`, {
-    status: "answered",
-    response,
-    response_version: responseVersion,
-    responded_at: now,
-    updated_at: now,
-    response_email_status: emailResult.status,
-    response_email_sent_at: emailResult.status === "sent" ? now : null,
-    response_email_error: emailResult.error || null,
-  });
+  await updateClaimEmailEvidence(env, claim.id, "response", emailResult);
   await insertClaimEvent(env, claim.id, user.id, "response", claim.status, "answered");
 
   return json({
@@ -359,6 +375,22 @@ async function handleAdminClaimResponse(request, env, claimId) {
     respondedAt: now,
     responseEmailStatus: emailResult.status,
   });
+}
+
+async function handleAdminPrivacyResponse(request, env, requestId) {
+  requireEnv(env, 'SUPABASE_SERVICE_ROLE_KEY');
+  const user = await getAuthenticatedUser(request, env);
+  await assertAdminUser(env, user.id);
+  if (env.EMAIL_OUTBOX_VERSION !== '2') throw httpError('Primero debe activarse la migración de correos.', 503);
+  const body = await request.json().catch(() => ({}));
+  const response = requiredText(body.response, 'Escribe la respuesta de privacidad.', 2500);
+  const rows = await supabaseSelect(env, 'privacy_requests?id=eq.' + encodeURIComponent(requestId) + '&select=*&limit=1');
+  if (!rows[0]) throw httpError('Solicitud no encontrada.', 404);
+  const row = rows[0];
+  const updated = await supabaseUpdate(env, 'privacy_requests', 'id=eq.' + encodeURIComponent(row.id) + '&email_revision=eq.' + Number(row.email_revision || 0),
+    { response, status: 'answered', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+  if (!updated.length) throw httpError('La solicitud cambió. Recarga antes de responder.', 409);
+  return json({ requestCode: row.request_code, status: 'answered' });
 }
 
 async function handleAdminClaimStatus(request, env, claimId) {
@@ -1093,6 +1125,7 @@ async function insertClaimEvent(env, claimId, actorUserId, eventType, previousSt
 }
 
 async function updateClaimEmailEvidence(env, claimId, kind, emailResult) {
+  if (env.EMAIL_OUTBOX_VERSION === "2") return; // La evidencia se actualiza en la misma transacción que la cola.
   const prefix = kind === "response" ? "response" : "received";
   try {
     await supabaseUpdate(env, "claim_book_entries", `id=eq.${encodeURIComponent(claimId)}`, {
@@ -1107,22 +1140,31 @@ async function updateClaimEmailEvidence(env, claimId, kind, emailResult) {
 }
 
 async function queueTransactionalEmail(env, message) {
-  const status = env.EMAIL_TRANSPORT && env.EMAIL_API_KEY ? "pending" : "pending_configuration";
-  let error = status === "pending_configuration" ? "EMAIL_TRANSPORT no configurado." : null;
-  try {
-    await supabaseInsert(env, "email_outbox", {
-      event_key: message.eventKey,
-      recipient: message.recipient,
-      subject: message.subject,
-      payload: message.payload,
-      status,
-      last_error: error,
-    });
-  } catch (outboxError) {
-    error = safeLogMessage(outboxError);
-    console.error("Email outbox could not be recorded", { message: error });
+  if (env.EMAIL_OUTBOX_VERSION === "2") {
+    try {
+      const rows = await supabaseSelect(env, `email_outbox?event_key=eq.${encodeURIComponent(message.eventKey)}&select=status,last_error&limit=1`);
+      return rows[0] ? { status: rows[0].status, error: rows[0].last_error } : { status: "error", error: "No se registró el correo. Revisar la migración." };
+    } catch {
+      // El expediente ya se guardó. No provocar que el usuario lo vuelva a presentar.
+      return { status: 'unknown', error: 'No se pudo consultar el estado del correo.' };
+    }
   }
-  return { status, error };
+  const result = await enqueueTransactionalEmail(message, {
+    insert: async (row) => {
+      const rows = await supabaseFetch(env, "email_outbox?on_conflict=event_key", {
+        method: "POST", body: row,
+        headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
+      });
+      return rows[0] || null;
+    },
+    findByEventKey: async (eventKey) => {
+      const rows = await supabaseSelect(env, `email_outbox?event_key=eq.${encodeURIComponent(eventKey)}&select=status,last_error&limit=1`);
+      return rows[0] || null;
+    },
+  });
+  if (result.status === "error") console.error("Email outbox could not be recorded");
+  // Compatibilidad con el esquema anterior; la versión 2 usa triggers atómicos.
+  return result;
 }
 
 async function enforcePublicSubmissionRateLimit(env, table, emailColumn, email) {
@@ -1137,7 +1179,7 @@ async function enforcePublicSubmissionRateLimit(env, table, emailColumn, email) 
     }
   } catch (error) {
     if (error.status === 429) throw error;
-    console.error("Rate limit check skipped", { table, message: safeLogMessage(error) });
+    throw httpError("No se pudo verificar el límite de solicitudes. Intenta nuevamente en unos minutos.", 503);
   }
 }
 

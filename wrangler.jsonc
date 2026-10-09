@@ -6,11 +6,57 @@
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*"
+    ]
   },
   "vars": {
     "PUBLIC_BASE_URL": "https://ermif.com",
     "SUPABASE_URL": "https://kltozglqvivknbdcnnyj.supabase.co",
-    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_5mT2ypc9r4SYz7DzShUHyg_esdpoD2x"
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_5mT2ypc9r4SYz7DzShUHyg_esdpoD2x",
+    "EMAIL_MODE": "enabled",
+    "EMAIL_OUTBOX_VERSION": "2",
+    "EMAIL_REPLY_TO": "mlvn696986@gmail.com",
+    "CLOUDFLARE_ACCOUNT_ID": "85fd7b8b6aee5613ff5ce0865615f51c",
+    "EMAIL_EVENTS_QUEUE": "ermif-email-events"
+  },
+  "account_id": "85fd7b8b6aee5613ff5ce0865615f51c",
+  "build": {
+    "command": "npm run build"
+  },
+  "routes": [
+    {
+      "pattern": "ermif.com",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.ermif.com",
+      "custom_domain": true
+    }
+  ],
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_sender_addresses": [
+        "notificaciones@ermif.com"
+      ]
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "*/5 * * * *"
+    ]
+  },
+  "queues": {
+    "consumers": [
+      {
+        "queue": "ermif-email-events",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "ermif-email-events-dlq"
+      }
+    ]
   }
 }

@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "control-prestamos-local",
+  "compatibility_date": "2026-09-02",
+  "main": "src/worker.js",
+  "workers_dev": false,
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist-local",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "vars": {
+    "ENVIRONMENT": "local",
+    "PUBLIC_BASE_URL": "http://127.0.0.1:8787",
+    "SUPABASE_URL": "",
+    "SUPABASE_PUBLISHABLE_KEY": "",
+    "EMAIL_TRANSPORT": "disabled"
+  },
+  "build": {
+    "command": "node scripts/build-cloudflare.js --local",
+    "watch_dir": [
+      "app.js",
+      "index.html",
+      "styles.css",
+      "assets"
+    ]
+  }
+}

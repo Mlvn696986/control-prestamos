@@ -2,8 +2,39 @@
   "name": "control-prestamos",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
   "scripts": {
     "build": "node scripts/build-cloudflare.js",
-    "test": "node financial-regression-tests.js"
+    "build:local": "node scripts/build-cloudflare.js --local",
+    "dev": "npm run build:local && wrangler dev --config wrangler.local.jsonc --local --ip 127.0.0.1 --port 8787",
+    "test": "npm run test:financial && npm run test:unit",
+    "test:financial": "node financial-regression-tests.js",
+    "test:calendar": "node scripts/test-financial-calendar.js",
+    "test:unit": "node --test tests/*.test.mjs",
+    "check": "node --check app.js && node --check src/worker.js && node --check scripts/build-cloudflare.js && npm run security:check",
+    "security:check": "node scripts/check-secrets.js",
+    "validate": "npm run check && npm test && npm run test:calendar && npm run deploy:check",
+    "deploy:check": "wrangler deploy --dry-run --outdir .wrangler/dry-run",
+    "cf:whoami": "wrangler whoami",
+    "cf:login": "wrangler login",
+    "db:backup": "node scripts/backup-database.js",
+    "db:backup:native": "node scripts/backup-native.js",
+    "db:verify-backup": "node scripts/verify-backup.js",
+    "email:preview": "node scripts/preview-emails.mjs",
+    "db:audit": "supabase db query --project-ref kltozglqvivknbdcnnyj --file supabase-rls-audit.sql"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "supabase": "2.120.0",
+    "wrangler": "4.148.0"
+  },
+  "overrides": {
+    "sharp": "0.35.5"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "workerd@1.20261006.1": true
   }
 }

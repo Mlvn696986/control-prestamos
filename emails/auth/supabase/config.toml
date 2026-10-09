@@ -1,0 +1,60 @@
+project_id = "ermif-mail-templates"
+
+[auth.email.template.confirmation]
+subject = "Confirma tu cuenta de ERMIF"
+content_path = "confirmation.html"
+
+[auth.email.template.invite]
+subject = "Invitación a ERMIF"
+content_path = "invite.html"
+
+[auth.email.template.magic_link]
+subject = "Tu enlace de acceso a ERMIF"
+content_path = "magic_link.html"
+
+[auth.email.template.email_change]
+subject = "Confirma tu nuevo correo en ERMIF"
+content_path = "email_change.html"
+
+[auth.email.template.recovery]
+subject = "Restablece tu contraseña de ERMIF"
+content_path = "recovery.html"
+
+[auth.email.template.reauthentication]
+subject = "Tu código de verificación de ERMIF"
+content_path = "reauthentication.html"
+
+[auth.email.notification.password_changed]
+enabled = true
+subject = "Tu contraseña de ERMIF ha cambiado"
+content_path = "password_changed_notification.html"
+
+[auth.email.notification.email_changed]
+enabled = true
+subject = "Tu correo de ERMIF ha cambiado"
+content_path = "email_changed_notification.html"
+
+[auth.email.notification.phone_changed]
+enabled = true
+subject = "Tu teléfono de ERMIF ha cambiado"
+content_path = "phone_changed_notification.html"
+
+[auth.email.notification.identity_linked]
+enabled = true
+subject = "Nuevo método de acceso en ERMIF"
+content_path = "identity_linked_notification.html"
+
+[auth.email.notification.identity_unlinked]
+enabled = true
+subject = "Método de acceso retirado de ERMIF"
+content_path = "identity_unlinked_notification.html"
+
+[auth.email.notification.mfa_factor_enrolled]
+enabled = true
+subject = "Verificación de seguridad añadida en ERMIF"
+content_path = "mfa_factor_enrolled_notification.html"
+
+[auth.email.notification.mfa_factor_unenrolled]
+enabled = true
+subject = "Verificación de seguridad retirada de ERMIF"
+content_path = "mfa_factor_unenrolled_notification.html"

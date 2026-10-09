@@ -1,3 +1,5 @@
+begin transaction read only;
+
 -- Auditoria RLS y permisos de ERMIF.
 -- No modifica datos. Ejecuta todo en Supabase SQL Editor.
 
@@ -21,7 +23,11 @@ where namespaces.nspname = 'public'
     'capital_movements',
     'plan_requests',
     'user_backups',
-    'claim_book_entries'
+    'claim_book_entries',
+    'claim_book_events',
+    'privacy_requests',
+    'account_deletion_requests',
+    'email_outbox'
   )
 order by classes.relname;
 
@@ -46,7 +52,11 @@ where schemaname = 'public'
     'capital_movements',
     'plan_requests',
     'user_backups',
-    'claim_book_entries'
+    'claim_book_entries',
+    'claim_book_events',
+    'privacy_requests',
+    'account_deletion_requests',
+    'email_outbox'
   )
 order by tablename, policyname;
 
@@ -69,7 +79,11 @@ where table_schema = 'public'
     'capital_movements',
     'plan_requests',
     'user_backups',
-    'claim_book_entries'
+    'claim_book_entries',
+    'claim_book_events',
+    'privacy_requests',
+    'account_deletion_requests',
+    'email_outbox'
   )
 order by table_name, grantee, privilege_type;
 
@@ -93,7 +107,11 @@ where table_schema = 'public'
     'capital_movements',
     'plan_requests',
     'user_backups',
-    'claim_book_entries'
+    'claim_book_entries',
+    'claim_book_events',
+    'privacy_requests',
+    'account_deletion_requests',
+    'email_outbox'
   )
 order by table_name, grantee, column_name;
 
@@ -132,3 +150,5 @@ order by routines.routine_name, routine_privileges.grantee;
 select
   'public_service_key_scan' as audit_section,
   'Revisa tambien el repositorio: SUPABASE_SERVICE_ROLE_KEY solo debe existir como secret del Worker/backend.' as note;
+
+rollback;
