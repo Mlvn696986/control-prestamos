@@ -17,7 +17,7 @@
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_5mT2ypc9r4SYz7DzShUHyg_esdpoD2x",
     "EMAIL_MODE": "enabled",
     "EMAIL_OUTBOX_VERSION": "2",
-    "EMAIL_REPLY_TO": "mlvn696986@gmail.com",
+    "EMAIL_REPLY_TO": "notificaciones@ermif.com",
     "CLOUDFLARE_ACCOUNT_ID": "85fd7b8b6aee5613ff5ce0865615f51c",
     "EMAIL_EVENTS_QUEUE": "ermif-email-events"
   },
@@ -39,7 +39,10 @@
     {
       "name": "EMAIL",
       "allowed_sender_addresses": [
-        "notificaciones@ermif.com"
+        "notificaciones@ermif.com",
+        "reclamaciones@ermif.com",
+        "privacidad@ermif.com",
+        "facturacion@ermif.com"
       ]
     }
   ],

@@ -27,6 +27,15 @@ export function escapeHtml(value) {
 export function validEmail(value) {
   return typeof value === 'string' && value.length <= 254 && /^[^\s<>@,;"\\]+@[^\s<>@,;"\\]+\.[^\s<>@,;"\\]+$/.test(value);
 }
+const DEPARTMENT_SENDERS = Object.freeze({
+  claim_received: 'reclamaciones@ermif.com',
+  claim_response: 'reclamaciones@ermif.com',
+  privacy_received: 'privacidad@ermif.com',
+  privacy_response: 'privacidad@ermif.com',
+  account_deletion_received: 'privacidad@ermif.com',
+  account_deletion_updated: 'privacidad@ermif.com',
+  subscription_updated: 'facturacion@ermif.com',
+});
 function displayValue(key, value) {
   if (/At$|PeriodEnd$/.test(key)) {
     const date = new Date(value);
@@ -34,7 +43,7 @@ function displayValue(key, value) {
   }
   return LABELS[value] || String(value).slice(0, 10000);
 }
-export function prepareTransactionalEmail(message) {
+export function prepareTransactionalEmail(message, { defaultReplyTo = 'notificaciones@ermif.com' } = {}) {
   const kind = String(message.eventKey || '').split(':')[0];
   if (!Object.hasOwn(EMAIL_EVENTS, kind)) throw new Error('Evento de correo no soportado.');
   const recipient = String(message.recipient || '').trim();
@@ -44,7 +53,10 @@ export function prepareTransactionalEmail(message) {
   const [title, intro] = EMAIL_EVENTS[kind];
   const lines = Object.entries(FIELDS).filter(([key]) => message.payload?.[key] != null && message.payload[key] !== '')
     .map(([key, label]) => [label, displayValue(key, message.payload[key])]);
-  const support = 'mlvn696986@gmail.com';
+  // El evento determina el remitente; el contenido del usuario no puede cambiarlo.
+  const sender = DEPARTMENT_SENDERS[kind] || 'notificaciones@ermif.com';
+  const support = DEPARTMENT_SENDERS[kind] || defaultReplyTo;
+  if (!validEmail(support)) throw new Error('Dirección de respuesta inválida.');
   const footer = 'Puedes responder a este correo para contactar al equipo de ERMIF. No envíes contraseñas ni códigos de acceso.';
   const text = ['ERMIF', title, intro, ...lines.map(([label, value]) => label + ': ' + value), 'https://ermif.com', footer, 'Contacto: ' + support].join('\n\n');
   const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(subject)}</title></head>
@@ -52,7 +64,7 @@ export function prepareTransactionalEmail(message) {
 <p style="color:#087f5b;font-size:22px;font-weight:bold;margin-top:0">ERMIF</p><h1 style="font-size:23px">${escapeHtml(title)}</h1><p>${escapeHtml(intro)}</p>
 ${lines.map(([label, value]) => `<p><strong>${escapeHtml(label)}</strong><br>${escapeHtml(value).replace(/\n/g, '<br>')}</p>`).join('')}
 <p><a href="https://ermif.com" style="color:#087f5b">Ir a ERMIF</a></p><hr style="border:0;border-top:1px solid #e5e9ed"><p style="font-size:13px;color:#52636d">${footer}<br>Contacto: <a href="mailto:${support}">${support}</a></p></td></tr></table></td></tr></table></body></html>`;
-  return { to: recipient, subject, text, html, templateVersion: 2 };
+  return { to: recipient, from: { email: sender, name: 'ERMIF' }, replyTo: support, subject, text, html, templateVersion: 3 };
 }
 // Compatibilidad mientras se prepara la migración. Nunca envía directamente.
 export async function enqueueTransactionalEmail(message, { insert, findByEventKey }) {

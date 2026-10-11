@@ -25,7 +25,7 @@ test("la cola queda pendiente y nunca afirma un envio real", async () => {
     findByEventKey: async () => { throw new Error("No deberia consultar"); },
   });
   assert.equal(result.status, "pending_configuration");
-  assert.equal(captured.payload.rendered.templateVersion, 2);
+  assert.equal(captured.payload.rendered.templateVersion, 3);
   assert.equal(captured.sent_at, undefined);
 });
 test("un reintento conserva la evidencia de un evento ya enviado", async () => {
@@ -54,5 +54,16 @@ test('todas las plantillas de acceso conservan los enlaces y códigos de Supabas
   if(template.key==='reauthentication')assert.ok(html.includes('{{ .Token }}'));
   else if(!template.requiresSecurityNotificationToggle)assert.ok(html.includes('{{ .ConfirmationURL }}'));
   else assert.ok(!html.includes('{{ .ConfirmationURL }}'));
+ }
+});
+
+test('todos los remitentes de las plantillas están autorizados en el Worker',async()=>{
+ const fs=await import('node:fs');
+ const config=JSON.parse(fs.readFileSync(new URL('../wrangler.jsonc',import.meta.url),'utf8'));
+ const allowed=config.send_email.find(binding=>binding.name==='EMAIL').allowed_sender_addresses;
+ for(const kind of Object.keys(EMAIL_EVENTS)){
+  const result=prepareTransactionalEmail(makeMessage(kind),{defaultReplyTo:config.vars.EMAIL_REPLY_TO});
+  assert.ok(allowed.includes(result.from.email),kind);
+  assert.equal(result.replyTo,result.from.email,kind);
  }
 });

@@ -1378,7 +1378,7 @@ assertFileIncludes(readText("SECURITY-INCIDENT-PLAYBOOK.md"), "48 horas", "Incid
 // Correo: transporte, permisos y estados se verifican en tests/email-*.test.mjs.
 assertFileIncludes(htmlCode, "HOYOS BUENO MELVIN", "Legal: los terminos deben incluir titular legal.");
 assertFileIncludes(htmlCode, "10735063818", "Legal: los terminos deben incluir RUC correcto.");
-assertFileIncludes(htmlCode, "MLVN696986@GMAIL.COM", "Legal: los terminos deben incluir correo de soporte.");
+assertFileIncludes(htmlCode, 'href="mailto:notificaciones@ermif.com"', "Legal: los terminos deben incluir correo de soporte.");
 assertCondition(!htmlCode.includes("Domicilio fiscal:"), "Legal: los terminos no deben mostrar direccion fiscal en el bloque publico.");
 assertFileIncludes(htmlCode, "Regresar</button>", "Legal: el modal debe tener boton Regresar al final.");
 assertFileIncludes(htmlCode, "hasta 29 dias calendario", "Legal: los terminos deben reflejar la politica de reembolso.");

@@ -1,12 +1,12 @@
 # Correos automáticos de ERMIF
 
-Actualizado: 8 de octubre de 2026, hora de Lima. Publicado y activado en producción.
+Actualizado: 11 de octubre de 2026, hora de Lima.
 
 ## Estado confirmado
 
-El propietario activó Cloudflare Email Sending para ermif.com. Sus capturas muestran Sending Enabled y DNS Configured. Configuró Supabase SMTP con smtp.mx.cloudflare.net, puerto 465, usuario api_token y su token directamente en el panel. Un correo de recuperación llegó; Gmail mostró SPF, DKIM y DMARC PASS. Una segunda prueba con la plantilla en español apareció en Recibidos. Esto comprueba esas pruebas, no garantiza la ubicación de futuros correos. Falta confirmar recuperación de contraseña de extremo a extremo.
+El propietario activó Cloudflare Email Sending para ermif.com. Sus capturas muestran Sending Enabled y DNS Configured. Configuró Supabase SMTP con smtp.mx.cloudflare.net, puerto 465, usuario api_token y su token directamente en el panel. Un correo de recuperación llegó; Gmail mostró SPF, DKIM y DMARC PASS. Una segunda prueba con la plantilla en español apareció en Recibidos. Esto comprueba esas pruebas, no garantiza la ubicación de futuros correos. El propietario también confirmó la recuperación completa: enlace, cambio de contraseña e inicio de sesión.
 
-Remitente de la aplicación: ERMIF <notificaciones@ermif.com>. Reply-To y alertas internas: mlvn696986@gmail.com, confirmado por el propietario. Alcance: correos de ERMIF, sin recordatorios a deudores ni campañas comerciales.
+Los remitentes y Reply-To de la aplicación se eligen según el evento (tabla siguiente). Las alertas internas y los mensajes entrantes llegan a mlvn696986@gmail.com, confirmado por el propietario. Alcance: correos de ERMIF, sin recordatorios a deudores ni campañas comerciales.
 
 ## Qué incluye el código
 
@@ -60,7 +60,7 @@ Las 13 plantillas ya se publicaron con el CLI oficial y se habilitaron los siete
 
 Configuración reproducible: emails/auth/supabase/config.toml, generada con scripts/generate-auth-emails.mjs. Revisar con supabase config diff --project-ref kltozglqvivknbdcnnyj --workdir emails/auth. Para una actualización autorizada usar config push con ese mismo proyecto y directorio; nunca usar la configuración de desarrollo completa para reemplazar la remota.
 
-Email Routing habilitado: notificaciones@ermif.com → mlvn696986@gmail.com. El destino consta como verificado y la regla dc90c1a6bbc0434daadb159e9e9c9a3f está activa. Antes de habilitar se comprobó que el dominio no tenía MX ni otro servicio de recepción. El catch-all sigue desactivado. El Reply-To del Worker y los enlaces de contacto también apuntan al Gmail.
+Email Routing habilitado para las seis direcciones de la tabla siguiente → mlvn696986@gmail.com. El destino está verificado. La regla original de notificaciones se conserva y el catch-all sigue desactivado. Cada respuesta a un mensaje departamental usa el mismo correo del departamento; el Gmail queda como destino interno.
 
 Site URL verificada: https://ermif.com; redirects: https://ermif.com, https://ermif.com/ y https://ermif.com/*. Validar el enlace completo con una cuenta propia de prueba, sin compartir el enlace, código o contraseña por chat. El sistema no añade seguimiento de clics a los enlaces de acceso.
 
@@ -77,6 +77,44 @@ El propietario autorizó activar con el respaldo local verificado, sin segunda c
 - Topes: 200 intentos/día, 2000/mes, 10 por destinatario/hora. SMTP de Supabase tiene su propio consumo.
 - Prueba única autorizada: system_check:activation-20261009-283636ac, registro 174a9ae9-8a26-4fc1-ac5d-2cf960071f0a, destinatario mlvn696986@gmail.com. Correo de prueba aceptado por Cloudflare el 2026-10-09T03:20:32.824425+00:00 en 1 intento, sin error. Entrega confirmada en Cloudflare emailRoutingAdaptive: delivered el 2026-10-09T03:20:31Z (08/10, 22:20:31 en Lima), con el mismo messageId. Evidencia reconciliada puntualmente en ERMIF; no fue un evento recibido por Queues. No demuestra lectura ni ubicación en Recibidos. No reenviar la prueba.
 - Trece plantillas de Auth publicadas y verificadas; recepción del remitente conectada al Gmail verificado.
+
+
+## Direcciones por área — 11/10/2026
+
+| Dirección | Recepción | Envíos de ERMIF |
+| --- | --- | --- |
+| reclamaciones@ermif.com | Consultas y respuestas sobre reclamaciones | Constancia y respuesta guardada en el panel |
+| privacidad@ermif.com | Datos personales, derechos ARCO y eliminación | Recepción, respuesta y cambios del expediente de eliminación |
+| facturacion@ermif.com | Suscripción, cobros y comprobantes | Cambios del estado, plan o periodo de la suscripción; no emite comprobantes |
+| ventas@ermif.com | Planes y demostraciones | Sin campaña ni respuesta automática |
+| seguridad@ermif.com | Accesos sospechosos y reportes de fallos | Sin respuesta automática |
+| notificaciones@ermif.com | Contacto general y respuestas de acceso | Auth de Supabase, alertas internas y comprobaciones técnicas |
+
+Las seis direcciones reenvían al Gmail del propietario. No son seis buzones independientes ni tienen contraseñas separadas. Las consultas por email no crean expedientes en ERMIF: los formularios de la web mantienen su registro y seguimiento propios. No se ha añadido un contestador automático.
+
+En la aplicación, el evento guardado determina From, Reply-To y contacto del pie del mensaje. El payload del usuario no puede elegirlos. Las plantillas operativas pasan a la versión 3; la cola y sus límites conservan la versión 2. El binding del Worker permite únicamente los cuatro remitentes que usa la aplicación (notificaciones, reclamaciones, privacidad y facturacion). Las plantillas y el remitente de Supabase Auth no cambian.
+
+Los contactos se muestran en los términos, el Libro de Reclamaciones, la política de privacidad y la ventana de suscripción.
+
+### Comprobación de las nuevas direcciones
+
+El 11/10/2026 se verificaron las cinco reglas activas y se enviaron exactamente cinco pruebas autorizadas, una desde y hacia cada dirección. Cloudflare confirmó delivered para cada messageId tanto en Email Sending como en Email Routing hacia el destino verificado. Esto confirma transporte y reenvío, no lectura ni carpeta de Gmail. Las pruebas fueron por la API del proveedor, no crearon reclamaciones ni expedientes ni usaron la cola de producción. No reenviarlas.
+
+### Responder manualmente desde Gmail
+
+El reenvío está configurado en Cloudflare. No configura por sí solo la opción «Enviar como» de Gmail: sin ella, una respuesta manual muestra el Gmail del propietario.
+
+Disponibilidad: Google anuncia que «Enviar como» para cuentas de terceros dejará de estar disponible en enero de 2027 y que limitará nuevas configuraciones antes de esa fecha. No se presenta como solución permanente para ERMIF. Fuente: https://support.google.com/mail/answer/17101213 . El reenvío entrante de Cloudflare y los envíos de ERMIF no dependen de esta función. Para atención manual duradera habrá que elegir un cliente o buzón que admita el remitente del dominio.
+
+Si la opción todavía está disponible, para cada dirección que se quiera utilizar al responder:
+1. Gmail → Configuración → Ver todos los ajustes → Cuentas e importación → Enviar como → Añadir otra dirección de correo.
+2. Introducir el nombre de ERMIF y la dirección elegida.
+3. Servidor SMTP: smtp.mx.cloudflare.net; puerto 465; conexión SSL; usuario literal api_token.
+4. Introducir de forma privada un token de Cloudflare con permiso Email Sending: Edit como contraseña SMTP. No usar la contraseña de Gmail ni la de Supabase, ni copiar el token al código o al chat.
+5. Completar la verificación que Gmail envíe a esa dirección, recibida por el reenvío.
+6. Elegir «Responder desde la misma dirección a la que se ha enviado el mensaje» y comprobar el campo «De» antes de responder.
+
+Esta configuración manual de Gmail no se ha aplicado desde el proyecto. No se crean ni se recuperan tokens SMTP del usuario.
 
 ## Pausa y recuperación
 
