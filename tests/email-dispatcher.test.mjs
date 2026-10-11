@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { dispatchEmails, consumeEmailEvents } from '../src/email-dispatcher.mjs';
 import worker from '../src/worker.js';
 const row={id:'one',lease_token:'lease',event_key:'claim_received:one',recipient:'test@example.invalid',subject:'ERMIF - Solicitud',payload:{claimCode:'TEST-01'}};
-function setup(send, finish=async()=>true) {
- let queue=[row]; const calls=[];
+function setup(send, finish=async()=>true, queuedRow=row) {
+ let queue=[queuedRow]; const calls=[];
  return { calls,env:{EMAIL_MODE:'enabled',EMAIL_OUTBOX_VERSION:'2',EMAIL_REPLY_TO:'support@example.invalid',EMAIL:{send}},
  rpc:async(name,args)=>{calls.push({name,args});return name==='email_claim_next' ? (queue.length?[queue.shift()]:[]) : finish(args);} };
 }
 test('una aceptación registra el ID y no afirma entrega',async()=>{
- const t=setup(async m=>{assert.equal(m.from.email,'notificaciones@ermif.com');assert.equal(m.replyTo,'support@example.invalid');return {messageId:'cf-id'};});
+ const t=setup(async m=>{assert.equal(m.from.email,'reclamaciones@ermif.com');assert.equal(m.replyTo,'reclamaciones@ermif.com');return {messageId:'cf-id'};});
  assert.equal((await dispatchEmails(t.env,t.rpc)).accepted,1);
  assert.equal(t.calls[1].args.p_status,'accepted');assert.equal(t.calls[1].args.p_message_id,'cf-id');
 });
@@ -84,4 +84,26 @@ test('respuesta concurrente devuelve conflicto y no crea un segundo correo',asyn
   const res=await worker.fetch(new Request('https://example.invalid/api/admin/reclamaciones/claim/respond',{method:'POST',headers:{Authorization:'Bearer fake'},body:JSON.stringify({response:'Respuesta de prueba'})}),{SUPABASE_SERVICE_ROLE_KEY:'fake',EMAIL_OUTBOX_VERSION:'2'});
   assert.equal(res.status,409);
  }finally{globalThis.fetch=original;}
+});
+
+test('cada evento usa su remitente y contacto aunque el payload intente sustituirlos',async()=>{
+ const expected={
+  claim_received:'reclamaciones',claim_response:'reclamaciones',
+  privacy_received:'privacidad',privacy_response:'privacidad',
+  account_deletion_received:'privacidad',account_deletion_updated:'privacidad',
+  subscription_updated:'facturacion',internal_alert:'notificaciones',system_check:'notificaciones',
+ };
+ for(const [kind,localPart] of Object.entries(expected)){
+  let sent;
+  const item={...row,event_key:kind+':identity',payload:{...row.payload,from:'attacker@example.invalid',replyTo:'attacker@example.invalid'}};
+  const t=setup(async m=>{sent=m;return {messageId:'cf-identity'};},async()=>true,item);
+  await dispatchEmails(t.env,t.rpc);
+  const address=localPart+'@ermif.com';
+  const replyTo=localPart==='notificaciones'?'support@example.invalid':address;
+  assert.equal(sent.from.email,address,kind);
+  assert.equal(sent.replyTo,replyTo,kind);
+  assert.ok(sent.text.includes('Contacto: '+replyTo),kind);
+  assert.ok(sent.html.includes('mailto:'+replyTo),kind);
+  assert.ok(!sent.html.includes('attacker@example.invalid'),kind);
+ }
 });

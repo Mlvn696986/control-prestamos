@@ -19,15 +19,15 @@ export async function dispatchEmails(env, rpc) {
     const row = rows?.[0];
     if (!row) break;
     let rendered;
-    try { rendered = prepareTransactionalEmail({ eventKey: row.event_key, recipient: row.recipient, subject: row.subject, payload: row.payload }); }
+    try { rendered = prepareTransactionalEmail({ eventKey: row.event_key, recipient: row.recipient, subject: row.subject, payload: row.payload }, { defaultReplyTo: env.EMAIL_REPLY_TO }); }
     catch {
       await rpc('email_finish_attempt', { p_id: row.id, p_lease: row.lease_token, p_status: 'error', p_message_id: null, p_error: 'Contenido o destinatario inválido.', p_delay: 0 });
       continue;
     }
     let result;
     try {
-      const reply = await env.EMAIL.send({ to: rendered.to, from: { email: 'notificaciones@ermif.com', name: 'ERMIF' },
-        replyTo: env.EMAIL_REPLY_TO, subject: rendered.subject, html: rendered.html, text: rendered.text });
+      const reply = await env.EMAIL.send({ to: rendered.to, from: rendered.from,
+        replyTo: rendered.replyTo, subject: rendered.subject, html: rendered.html, text: rendered.text });
       if (!reply?.messageId) throw new Error('Sin confirmación del proveedor');
       result = { status: 'accepted', messageId: reply.messageId, error: null, delay: 0 };
     } catch (error) { result = classifySendError(error); }

@@ -8,7 +8,7 @@ Nombre comercial: ERMIF
 Titular: HOYOS BUENO MELVIN  
 RUC: 10735063818  
 Direccion: Mz. E Lote 33 Urb. Tres Orizontes, San Martin de Porres, Lima, Lima  
-Contacto para privacidad, soporte, reclamos y derechos ARCO: MLVN696986@GMAIL.COM
+Contacto para privacidad y derechos ARCO: privacidad@ermif.com
 
 ## Roles de tratamiento
 
