@@ -104,7 +104,9 @@ El 11/10/2026 se verificaron las cinco reglas activas y se enviaron exactamente 
 
 El reenvío está configurado en Cloudflare. No configura por sí solo la opción «Enviar como» de Gmail: sin ella, una respuesta manual muestra el Gmail del propietario.
 
-Para cada dirección que se quiera utilizar al responder:
+Disponibilidad: Google anuncia que «Enviar como» para cuentas de terceros dejará de estar disponible en enero de 2027 y que limitará nuevas configuraciones antes de esa fecha. No se presenta como solución permanente para ERMIF. Fuente: https://support.google.com/mail/answer/17101213 . El reenvío entrante de Cloudflare y los envíos de ERMIF no dependen de esta función. Para atención manual duradera habrá que elegir un cliente o buzón que admita el remitente del dominio.
+
+Si la opción todavía está disponible, para cada dirección que se quiera utilizar al responder:
 1. Gmail → Configuración → Ver todos los ajustes → Cuentas e importación → Enviar como → Añadir otra dirección de correo.
 2. Introducir el nombre de ERMIF y la dirección elegida.
 3. Servidor SMTP: smtp.mx.cloudflare.net; puerto 465; conexión SSL; usuario literal api_token.
