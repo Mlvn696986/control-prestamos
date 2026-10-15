@@ -1,0 +1,1337 @@
+/* ERMIF · Resumen
+   Visual primitives: emerald = positive/action; petrol = structure/attention;
+   neutral surfaces = information. State labels and icons supplement color.
+   Scoped to Resumen; shared screens, calculations and controls stay independent. */
+
+/* Tokens: surfaces, typography and the three palette families. */
+#dashboardView  {
+  --summary-emerald: #078563;
+  --summary-emerald-bright: #079b75;
+  --summary-emerald-soft: #edf8f3;
+  --summary-petrol: #153b4b;
+  --summary-ink: #173642;
+  --summary-muted: #536d77;
+  --summary-line: #dfe9e7;
+  --summary-surface: #f5f8f8;
+  --summary-radius: 14px;
+  color: var(--summary-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.workspace:has(> #dashboardView.active-view)  {
+  padding: 22px 24px;
+  background: #f4f7f7;
+  min-width: 0;
+}
+
+.workspace:has(> #dashboardView.active-view) > .topbar  {
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.workspace:has(> #dashboardView.active-view) .topbar-meta  {
+  min-width: 0;
+}
+
+.workspace:has(> #dashboardView.active-view) .topbar-date-pill  {
+  background: #fff;
+  border: 1px solid #dfe9e7;
+  box-shadow: none;
+  font-size: .75rem;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.workspace:has(> #dashboardView.active-view) .topbar-actions, .workspace:has(> #dashboardView.active-view) .topbar-primary-actions  {
+  gap: 8px;
+  align-items: center;
+}
+
+.workspace:has(> #dashboardView.active-view) .topbar :is(button, .data-menu > summary)  {
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  font-size: .76rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.workspace:has(> #dashboardView.active-view) .topbar .primary-button  {
+  background: #078563;
+  border: 1px solid #078563;
+  color: #fff;
+}
+
+.workspace:has(> #dashboardView.active-view) .topbar #openWithdrawCapital  {
+  background: #fff;
+  color: #153b4b;
+  border: 1px solid #cbdad9;
+}
+
+.workspace:has(> #dashboardView.active-view) .topbar .data-menu > summary  {
+  background: #fff;
+  border: 1px solid #dfe9e7;
+  color: #153b4b;
+}
+
+#dashboardView .summary-dashboard  {
+  gap: 14px;
+}
+
+#dashboardView .panel  {
+  min-width: 0;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid var(--summary-line);
+  border-radius: var(--summary-radius);
+  box-shadow: 0 3px 12px #153b4b04;
+}
+
+#dashboardView .summary-icon  {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
+  display: inline-block;
+  vertical-align: middle;
+  color: currentColor;
+}
+
+#dashboardView .section-heading  {
+  margin: 0 0 15px;
+  gap: 10px;
+  align-items: center;
+}
+
+#dashboardView .section-heading > div  {
+  min-width: 0;
+}
+
+#dashboardView .panel > .section-heading:first-child .eyebrow, #dashboardView .eyebrow  {
+  position: static;
+  display: block;
+  padding: 0;
+  margin: 0 0 4px;
+  background: transparent;
+  color: var(--summary-muted);
+  font-size: .65rem;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  min-height: 0;
+}
+
+#dashboardView .section-heading h3  {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  color: var(--summary-ink);
+}
+
+#dashboardView .section-heading h3 > .summary-icon  {
+  color: var(--summary-emerald);
+}
+
+#dashboardView .section-helper  {
+  color: var(--summary-muted);
+  font-size: .73rem;
+  font-weight: 700;
+  line-height: 1.5;
+  margin: 5px 0 0;
+}
+
+/* Financial overview and the compact filter strip. */
+#dashboardView .summary-hero.panel  {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 22px 24px;
+  background: radial-gradient(ellipse at 35% -70%, #267365 0, transparent 70%), linear-gradient(110deg, #153b4b, #102d3a);
+  color: #fff;
+  border: 0;
+  box-shadow: 0 6px 20px #153b4b12;
+}
+
+#dashboardView .summary-hero .eyebrow  {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: #a7e6d2;
+  margin-bottom: 9px;
+  font-size: .63rem;
+}
+
+#dashboardView .summary-hero .eyebrow .summary-icon  {
+  width: 15px;
+  height: 15px;
+}
+
+#dashboardView .summary-hero h3  {
+  font-size: clamp(1.4rem, 2.2vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: -.035em;
+  line-height: 1.2;
+}
+
+#dashboardView #summaryHeroMeta  {
+  margin-top: 6px;
+  color: #c2d6da;
+  font-size: .76rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+#dashboardView .summary-health  {
+  flex: 0 0 auto;
+  min-width: 235px;
+  max-width: 45%;
+  align-items: start;
+  justify-items: start;
+  gap: 5px;
+  padding: 13px 18px;
+  border-radius: 11px;
+  border: 1px solid #ffffff21;
+  background: #ffffff08;
+  text-align: left;
+}
+
+#dashboardView .summary-health .status-pill:is(.ok, .warn)  {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: #a7e6d2;
+  font-size: .68rem;
+  font-weight: 700;
+  min-height: auto;
+}
+
+#dashboardView .summary-health strong  {
+  color: #fff;
+  font-size: clamp(1.5rem, 2.3vw, 2rem);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -.03em;
+  overflow-wrap: anywhere;
+}
+
+#dashboardView .summary-health small  {
+  color: #b6cdd2;
+  font-size: .65rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+#dashboardView .summary-filters.panel  {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 12px 16px;
+}
+
+#dashboardView .summary-date-group  {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 340px;
+}
+
+#dashboardView .summary-date-group legend  {
+  float: left;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px 0 0;
+  color: var(--summary-muted);
+  font-size: .7rem;
+  font-weight: 700;
+}
+
+#dashboardView .summary-date-group legend .summary-icon  {
+  width: 16px;
+  height: 16px;
+}
+
+#dashboardView .summary-date-fields  {
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#dashboardView .summary-date-fields label  {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: auto minmax(0, 1fr);
+  font-size: .68rem;
+  font-weight: 700;
+  color: var(--summary-muted);
+}
+
+#dashboardView .summary-filters input  {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 8px;
+  color: var(--summary-ink);
+  border: 1px solid var(--summary-line);
+  border-radius: 7px;
+  background: var(--summary-surface);
+  font-size: .73rem;
+  font-weight: 700;
+}
+
+#dashboardView .summary-compare-field, #dashboardView .summary-filter-actions  {
+  padding: 0;
+  align-self: center;
+}
+
+#dashboardView .ghost-button  {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid var(--summary-line);
+  border-radius: 8px;
+  color: var(--summary-petrol);
+  background: #fff;
+  box-shadow: none;
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+#dashboardView .ghost-button .summary-icon  {
+  width: 16px;
+  height: 16px;
+}
+
+#dashboardView .summary-compare-button  {
+  padding-right: 32px;
+  white-space: normal;
+}
+
+#dashboardView .summary-compare-button.active  {
+  background: var(--summary-petrol);
+  border-color: var(--summary-petrol);
+  color: #fff;
+  box-shadow: none;
+}
+
+#dashboardView .summary-compare-button .summary-compare-info  {
+  top: 50%;
+  transform: translateY(-50%);
+  right: 8px;
+}
+
+#dashboardView #summaryExport  {
+  background: var(--summary-emerald-soft);
+  color: #08684e;
+  border-color: #d7ece2;
+}
+
+/* KPI and compact cards share the same draggable component. */
+#dashboardView .summary-indicators.panel  {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 3px 0;
+}
+
+#dashboardView .summary-indicators .section-heading  {
+  margin-bottom: 10px;
+}
+
+#dashboardView .summary-indicators.panel > .section-heading:first-child .eyebrow  {
+  display: none;
+}
+
+#dashboardView .summary-indicators-grid  {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+#dashboardView .dashboard-indicator-card  {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  min-height: 118px;
+  padding: 14px;
+  border: 1px solid var(--summary-line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 5px #153b4b03;
+  transition: border-color .16s, box-shadow .16s, transform .16s;
+}
+
+#dashboardView .dashboard-indicator-card.summary-kpi-card  {
+  border-top: 2px solid #b7dfd0;
+  background: linear-gradient(135deg, #fafffc, #fff 65%);
+}
+
+#dashboardView .summary-metric-icon  {
+  position: absolute;
+  right: 11px;
+  top: 11px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--summary-emerald);
+  background: var(--summary-emerald-soft);
+}
+
+#dashboardView .summary-metric-icon .summary-icon  {
+  width: 16px;
+  height: 16px;
+}
+
+#dashboardView .summary-compact-card .summary-metric-icon  {
+  background: #eff4f5;
+  color: #4c707c;
+}
+
+#dashboardView .dashboard-indicator-card > span  {
+  padding-right: 27px;
+  min-height: 26px;
+  color: var(--summary-muted);
+  font-size: .73rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+#dashboardView .dashboard-indicator-card .kpi-value  {
+  font-size: clamp(1.12rem, 1.7vw, 1.7rem);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -.035em;
+  color: var(--summary-petrol);
+  overflow-wrap: anywhere;
+}
+
+#dashboardView .summary-compact-card .kpi-value  {
+  font-size: clamp(1.05rem, 1.5vw, 1.4rem);
+}
+
+#dashboardView .indicator-message  {
+  min-height: 2.7em;
+  margin: 0;
+  font-size: .67rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--summary-muted);
+  filter: grayscale(1);
+}
+
+#dashboardView .info-dot  {
+  width: 15px;
+  height: 15px;
+  margin-left: 3px;
+  background: #eef4f3;
+  color: #496b72;
+  border: 1px solid #d6e3df;
+  font-size: .62rem;
+  font-weight: 700;
+}
+
+#dashboardView .comparison-badge  {
+  font-size: .64rem;
+  font-weight: 700;
+  padding: 4px 6px;
+  background: #f1f5f5;
+  color: #49646e;
+  border-color: #dfe9e7;
+}
+
+#dashboardView .comparison-badge.is-good  {
+  background: #eaf7f1;
+  color: #096d51;
+  border-color: #c4e6d7;
+}
+
+#dashboardView .comparison-badge.is-bad  {
+  color: #153b4b;
+  background: #e7eef0;
+  border-color: #bbccd1;
+}
+
+#dashboardView .dashboard-indicator-card.is-dragging  {
+  opacity: .65;
+}
+
+#dashboardView .dashboard-indicator-card.is-drag-over  {
+  border-color: var(--summary-emerald);
+  box-shadow: 0 0 0 2px #07856326;
+}
+
+/* Compact collection lanes and reusable summary lists. */
+#dashboardView .summary-collection-grid, #dashboardView .summary-lists-grid  {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+#dashboardView :is(.summary-collection-grid, .summary-lists-grid) > section  {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--summary-line);
+  border-radius: 10px;
+  background: var(--summary-surface);
+}
+
+#dashboardView :is(.summary-collection-grid, .summary-lists-grid) h4  {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin: 0 0 11px;
+  color: var(--summary-petrol);
+  font-size: .75rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+#dashboardView :is(.summary-collection-grid, .summary-lists-grid) h4 .summary-icon  {
+  width: 16px;
+  height: 16px;
+  color: var(--summary-emerald);
+}
+
+#dashboardView .summary-collection-grid > section:has(#summaryTodayList)  {
+  background: #f0f9f5;
+  border-color: #cce8dc;
+}
+
+#dashboardView .summary-collection-grid > section:has(#summaryOverdueList)  {
+  border-top: 3px solid var(--summary-petrol);
+  padding-top: 10px;
+}
+
+#dashboardView .summary-collection-grid > section:has(#summaryOverdueList) h4 .summary-icon  {
+  color: var(--summary-petrol);
+}
+
+#dashboardView .summary-mini-list, #dashboardView .summary-mini-scroll  {
+  gap: 7px;
+}
+
+#dashboardView .summary-mini-item  {
+  min-width: 0;
+  padding: 9px;
+  gap: 6px;
+  border-radius: 8px;
+  border: 1px solid #e5edeb;
+  background: #fff;
+}
+
+#dashboardView .summary-mini-item > div  {
+  min-width: 0;
+}
+
+#dashboardView .summary-mini-item strong  {
+  color: var(--summary-ink);
+  font-size: .75rem;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+#dashboardView .summary-mini-item span, #dashboardView .summary-mini-item small  {
+  color: var(--summary-muted);
+  font-size: .65rem;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+#dashboardView .summary-mini-value  {
+  max-width: 105px;
+  gap: 3px;
+}
+
+#dashboardView .summary-mini-value strong  {
+  color: var(--summary-emerald);
+}
+
+#dashboardView .summary-mini-item .primary-button  {
+  min-height: 30px;
+  margin: 2px 0 0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #edf8f3;
+  color: #096d51;
+  border: 1px solid #d5eade;
+  box-shadow: none;
+  font-size: .7rem;
+  font-weight: 700;
+}
+
+#dashboardView .status-pill  {
+  min-height: 20px;
+  align-self: start;
+  padding: 3px 6px;
+  border: 1px solid #dce7e5;
+  border-radius: 5px;
+  background: #f3f6f6;
+  color: #45616b;
+  font-size: .59rem;
+  font-weight: 700;
+  white-space: normal;
+  text-align: center;
+}
+
+#dashboardView .status-pill.ok  {
+  background: #ebf7f0;
+  color: #08664d;
+  border-color: #d0e9dc;
+}
+
+#dashboardView .status-pill.warn  {
+  color: #244b5a;
+  background: #edf2f4;
+  border-color: #c8d9df;
+}
+
+#dashboardView .status-pill.danger  {
+  color: #fff;
+  background: #153b4b;
+  border-color: #153b4b;
+}
+
+#dashboardView .empty-state  {
+  min-height: 0;
+  padding: 14px 8px;
+  margin: 0;
+  border: 1px dashed #d4e2df;
+  border-radius: 8px;
+  background: #ffffff85;
+  color: var(--summary-muted);
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+}
+
+#dashboardView .summary-mini-scroll-footer  {
+  min-height: 30px;
+  padding-top: 5px;
+  color: var(--summary-muted);
+  font-size: .64rem;
+}
+
+#dashboardView .summary-scroll-next  {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  color: var(--summary-emerald);
+  background: #fff;
+  border-color: #cfe1d9;
+  box-shadow: none;
+}
+
+/* Status labels make priority readable without depending on color. */
+#dashboardView .summary-alert-list  {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+#dashboardView .summary-alert-list .summary-alert  {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #dce7e5;
+  border-left: 3px solid #88aaa5;
+  border-radius: 8px;
+  background: #f5f8f8;
+  color: var(--summary-ink);
+  font-size: .76rem;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+#dashboardView .summary-alert > .summary-icon  {
+  margin-top: 2px;
+  width: 18px;
+  height: 18px;
+}
+
+#dashboardView .summary-alert .summary-alert-label  {
+  display: block;
+  margin-bottom: 2px;
+  font-size: .64rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-weight: 750;
+}
+
+#dashboardView .summary-alert p  {
+  margin: 0;
+}
+
+#dashboardView .summary-alert-list .summary-alert--priority  {
+  background: #edf3f5;
+  border-color: #d5e0e4;
+  border-left-color: var(--summary-petrol);
+}
+
+#dashboardView .summary-alert-list .summary-alert--today, #dashboardView .summary-alert-list .summary-alert--success  {
+  background: #f0f9f5;
+  border-left-color: var(--summary-emerald);
+}
+
+#dashboardView .summary-alert-list .summary-alert:only-child  {
+  grid-column: 1 / -1;
+}
+
+/* Shared chart surfaces, legends, bars and projections. */
+#dashboardView .summary-charts-grid  {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+#dashboardView .summary-chart-panel  {
+  min-width: 0;
+  min-height: 0;
+  padding: 16px;
+  border: 1px solid var(--summary-line);
+  border-radius: 11px;
+  background: #fff;
+}
+
+#dashboardView .summary-chart-panel h3  {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 17px;
+  color: var(--summary-petrol);
+  font-size: .8rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+#dashboardView .summary-chart-panel h3 .summary-icon  {
+  width: 17px;
+  height: 17px;
+  color: var(--summary-emerald);
+}
+
+#dashboardView .summary-chart-panel h3 .info-dot  {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+#dashboardView .summary-chart-legend  {
+  display: flex;
+  gap: 12px;
+  margin: -8px 0 9px;
+  color: var(--summary-muted);
+  font-size: .65rem;
+}
+
+#dashboardView .summary-chart-legend span  {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#dashboardView .summary-chart-legend i  {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+
+#dashboardView .summary-swatch-capital, #dashboardView .summary-bar-fill.capital-fill  {
+  background: #079b75;
+}
+
+#dashboardView .summary-swatch-interest, #dashboardView .summary-bar-fill.interest-fill  {
+  background: #183f50;
+}
+
+#dashboardView .summary-bar-chart  {
+  min-height: 180px;
+  grid-template-columns: repeat(auto-fit, minmax(46px, 1fr));
+  gap: 8px;
+  padding: 8px 0 0;
+  overflow-x: auto;
+}
+
+#dashboardView .summary-bar-item  {
+  min-width: 0;
+  gap: 5px;
+}
+
+#dashboardView .summary-bar-track  {
+  height: 132px;
+  max-width: 36px;
+  border-radius: 5px;
+  background: #f0f5f4;
+}
+
+#dashboardView .summary-bar-fill  {
+  border-radius: 4px 4px 0 0;
+}
+
+#dashboardView .summary-bar-fill.single-fill  {
+  background: linear-gradient(0deg, #087f60, #19b389);
+}
+
+#dashboardView .summary-bar-item strong  {
+  color: var(--summary-muted);
+  font-size: .63rem;
+  font-weight: 700;
+}
+
+#dashboardView .summary-bar-item > span  {
+  color: var(--summary-ink);
+  font-size: .61rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+#dashboardView .summary-donut-layout  {
+  min-height: 162px;
+  display: grid;
+  grid-template-columns: 124px minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+}
+
+#dashboardView .donut-chart  {
+  width: 124px;
+  height: 124px;
+}
+
+#dashboardView .donut-chart::after  {
+  inset: 21px;
+  background: #fff;
+}
+
+#dashboardView .donut-center strong  {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--summary-petrol);
+}
+
+#dashboardView .donut-center span  {
+  color: var(--summary-muted);
+  font-size: .65rem;
+  font-weight: 700;
+}
+
+#dashboardView .legend-list  {
+  min-width: 0;
+  gap: 10px;
+}
+
+#dashboardView .legend-item  {
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  gap: 8px;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--summary-muted);
+}
+
+#dashboardView .legend-item i  {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+#dashboardView .legend-item strong  {
+  color: var(--summary-ink);
+  font-weight: 700;
+}
+
+#dashboardView .summary-horizontal-chart  {
+  gap: 16px;
+}
+
+#dashboardView .summary-horizontal-row  {
+  gap: 6px;
+}
+
+#dashboardView .summary-horizontal-row > div:first-child  {
+  gap: 12px;
+  align-items: baseline;
+}
+
+#dashboardView .summary-horizontal-row strong  {
+  color: var(--summary-muted);
+  font-size: .71rem;
+  font-weight: 700;
+}
+
+#dashboardView .summary-horizontal-row span  {
+  color: var(--summary-ink);
+  font-size: .74rem;
+  font-weight: 700;
+}
+
+#dashboardView .risk-track > span  {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+#dashboardView .risk-track  {
+  height: 7px;
+  background: #edf3f2;
+  border-radius: 5px;
+}
+
+#dashboardView .summary-projection-grid  {
+  gap: 8px;
+}
+
+#dashboardView .summary-projection-grid article  {
+  min-height: 76px;
+  padding: 12px;
+  border: 1px solid #dfece5;
+  border-radius: 9px;
+  background: #f4faf7;
+  gap: 6px;
+}
+
+#dashboardView .summary-projection-grid span  {
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--summary-muted);
+}
+
+#dashboardView .summary-projection-grid strong  {
+  color: var(--summary-emerald);
+  font-size: 1.1rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+#dashboardView :is(button, input, [tabindex]):focus-visible  {
+  outline: 2px solid #078563;
+  outline-offset: 3px;
+}
+
+@media (hover: hover)  {
+  #dashboardView .dashboard-indicator-card:hover  {
+    border-color: #aacfbf;
+    box-shadow: 0 5px 15px #153b4b08;
+    transform: translateY(-1px);
+  }
+  #dashboardView .ghost-button:hover, #dashboardView .summary-mini-item .primary-button:hover  {
+    background: #e3f3eb;
+    border-color: #b4d8c8;
+    color: #08664d;
+  }
+  #dashboardView .summary-compare-button.active:hover  {
+    background: #204f60;
+    color: #fff;
+  }
+}
+
+/* Responsive dashboard grid. Keep the saved indicator order intact. */
+@media (min-width: 1400px)  {
+  #dashboardView .summary-indicators-grid  {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  #dashboardView .dashboard-indicator-card:last-child:nth-child(5n + 4)  {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 1920px)  {
+  #dashboardView .summary-indicators-grid  {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  #dashboardView .dashboard-indicator-card:last-child:nth-child(5n + 4)  {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 1250px)  {
+  #dashboardView .summary-date-group  {
+    flex-basis: 100%;
+    flex-grow: 1;
+  }
+  #dashboardView .summary-compare-field  {
+    flex: 1;
+  }
+  #dashboardView .summary-filter-actions  {
+    flex: 0 0 auto;
+  }
+  #dashboardView .summary-collection-grid, #dashboardView .summary-lists-grid  {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px)  {
+  .workspace:has(> #dashboardView.active-view)  {
+    padding: 20px;
+  }
+  .app-shell:has(#dashboardView.active-view) .sidebar  {
+    gap: 12px;
+    padding: 16px 20px;
+  }
+  .app-shell:has(#dashboardView.active-view) .sidebar .sidebar-legal  {
+    margin-top: 4px;
+  }
+  #dashboardView .summary-indicators-grid  {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  #dashboardView .summary-date-group  {
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 680px)  {
+  .workspace:has(> #dashboardView.active-view)  {
+    padding: 14px;
+  }
+  .workspace:has(> #dashboardView.active-view) > .topbar  {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .workspace:has(> #dashboardView.active-view) .topbar-meta  {
+    width: auto;
+  }
+  .workspace:has(> #dashboardView.active-view) .topbar-actions  {
+    width: 100%;
+    flex: 1 0 100%;
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .workspace:has(> #dashboardView.active-view) .topbar-primary-actions  {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .workspace:has(> #dashboardView.active-view) .data-menu  {
+    width: 100%;
+  }
+  .workspace:has(> #dashboardView.active-view) .topbar :is(button, .data-menu > summary)  {
+    min-height: 40px;
+  }
+  #dashboardView .panel  {
+    padding: 14px;
+    border-radius: 12px;
+  }
+  #dashboardView .summary-dashboard  {
+    gap: 12px;
+  }
+  #dashboardView .summary-hero.panel  {
+    padding: 19px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  #dashboardView .summary-health  {
+    min-width: 0;
+    max-width: none;
+    padding: 12px 14px;
+  }
+  #dashboardView .summary-hero h3  {
+    font-size: 1.5rem;
+  }
+  #dashboardView .summary-health strong  {
+    font-size: 1.7rem;
+  }
+  #dashboardView .summary-filters.panel  {
+    padding: 12px;
+    gap: 10px;
+  }
+  #dashboardView .summary-date-group  {
+    display: block;
+    flex-basis: 100%;
+  }
+  #dashboardView .summary-date-group legend  {
+    float: none;
+    margin: 0 0 8px;
+  }
+  #dashboardView .summary-date-fields label  {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  #dashboardView .summary-date-fields input  {
+    min-height: 40px;
+    font-size: .78rem;
+  }
+  #dashboardView .summary-compare-field, #dashboardView .summary-filter-actions  {
+    flex: 1 1 100%;
+  }
+  #dashboardView .summary-filter-actions > button  {
+    width: 100%;
+  }
+  #dashboardView .ghost-button  {
+    min-height: 40px;
+  }
+  #dashboardView .summary-indicators.panel  {
+    padding: 2px 0;
+  }
+  #dashboardView .summary-indicators-grid  {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  #dashboardView .dashboard-indicator-card  {
+    padding: 11px;
+    min-height: 125px;
+  }
+  #dashboardView .dashboard-indicator-card > span  {
+    font-size: .7rem;
+    min-height: 32px;
+    padding-right: 20px;
+  }
+  #dashboardView .summary-metric-icon  {
+    right: 8px;
+    top: 9px;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+  }
+  #dashboardView .summary-metric-icon .summary-icon  {
+    width: 14px;
+    height: 14px;
+  }
+  #dashboardView .dashboard-indicator-card .kpi-value  {
+    font-size: 1.24rem;
+  }
+  #dashboardView .summary-compact-card .kpi-value  {
+    font-size: 1.1rem;
+  }
+  #dashboardView .indicator-message  {
+    font-size: .65rem;
+  }
+  #dashboardView .summary-collection-grid, #dashboardView .summary-lists-grid, #dashboardView .summary-charts-grid, #dashboardView .summary-alert-list  {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #dashboardView .summary-mini-item .primary-button  {
+    min-height: 36px;
+  }
+  #dashboardView .summary-mini-value  {
+    max-width: 130px;
+  }
+  #dashboardView .summary-chart-panel  {
+    padding: 12px;
+  }
+  #dashboardView .summary-donut-layout  {
+    gap: 14px;
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
+  #dashboardView .donut-chart  {
+    width: 110px;
+    height: 110px;
+  }
+  #dashboardView .donut-chart::after  {
+    inset: 18px;
+  }
+}
+
+@media (max-width: 360px)  {
+  #dashboardView .summary-indicators-grid  {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #dashboardView .dashboard-indicator-card  {
+    min-height: 110px;
+  }
+  #dashboardView .dashboard-indicator-card > span  {
+    min-height: 22px;
+  }
+  #dashboardView .summary-date-fields  {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #dashboardView .summary-donut-layout  {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+  #dashboardView .legend-list  {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce)  {
+  #dashboardView .dashboard-indicator-card  {
+    transition: none;
+  }
+  #dashboardView .dashboard-indicator-card:hover  {
+    transform: none;
+  }
+}
+
+/* Shell adjustments are active only in Resumen. All navigation remains available. */
+.app-shell:has(#dashboardView.active-view) .sidebar  {
+  border-right-color: #173b48;
+}
+
+.app-shell:has(#dashboardView.active-view) .brand-sidebar-lockup  {
+  min-width: 0;
+}
+
+.app-shell:has(#dashboardView.active-view) .profile-edit-trigger  {
+  min-width: 0;
+}
+
+.app-shell:has(#dashboardView.active-view) .profile-toast  {
+  max-width: calc(100% - 56px);
+}
+
+@media (max-width: 980px)  {
+  .app-shell:has(#dashboardView.active-view) .sidebar  {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 20px;
+  }
+  .app-shell:has(#dashboardView.active-view) .brand-sidebar-lockup  {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+  }
+  .app-shell:has(#dashboardView.active-view) #resetDemo  {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+    padding: 7px 10px;
+    min-height: 36px;
+    font-size: .7rem;
+    border: 1px solid #36545e;
+    background: transparent;
+    color: #fff;
+  }
+  .app-shell:has(#dashboardView.active-view) .nav-tabs  {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0;
+  }
+  .app-shell:has(#dashboardView.active-view) .nav-tabs:has(#adminNav:not(.is-hidden))  {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .app-shell:has(#dashboardView.active-view) .nav-tab  {
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px;
+    font-size: .76rem;
+    font-weight: 700;
+    border-radius: 8px;
+  }
+  .app-shell:has(#dashboardView.active-view) .sidebar .sidebar-legal  {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0 0;
+    margin: 0;
+    border-top: 1px solid #ffffff15;
+  }
+  .app-shell:has(#dashboardView.active-view) .sidebar-legal .sidebar-terms-link  {
+    width: auto;
+    max-width: 25%;
+    min-height: 36px;
+    padding: 2px;
+    font-size: .65rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: left;
+  }
+  .app-shell:has(#dashboardView.active-view) .sidebar-claim-image-button  {
+    flex: 0 0 65px;
+    width: 65px;
+    margin: 0;
+  }
+  .app-shell:has(#dashboardView.active-view) .sidebar-claim-image-button img  {
+    width: 65px;
+    height: auto;
+  }
+}
+
+@media (max-width: 680px)  {
+  .app-shell:has(#dashboardView.active-view) .sidebar  {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .app-shell:has(#dashboardView.active-view) .brand-logo-sidebar  {
+    width: 32px;
+    height: 36px;
+  }
+  .app-shell:has(#dashboardView.active-view) .brand-sidebar-lockup  {
+    gap: 8px;
+  }
+  .app-shell:has(#dashboardView.active-view) .profile-sidebar-copy strong  {
+    font-size: .8rem;
+  }
+  .app-shell:has(#dashboardView.active-view) .plan-inline-status  {
+    font-size: .61rem;
+  }
+  .app-shell:has(#dashboardView.active-view) #resetDemo  {
+    font-size: .65rem;
+    padding: 6px 8px;
+    min-height: 40px;
+  }
+  .app-shell:has(#dashboardView.active-view) #resetDemo svg  {
+    width: 15px;
+    height: 15px;
+  }
+  .app-shell:has(#dashboardView.active-view) .nav-tab  {
+    font-size: .7rem;
+    gap: 5px;
+  }
+  .app-shell:has(#dashboardView.active-view) .nav-tab svg  {
+    width: 16px;
+    height: 16px;
+  }
+  .app-shell:has(#dashboardView.active-view) .sidebar-legal .sidebar-terms-link  {
+    font-size: .6rem;
+  }
+  .workspace:has(> #dashboardView.active-view) .topbar-actions  {
+    display: contents;
+  }
+  .workspace:has(> #dashboardView.active-view) .topbar .data-menu  {
+    flex: 1;
+    width: auto;
+  }
+  .workspace:has(> #dashboardView.active-view) .topbar-primary-actions  {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    flex: 1 0 100%;
+  }
+  .workspace:has(> #dashboardView.active-view) .topbar-primary-actions button  {
+    min-width: 0;
+    width: 100%;
+    white-space: normal;
+    padding: 6px;
+    font-size: .65rem;
+    min-height: 42px;
+    gap: 4px;
+  }
+  .workspace:has(> #dashboardView.active-view) .topbar-primary-actions svg  {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+  }
+}
