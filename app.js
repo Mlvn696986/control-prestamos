@@ -4324,6 +4324,7 @@ function buildCapitalPositionAtDate(dateString, loans = state.loans, payments = 
 }
 
 function renderDashboardHeader(dashboard) {
+  elements.summaryHealth.dataset.summaryTone = dashboard.range.invalid ? "negative" : summaryValueTone(dashboard.metrics.availableCapital, "neutral");
   if (dashboard.range.invalid) {
     elements.summaryHeroMeta.textContent = dashboard.range.error;
     elements.summaryHealth.innerHTML = `
@@ -4421,13 +4422,42 @@ function dashboardIndicatorIcon(item) {
   return "layers";
 }
 
+// Presentation only: a negative balance is distinct from money still lent out.
+const DASHBOARD_NEGATIVE_METRICS = new Set([
+  "overdueLoans", "overdueAmount", "lateClients", "averageLateDays", "capitalRisk", "delinquencyRate", "capitalWithdrawn",
+]);
+const DASHBOARD_POSITIVE_METRICS = new Set([
+  "realProfit", "projectedProfit", "compoundedProfit", "currentMonthProfit", "previousMonthProfit", "nextMonthProfit",
+  "capitalRecovered", "recoveryRate", "todayCount", "todayAmount", "closedLoans", "capitalDeposited", "newMoney",
+  "chargedThisMonth", "averageInterestPaid", "monthlyRoi", "profitability",
+]);
+
+function summaryValueTone(value, otherwise = "positive") {
+  return Number(value) < 0 ? "negative" : otherwise;
+}
+
+function getDashboardIndicatorTone(item, dashboard) {
+  const m = dashboard.metrics;
+  if (dashboard.range.invalid) return "neutral";
+  if (item.indicatorId === "nivel-de-riesgo-del-cliente") return m.overdueLoans > 0 ? "negative" : "positive";
+  if (item.indicatorId === "variacion-de-ganancia-vs-periodo-anterior") {
+    const difference = m.currentMonthProfit - m.previousMonthProfit;
+    return difference < 0 ? "negative" : difference > 0 ? "positive" : "neutral";
+  }
+  if (item.metricKey && Number(m[item.metricKey]) < 0) return "negative";
+  if (DASHBOARD_NEGATIVE_METRICS.has(item.metricKey)) return "negative";
+  if (DASHBOARD_POSITIVE_METRICS.has(item.metricKey) || item.indicatorId === "cliente-mas-rentable") return "positive";
+  if (item.metricKey === "cashflow") return m.cashflow > 0 ? "positive" : "neutral";
+  return "neutral";
+}
+
 function renderDashboardIndicatorCard(item, dashboard) {
   const className = item.cardType === "kpi" ? "summary-kpi-card" : "summary-compact-card";
   const tooltipText = item.tip || item.note || "Indicador del resumen.";
   const messages = getIndicatorMessages(item.title);
   const presentation = getDashboardIndicatorPresentation(item, dashboard);
   return `
-    <article class="${className} dashboard-indicator-card indicator-${presentation.kind}" draggable="true" data-indicator-id="${escapeHTML(item.indicatorId)}">
+    <article class="${className} dashboard-indicator-card indicator-${presentation.kind}" draggable="true" data-indicator-id="${escapeHTML(item.indicatorId)}" data-summary-tone="${getDashboardIndicatorTone(item, dashboard)}">
       <div class="summary-metric-icon">${summaryIcon(dashboardIndicatorIcon(item))}</div>
       <span>${escapeHTML(item.title)} ${renderInfoDot(tooltipText)}</span>
       <strong class="kpi-value">${escapeHTML(item.value)}</strong>
@@ -4454,38 +4484,39 @@ function getDashboardIndicatorPresentation(item, dashboard) {
   }
   if (item.compareFactor && item.metricKey === "projectedProfit") {
     const amount = Number(m.projectedProfit) * item.compareFactor;
-    const maximum = Number(m.projectedProfit) * 12;
+    const maximum = Math.abs(Number(m.projectedProfit)) * 12;
     return {
       kind: "projection",
       visual: `${renderIndicatorMagnitude(amount, maximum)}<small class="indicator-context">Estimación · escala común de 12 meses</small>`,
     };
   }
   if (id === "comparativo-capital-vs-interes") {
-    const maximum = Math.max(Number(m.capitalPending) || 0, Number(m.projectedProfit) || 0);
+    const maximum = Math.max(Math.abs(Number(m.capitalPending) || 0), Math.abs(Number(m.projectedProfit) || 0));
     return {
       kind: "capital-comparison",
-      visual: `<div class="indicator-pair"><div><small>Capital pendiente</small>${renderIndicatorMagnitude(m.capitalPending, maximum, "petrol")}</div><div><small>Interés proyectado</small>${renderIndicatorMagnitude(m.projectedProfit, maximum)}</div></div>`,
+      visual: `<div class="indicator-pair"><div><small>Capital pendiente</small>${renderIndicatorMagnitude(m.capitalPending, maximum, "neutral")}</div><div data-summary-tone="${summaryValueTone(m.projectedProfit)}"><small>Interés proyectado</small>${renderIndicatorMagnitude(m.projectedProfit, maximum)}</div></div>`,
     };
   }
   if (id.startsWith("cliente-")) return { kind: "client", visual: "" };
   if (id === "nivel-de-riesgo-del-cliente") return { kind: "status", visual: "" };
   if (id === "variacion-de-ganancia-vs-periodo-anterior") {
     const maximum = Math.max(Math.abs(Number(m.currentMonthProfit) || 0), Math.abs(Number(m.previousMonthProfit) || 0));
+    const currentTone = getDashboardIndicatorTone(item, dashboard);
     return {
       kind: "variation",
-      visual: `<div class="indicator-pair"><div><small>Periodo anterior · ${money(m.previousMonthProfit)}</small>${renderIndicatorMagnitude(m.previousMonthProfit, maximum, "petrol")}</div><div><small>Periodo seleccionado · ${money(m.currentMonthProfit)}</small>${renderIndicatorMagnitude(m.currentMonthProfit, maximum)}</div></div>`,
+      visual: `<div class="indicator-pair"><div data-summary-tone="${summaryValueTone(m.previousMonthProfit)}"><small>Periodo anterior · ${money(m.previousMonthProfit)}</small>${renderIndicatorMagnitude(m.previousMonthProfit, maximum)}</div><div data-summary-tone="${summaryValueTone(m.currentMonthProfit, currentTone)}"><small>Periodo seleccionado · ${money(m.currentMonthProfit)}</small>${renderIndicatorMagnitude(m.currentMonthProfit, maximum, currentTone)}</div></div>`,
     };
   }
   return { kind: "stat", visual: "" };
 }
 
 // Chart geometry uses existing metrics; zero/invalid values never create a filled bar.
-function renderIndicatorMagnitude(value, maximum, tone = "emerald") {
+function renderIndicatorMagnitude(value, maximum, tone = "positive") {
   const number = Number(value);
   const limit = Number(maximum);
-  const share = Number.isFinite(number) && Number.isFinite(limit) && number > 0 && limit > 0
-    ? clamp(number / limit * 100, 0, 100) : 0;
-  return `<div class="indicator-track" aria-hidden="true"><i class="indicator-fill${tone === "petrol" ? " is-petrol" : ""}" style="width:${share}%"></i></div>`;
+  const share = Number.isFinite(number) && Number.isFinite(limit) && limit > 0
+    ? clamp(Math.abs(number) / limit * 100, 0, 100) : 0;
+  return `<div class="indicator-track" aria-hidden="true" data-summary-tone="${summaryValueTone(number, tone)}"><i class="indicator-fill" style="width:${share}%"></i></div>`;
 }
 
 function renderDashboardKpis(dashboard) {
@@ -5365,20 +5396,24 @@ function renderCompactMetric({ title, value, tip, metricKey, compareFactor }, da
 function renderDashboardCharts(dashboard) {
   renderStackedMonthChart(elements.summaryMonthlyChart, dashboard.charts.months, "capital", "interest");
   renderSimpleBarChart(elements.summaryLoansChart, dashboard.charts.loansByMonth, "money");
-  renderDonutChart(elements.summaryStatusChart, dashboard.charts.statusSegments);
+  renderDonutChart(elements.summaryStatusChart, dashboard.charts.statusSegments.map((segment) => ({
+    ...segment, tone: segment.label === "Vencidos" ? "negative" : segment.label === "Cerrados" ? "positive" : "neutral",
+  })));
   renderHorizontalChart(elements.summaryCapitalChart, [
-    { label: "Capital pendiente", value: dashboard.metrics.capitalPending, color: "#00a76f" },
-    { label: "Capital recuperado", value: dashboard.metrics.capitalRecovered, color: "#2f6fed" },
-    { label: "Ganancia real", value: dashboard.metrics.realProfit, color: "#ffb000" },
-    { label: "Ganancia proyectada", value: dashboard.metrics.projectedProfit, color: "#0f766e" },
+    { label: "Capital pendiente", value: dashboard.metrics.capitalPending, tone: "neutral" },
+    { label: "Capital recuperado", value: dashboard.metrics.capitalRecovered, tone: "positive" },
+    { label: "Ganancia real", value: dashboard.metrics.realProfit, tone: "positive" },
+    { label: "Ganancia proyectada", value: dashboard.metrics.projectedProfit, tone: "positive" },
   ]);
   renderDonutChart(
     elements.summaryModeChart,
     dashboard.charts.modeSegments.map((item, index) => ({ ...item, color: ["#00a76f", "#2f6fed", "#ffb000", "#0f766e"][index] }))
   );
   renderProjectionChart(elements.summaryProjectionChart, dashboard.charts.projections);
-  renderSimpleBarChart(elements.summaryDelinquencyChart, dashboard.charts.delinquency, "number");
-  renderHorizontalChart(elements.summaryCashflowChart, dashboard.charts.cashflow);
+  renderSimpleBarChart(elements.summaryDelinquencyChart, dashboard.charts.delinquency, "number", "negative");
+  renderHorizontalChart(elements.summaryCashflowChart, dashboard.charts.cashflow.map((row) => ({
+    ...row, tone: row.label === "Egresos" ? "negative" : "positive",
+  })));
 }
 
 function buildMonthSeries(payments, range) {
@@ -5441,13 +5476,13 @@ function renderStackedMonthChart(container, data, firstKey, secondKey) {
     .join("");
 }
 
-function renderSimpleBarChart(container, data, valueType = "money") {
+function renderSimpleBarChart(container, data, valueType = "money", tone = "neutral") {
   const max = Math.max(...data.map((item) => item.value), 1);
   container.innerHTML = data
     .map((item) => {
       const formattedValue = valueType === "money" ? money(item.value) : escapeHTML(roundMoney(item.value));
       return `
-        <div class="summary-bar-item">
+        <div class="summary-bar-item" data-summary-tone="${summaryValueTone(item.value, tone)}">
           <div class="summary-bar-track" title="${formattedValue}">
             <span class="summary-bar-fill single-fill" style="height:${Math.max((item.value / max) * 100, item.value ? 7 : 0)}%"></span>
           </div>
@@ -5461,7 +5496,10 @@ function renderSimpleBarChart(container, data, valueType = "money") {
 
 function renderDonutChart(container, segments) {
   const total = segments.reduce((value, segment) => value + segment.value, 0);
-  const chartSegments = segments.map((segment, index) => ({ ...segment, color: ["#079b75", "#183f50", "#8cbbb0", "#547b87"][index % 4] }));
+  const toneColors = { positive: "var(--summary-emerald)", negative: "var(--summary-danger)", neutral: "var(--summary-petrol)" };
+  const chartSegments = segments.map((segment, index) => ({
+    ...segment, color: toneColors[segment.tone] || ["#079b75", "#183f50", "#8cbbb0", "#547b87"][index % 4],
+  }));
   container.innerHTML = `
     <div class="donut-chart" style="background:${total ? buildConicGradient(chartSegments, total) : "rgba(0, 167, 111, 0.12)"}">
       <div class="donut-center"><strong>${total}</strong><span>total</span></div>
@@ -5469,7 +5507,7 @@ function renderDonutChart(container, segments) {
     <div class="legend-list">
       ${chartSegments
         .map((segment) => `
-          <div class="legend-item">
+          <div class="legend-item" data-summary-tone="${segment.tone || "neutral"}">
             <i style="background:${segment.color}"></i>
             <span>${escapeHTML(segment.label)}</span>
             <strong>${segment.value}</strong>
@@ -5481,12 +5519,12 @@ function renderDonutChart(container, segments) {
 }
 
 function renderHorizontalChart(container, rows) {
-  const max = Math.max(...rows.map((row) => row.value), 1);
+  const max = Math.max(...rows.map((row) => Math.abs(row.value)), 1);
   container.innerHTML = rows
-    .map((row, index) => `
-      <div class="summary-horizontal-row">
+    .map((row) => `
+      <div class="summary-horizontal-row" data-summary-tone="${summaryValueTone(row.value, row.tone || "neutral")}">
         <div><strong>${escapeHTML(row.label)}</strong><span>${money(row.value)}</span></div>
-        <div class="risk-track"><span style="width:${Math.max((row.value / max) * 100, row.value ? 5 : 0)}%; background:${["#079b75", "#183f50", "#8cbbb0", "#547b87"][index % 4]}"></span></div>
+        <div class="risk-track"><span style="width:${Math.max((Math.abs(row.value) / max) * 100, row.value ? 5 : 0)}%; background:var(--summary-tone)"></span></div>
       </div>
     `)
     .join("");
@@ -5495,7 +5533,7 @@ function renderHorizontalChart(container, rows) {
 function renderProjectionChart(container, projections) {
   container.innerHTML = projections
     .map((item) => `
-      <article>
+      <article data-summary-tone="${summaryValueTone(item.value)}">
         <span>${escapeHTML(item.label)}</span>
         <strong>${money(item.value)}</strong>
       </article>

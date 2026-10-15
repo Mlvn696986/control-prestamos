@@ -1,13 +1,16 @@
 /* ERMIF · Resumen
-   Visual primitives: emerald = positive/action; petrol = structure/attention;
+   Visual primitives: emerald = positive/action; red = risk/outflow; petrol = neutral;
    neutral surfaces = information. State labels and icons supplement color.
    Scoped to Resumen; shared screens, calculations and controls stay independent. */
 
-/* Tokens: surfaces, typography and the three palette families. */
+/* Tokens: surfaces, typography and semantic financial colors. */
 #dashboardView  {
   --summary-emerald: #078563;
   --summary-emerald-bright: #079b75;
   --summary-emerald-soft: #edf8f3;
+  --summary-danger: #b42335;
+  --summary-danger-soft: #fff2f3;
+  --summary-danger-line: #ecc5cb;
   --summary-petrol: #153b4b;
   --summary-ink: #173642;
   --summary-muted: #536d77;
@@ -1632,4 +1635,152 @@
 
 #dashboardView #summaryIndicatorsGrid :is(.indicator-primary, .indicator-total) > span {
   min-height: 45px;
+}
+
+/* Financial meaning applies consistently to figures, icons, legends and bars. */
+#dashboardView [data-summary-tone="neutral"] {
+  --summary-tone: var(--summary-petrol);
+  --summary-tone-soft: #f5f8f8;
+  --summary-tone-line: var(--summary-line);
+}
+
+#dashboardView [data-summary-tone="positive"] {
+  --summary-tone: var(--summary-emerald);
+  --summary-tone-soft: var(--summary-emerald-soft);
+  --summary-tone-line: #c4e6d7;
+}
+
+#dashboardView [data-summary-tone="negative"] {
+  --summary-tone: var(--summary-danger);
+  --summary-tone-soft: var(--summary-danger-soft);
+  --summary-tone-line: var(--summary-danger-line);
+}
+
+#dashboardView #summaryIndicatorsGrid .dashboard-indicator-card:is([data-summary-tone="positive"], [data-summary-tone="negative"]) {
+  border-color: var(--summary-tone-line);
+  background: linear-gradient(135deg, var(--summary-tone-soft), #fff 80%);
+}
+
+#dashboardView #summaryIndicatorsGrid .dashboard-indicator-card:is([data-summary-tone="positive"], [data-summary-tone="negative"]) > :is(span, .kpi-value),
+#dashboardView #summaryIndicatorsGrid .indicator-pair [data-summary-tone] > small {
+  color: var(--summary-tone);
+}
+
+#dashboardView #summaryIndicatorsGrid .dashboard-indicator-card:is([data-summary-tone="positive"], [data-summary-tone="negative"]) .summary-metric-icon {
+  background: var(--summary-tone-soft);
+  color: var(--summary-tone);
+}
+
+#dashboardView #summaryIndicatorsGrid :is(.indicator-primary, .indicator-total, .indicator-status):is([data-summary-tone="positive"], [data-summary-tone="negative"]) {
+  border-top-color: var(--summary-tone);
+  border-left-color: var(--summary-tone);
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-ring {
+  background: conic-gradient(var(--summary-tone) var(--indicator-share), #eaf0f2 0);
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-ring > .summary-icon {
+  color: var(--summary-tone);
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-track .indicator-fill,
+#dashboardView .summary-bar-item[data-summary-tone] .single-fill {
+  background: var(--summary-tone);
+}
+
+#dashboardView .comparison-badge.is-bad {
+  color: var(--summary-danger);
+  background: var(--summary-danger-soft);
+  border-color: var(--summary-danger-line);
+}
+
+#dashboardView .status-pill.danger {
+  color: #fff;
+  background: var(--summary-danger);
+  border-color: var(--summary-danger);
+}
+
+#dashboardView .summary-alert-list .summary-alert--priority {
+  color: var(--summary-danger);
+  background: var(--summary-danger-soft);
+  border-color: var(--summary-danger-line);
+  border-left-color: var(--summary-danger);
+}
+
+#dashboardView .summary-alert-list :is(.summary-alert--today, .summary-alert--success) {
+  color: var(--summary-emerald);
+}
+
+#dashboardView :is(.summary-collection-grid, .summary-lists-grid) > section:has(#summaryOverdueList, #summaryLateList) {
+  background: var(--summary-danger-soft);
+  border-color: var(--summary-danger-line);
+}
+
+#dashboardView .summary-collection-grid > section:has(#summaryOverdueList) {
+  border-top-color: var(--summary-danger);
+}
+
+#dashboardView section:has(> #summaryOverdueList, > #summaryLateList) h4,
+#dashboardView section:has(> #summaryOverdueList, > #summaryLateList) h4 .summary-icon,
+#dashboardView #summaryLateList .summary-mini-value :is(strong, small),
+#dashboardView #summaryOverdueList .summary-mini-item > div > :is(span, small),
+#dashboardView .summary-mini-item:has(.status-pill.danger) > div > :is(span, small) {
+  color: var(--summary-danger);
+}
+
+#dashboardView :is(#summaryOverdueList, #summaryLateList) .summary-mini-item,
+#dashboardView .summary-mini-item:has(.status-pill.danger) {
+  border-color: var(--summary-danger-line);
+}
+
+#dashboardView section:has(> #summaryProfitList, > #summaryPunctualList, > #summaryPaymentList) h4,
+#dashboardView #summaryMonthlyChart .summary-bar-item > span {
+  color: var(--summary-emerald);
+}
+
+#dashboardView :is(#summaryDebtList, #summaryExtensionList, #summaryLoanList, #summaryRecentExtensionList) .summary-mini-value strong {
+  color: var(--summary-petrol);
+}
+
+#dashboardView .summary-swatch-capital,
+#dashboardView .summary-bar-fill.capital-fill {
+  background: var(--summary-petrol);
+}
+
+#dashboardView .summary-swatch-interest,
+#dashboardView .summary-bar-fill.interest-fill {
+  background: var(--summary-emerald);
+}
+
+#dashboardView .summary-horizontal-row[data-summary-tone] > div:first-child :is(strong, span),
+#dashboardView .summary-bar-item[data-summary-tone] > span,
+#dashboardView .legend-item[data-summary-tone] :is(span, strong),
+#dashboardView .summary-projection-grid [data-summary-tone] :is(span, strong) {
+  color: var(--summary-tone);
+}
+
+#dashboardView .summary-chart-panel:has(#summaryDelinquencyChart) h3,
+#dashboardView .summary-chart-panel:has(#summaryDelinquencyChart) h3 .summary-icon {
+  color: var(--summary-danger);
+}
+
+#dashboardView .summary-chart-panel:has(#summaryProjectionChart) h3,
+#dashboardView .summary-chart-panel:has(#summaryMonthlyChart) h3 {
+  color: var(--summary-emerald);
+}
+
+#dashboardView .summary-projection-grid [data-summary-tone="negative"] {
+  background: var(--summary-danger-soft);
+  border-color: var(--summary-danger-line);
+}
+
+.workspace:has(> #dashboardView.active-view) .topbar #openWithdrawCapital {
+  color: #b42335;
+  border-color: #ecc5cb;
+}
+
+/* Light red remains legible on the dark financial header. */
+#dashboardView .summary-health[data-summary-tone="negative"] :is(strong, small, .status-pill) {
+  color: #ffc4cc;
 }
