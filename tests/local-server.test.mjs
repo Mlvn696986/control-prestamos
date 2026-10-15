@@ -23,5 +23,11 @@ test("servidor antiguo sirve solo demo y no expone archivos privados", async () 
       assert.equal((await fetch(base + file)).status, 404, file);
     }
     assert.equal((await fetch(base + "/")).status, 200);
+    for (const [file, type] of [["summary.css", "text/css"], ["summary-icons.svg", "image/svg+xml"]]) {
+      const response = await fetch(base + "/assets/" + file);
+      assert.equal(response.status, 200);
+      assert.ok(response.headers.get("content-type").startsWith(type));
+    }
+    assert.equal((await fetch(base + "/assets/private.json")).status, 404);
   } finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
 });

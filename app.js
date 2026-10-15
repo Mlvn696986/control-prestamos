@@ -4392,12 +4392,29 @@ function getIndicatorId(item) {
     .toLowerCase();
 }
 
+// Presentation helpers for Resumen. Calculations and saved indicator order are unchanged.
+function summaryIcon(name) {
+  return `<svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#${name}"></use></svg>`;
+}
+
+function dashboardIndicatorIcon(item) {
+  const key = item.metricKey || item.indicatorId;
+  if (/capital|cashflow/i.test(key)) return "wallet";
+  if (/profit|interest|roi|recovery/i.test(key)) return "trend";
+  if (/overdue|late|delinquency|risk/i.test(key)) return "shield";
+  if (/today|month|period/i.test(key)) return "calendar";
+  if (/client/i.test(key)) return "users";
+  if (/closed/i.test(key)) return "check";
+  return "layers";
+}
+
 function renderDashboardIndicatorCard(item, dashboard) {
   const className = item.cardType === "kpi" ? "summary-kpi-card" : "summary-compact-card";
   const tooltipText = item.tip || item.note || "Indicador del resumen.";
   const messages = getIndicatorMessages(item.title);
   return `
     <article class="${className} dashboard-indicator-card" draggable="true" data-indicator-id="${escapeHTML(item.indicatorId)}">
+      <div class="summary-metric-icon">${summaryIcon(dashboardIndicatorIcon(item))}</div>
       <span>${escapeHTML(item.title)} ${renderInfoDot(tooltipText)}</span>
       <strong class="kpi-value">${escapeHTML(item.value)}</strong>
       ${renderComparisonBadge(item, dashboard)}
@@ -5379,7 +5396,7 @@ function renderSimpleBarChart(container, data, valueType = "money") {
 
 function renderDonutChart(container, segments) {
   const total = segments.reduce((value, segment) => value + segment.value, 0);
-  const chartSegments = segments.map((segment, index) => ({ ...segment, color: segment.color || ["#00a76f", "#ffb000", "#061826", "#2f6fed"][index] }));
+  const chartSegments = segments.map((segment, index) => ({ ...segment, color: ["#079b75", "#183f50", "#8cbbb0", "#547b87"][index % 4] }));
   container.innerHTML = `
     <div class="donut-chart" style="background:${total ? buildConicGradient(chartSegments, total) : "rgba(0, 167, 111, 0.12)"}">
       <div class="donut-center"><strong>${total}</strong><span>total</span></div>
@@ -5401,10 +5418,10 @@ function renderDonutChart(container, segments) {
 function renderHorizontalChart(container, rows) {
   const max = Math.max(...rows.map((row) => row.value), 1);
   container.innerHTML = rows
-    .map((row) => `
+    .map((row, index) => `
       <div class="summary-horizontal-row">
         <div><strong>${escapeHTML(row.label)}</strong><span>${money(row.value)}</span></div>
-        <div class="risk-track"><span style="width:${Math.max((row.value / max) * 100, row.value ? 5 : 0)}%; background:${row.color}"></span></div>
+        <div class="risk-track"><span style="width:${Math.max((row.value / max) * 100, row.value ? 5 : 0)}%; background:${["#079b75", "#183f50", "#8cbbb0", "#547b87"][index % 4]}"></span></div>
       </div>
     `)
     .join("");
@@ -5532,7 +5549,13 @@ function getDashboardAdvancedReportItems(dashboard) {
 
 function renderDashboardAlerts(dashboard) {
   const alerts = buildDashboardAlertMessages(dashboard);
-  elements.summaryAlerts.innerHTML = alerts.map((alert) => `<article>${escapeHTML(alert)}</article>`).join("");
+  elements.summaryAlerts.innerHTML = alerts.map((alert) => {
+    const kind = dashboard.range?.invalid || /vencido|morosidad/.test(alert) ? "priority"
+      : alert.startsWith("Hoy") ? "today" : alert.includes("se ve estable") ? "success" : "info";
+    const label = { priority: "Atención", today: "Hoy", success: "Al día", info: "Información" }[kind];
+    const icon = { priority: "shield", today: "clock", success: "check", info: "info" }[kind];
+    return `<article class="summary-alert summary-alert--${kind}">${summaryIcon(icon)}<div><span class="summary-alert-label">${label}</span><p>${escapeHTML(alert)}</p></div></article>`;
+  }).join("");
 }
 
 function buildDashboardAlertMessages(dashboard) {
