@@ -1335,3 +1335,301 @@
     flex: 0 0 auto;
   }
 }
+
+/* Visual indicator board. Every rule is restricted to this one section. */
+#dashboardView #summaryIndicatorsGrid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+#dashboardView #summaryIndicatorsGrid .dashboard-indicator-card {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  min-height: 112px;
+  padding: 12px;
+  border: 1px solid #dce7e7;
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 2px 8px #153b4b04;
+}
+
+#dashboardView #summaryIndicatorsGrid .dashboard-indicator-card > span {
+  min-height: 30px;
+  padding-right: 23px;
+  font-size: .69rem;
+  line-height: 1.35;
+  color: var(--summary-muted);
+  font-weight: 700;
+}
+
+#dashboardView #summaryIndicatorsGrid .summary-metric-icon {
+  top: 10px;
+  right: 9px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+#dashboardView #summaryIndicatorsGrid .summary-metric-icon .summary-icon {
+  width: 14px;
+  height: 14px;
+}
+
+#dashboardView #summaryIndicatorsGrid .kpi-value {
+  margin: 0;
+  font-size: clamp(1.05rem, 1.45vw, 1.5rem);
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -.035em;
+  overflow-wrap: anywhere;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-message {
+  min-height: 0;
+  margin-top: auto;
+  padding-top: 3px;
+  font-size: .6875rem;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+#dashboardView #summaryIndicatorsGrid :is(.indicator-primary, .indicator-total) {
+  min-height: 127px;
+  border-top: 3px solid var(--summary-emerald);
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-total {
+  background: var(--summary-petrol);
+  border-color: var(--summary-petrol);
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-total > span,
+#dashboardView #summaryIndicatorsGrid .indicator-total .indicator-message {
+  color: #d9e9ed;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-total .kpi-value {
+  color: #fff;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-total .summary-metric-icon {
+  background: #ffffff13;
+  color: #a9ebd7;
+}
+
+#dashboardView #summaryIndicatorsGrid :is(.indicator-risk-meter, .indicator-recovery-meter) {
+  grid-column: span 3;
+  min-height: 144px;
+  padding: 15px;
+}
+
+#dashboardView #summaryIndicatorsGrid :is(.indicator-risk-meter, .indicator-recovery-meter) > .kpi-value {
+  font-size: 1.65rem;
+  padding-right: 80px;
+}
+
+#dashboardView #summaryIndicatorsGrid :is(.indicator-risk-meter, .indicator-recovery-meter) .indicator-context {
+  padding-right: 80px;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-ring {
+  position: absolute;
+  right: 14px;
+  top: 46px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: conic-gradient(var(--summary-petrol) var(--indicator-share), #eaf0f2 0);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-ring::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-ring > .summary-icon {
+  position: relative;
+  width: 23px;
+  height: 23px;
+  color: var(--summary-petrol);
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-recovery-meter .indicator-ring {
+  background: conic-gradient(var(--summary-emerald) var(--indicator-share), #eaf0f2 0);
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-recovery-meter .indicator-ring > .summary-icon {
+  color: var(--summary-emerald);
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-context,
+#dashboardView #summaryIndicatorsGrid .indicator-pair small {
+  display: block;
+  font-size: .6875rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--summary-muted);
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-capital-comparison {
+  grid-column: span 6;
+  min-height: 144px;
+  padding: 15px;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-capital-comparison > span {
+  min-height: 18px;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 5px 0 3px;
+  min-width: 0;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-pair > div {
+  min-width: 0;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-pair small {
+  margin-bottom: 5px;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #edf3f3;
+  margin: 4px 0;
+  pointer-events: none;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--summary-emerald);
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-fill.is-petrol {
+  background: var(--summary-petrol);
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-projection {
+  grid-column: span 4;
+  background: #f7fbf9;
+  border-color: #d4e8df;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-projection > span {
+  min-height: 20px;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-projection .indicator-track {
+  height: 12px;
+  margin-top: 7px;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-client {
+  grid-column: span 4;
+  min-height: 100px;
+  padding-left: 49px;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-client .summary-metric-icon {
+  top: 17px;
+  left: 12px;
+  right: auto;
+  width: 28px;
+  height: 32px;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-client > span {
+  padding-right: 0;
+  min-height: 18px;
+}
+
+#dashboardView #summaryIndicatorsGrid :is(.indicator-status, .indicator-variation) {
+  grid-column: span 6;
+  min-height: 112px;
+}
+
+#dashboardView #summaryIndicatorsGrid .indicator-status {
+  background: #edf3f5;
+  border-left: 3px solid var(--summary-petrol);
+  justify-content: center;
+}
+
+#dashboardView #summaryIndicatorsGrid :is(.indicator-status, .indicator-variation) > span {
+  min-height: 20px;
+}
+
+#dashboardView #summaryIndicatorsGrid .comparison-badge {
+  align-self: flex-start;
+  max-width: 100%;
+  white-space: normal;
+  font-size: .6875rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1200px) {
+  #dashboardView #summaryIndicatorsGrid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  #dashboardView #summaryIndicatorsGrid :is(.indicator-projection, .indicator-client) {
+    grid-column: span 2;
+  }
+  #dashboardView #summaryIndicatorsGrid :is(.indicator-status, .indicator-variation) {
+    grid-column: span 3;
+  }
+}
+
+@media (max-width: 680px) {
+  #dashboardView #summaryIndicatorsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  #dashboardView #summaryIndicatorsGrid .dashboard-indicator-card {
+    grid-column: span 1;
+    min-height: 112px;
+  }
+  #dashboardView #summaryIndicatorsGrid :is(.indicator-risk-meter, .indicator-recovery-meter, .indicator-capital-comparison, .indicator-projection, .indicator-client, .indicator-status, .indicator-variation) {
+    grid-column: span 2;
+    min-height: 116px;
+  }
+  #dashboardView #summaryIndicatorsGrid :is(.indicator-risk-meter, .indicator-recovery-meter) {
+    min-height: 144px;
+  }
+  #dashboardView #summaryIndicatorsGrid .kpi-value {
+    font-size: 1.15rem;
+  }
+}
+
+@media (max-width: 360px) {
+  #dashboardView #summaryIndicatorsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #dashboardView #summaryIndicatorsGrid .dashboard-indicator-card {
+    grid-column: span 1;
+  }
+  #dashboardView #summaryIndicatorsGrid .indicator-pair {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+}
+
+#dashboardView #summaryIndicatorsGrid :is(.indicator-primary, .indicator-total) > span {
+  min-height: 45px;
+}
