@@ -4359,6 +4359,8 @@ function getDashboardIndicatorItems(dashboard) {
 
 function getOrderedDashboardIndicatorItems(dashboard) {
   const items = getDashboardIndicatorItems(dashboard);
+  const defaultOrder = new Map(DASHBOARD_VISUAL_INDICATOR_ORDER.map((id, index) => [id, index]));
+  items.sort((a, b) => (defaultOrder.get(a.indicatorId) ?? 999) - (defaultOrder.get(b.indicatorId) ?? 999));
   const savedIds = getSavedIndicatorOrder().map(normalizeIndicatorOrderId);
   const seenIds = new Set();
   const order = savedIds.filter((id) => {
@@ -4373,6 +4375,17 @@ function getOrderedDashboardIndicatorItems(dashboard) {
   const missing = items.filter((item) => !order.includes(item.indicatorId));
   return [...ordered, ...missing];
 }
+
+// Presentation order only. A user's saved drag order always takes precedence.
+const DASHBOARD_VISUAL_INDICATOR_ORDER = [
+  "capital-total", "capital-disponible", "capital-actualmente-prestado", "ganancia-real", "ganancia-proyectada", "monto-vencido",
+  "porcentaje-de-morosidad", "tasa-de-recuperacion", "comparativo-capital-vs-interes",
+  "proyeccion-a-3-meses", "proyeccion-a-6-meses", "proyeccion-a-12-meses",
+  "cobros-de-hoy", "interes-a-cobrar-hoy", "prestamos-activos", "prestamos-vencidos", "prestamos-cerrados", "clientes-activos",
+  "capital-agregado", "capital-retirado", "total-prestado-acumulado", "clientes-atrasados", "capital-en-riesgo", "flujo-de-caja",
+  "cliente-mas-rentable", "cliente-con-mayor-deuda", "cliente-con-mas-ampliaciones",
+  "nivel-de-riesgo-del-cliente", "variacion-de-ganancia-vs-periodo-anterior",
+];
 
 const INDICATOR_ORDER_ID_ALIASES = {
   "capital-prestado": "capital-actualmente-prestado",
@@ -4412,15 +4425,67 @@ function renderDashboardIndicatorCard(item, dashboard) {
   const className = item.cardType === "kpi" ? "summary-kpi-card" : "summary-compact-card";
   const tooltipText = item.tip || item.note || "Indicador del resumen.";
   const messages = getIndicatorMessages(item.title);
+  const presentation = getDashboardIndicatorPresentation(item, dashboard);
   return `
-    <article class="${className} dashboard-indicator-card" draggable="true" data-indicator-id="${escapeHTML(item.indicatorId)}">
+    <article class="${className} dashboard-indicator-card indicator-${presentation.kind}" draggable="true" data-indicator-id="${escapeHTML(item.indicatorId)}">
       <div class="summary-metric-icon">${summaryIcon(dashboardIndicatorIcon(item))}</div>
       <span>${escapeHTML(item.title)} ${renderInfoDot(tooltipText)}</span>
       <strong class="kpi-value">${escapeHTML(item.value)}</strong>
+      ${presentation.visual}
       ${renderComparisonBadge(item, dashboard)}
       ${renderIndicatorMessage(messages, item.title)}
     </article>
   `;
+}
+
+function getDashboardIndicatorPresentation(item, dashboard) {
+  const m = dashboard.metrics;
+  const id = item.indicatorId;
+  const primaryIds = DASHBOARD_VISUAL_INDICATOR_ORDER.slice(0, 6);
+  if (primaryIds.includes(id)) return { kind: id === "capital-total" ? "total" : "primary", visual: "" };
+  if (["delinquencyRate", "recoveryRate"].includes(item.metricKey)) {
+    const value = Number(m[item.metricKey]);
+    const percent = Number.isFinite(value) && !dashboard.range.invalid ? clamp(value, 0, 100) : 0;
+    const label = dashboard.range.invalid ? "Revisar fechas" : "Escala de 0 a 100%";
+    return {
+      kind: item.metricKey === "delinquencyRate" ? "risk-meter" : "recovery-meter",
+      visual: `<div class="indicator-ring" style="--indicator-share:${percent}%" aria-hidden="true">${summaryIcon(item.metricKey === "delinquencyRate" ? "shield" : "check")}</div><small class="indicator-context">${label}</small>`,
+    };
+  }
+  if (item.compareFactor && item.metricKey === "projectedProfit") {
+    const amount = Number(m.projectedProfit) * item.compareFactor;
+    const maximum = Number(m.projectedProfit) * 12;
+    return {
+      kind: "projection",
+      visual: `${renderIndicatorMagnitude(amount, maximum)}<small class="indicator-context">Estimación · escala común de 12 meses</small>`,
+    };
+  }
+  if (id === "comparativo-capital-vs-interes") {
+    const maximum = Math.max(Number(m.capitalPending) || 0, Number(m.projectedProfit) || 0);
+    return {
+      kind: "capital-comparison",
+      visual: `<div class="indicator-pair"><div><small>Capital pendiente</small>${renderIndicatorMagnitude(m.capitalPending, maximum, "petrol")}</div><div><small>Interés proyectado</small>${renderIndicatorMagnitude(m.projectedProfit, maximum)}</div></div>`,
+    };
+  }
+  if (id.startsWith("cliente-")) return { kind: "client", visual: "" };
+  if (id === "nivel-de-riesgo-del-cliente") return { kind: "status", visual: "" };
+  if (id === "variacion-de-ganancia-vs-periodo-anterior") {
+    const maximum = Math.max(Math.abs(Number(m.currentMonthProfit) || 0), Math.abs(Number(m.previousMonthProfit) || 0));
+    return {
+      kind: "variation",
+      visual: `<div class="indicator-pair"><div><small>Periodo anterior · ${money(m.previousMonthProfit)}</small>${renderIndicatorMagnitude(m.previousMonthProfit, maximum, "petrol")}</div><div><small>Periodo seleccionado · ${money(m.currentMonthProfit)}</small>${renderIndicatorMagnitude(m.currentMonthProfit, maximum)}</div></div>`,
+    };
+  }
+  return { kind: "stat", visual: "" };
+}
+
+// Chart geometry uses existing metrics; zero/invalid values never create a filled bar.
+function renderIndicatorMagnitude(value, maximum, tone = "emerald") {
+  const number = Number(value);
+  const limit = Number(maximum);
+  const share = Number.isFinite(number) && Number.isFinite(limit) && number > 0 && limit > 0
+    ? clamp(number / limit * 100, 0, 100) : 0;
+  return `<div class="indicator-track" aria-hidden="true"><i class="indicator-fill${tone === "petrol" ? " is-petrol" : ""}" style="width:${share}%"></i></div>`;
 }
 
 function renderDashboardKpis(dashboard) {
