@@ -5589,7 +5589,12 @@ function getDashboardAdvancedItems(dashboard) {
   return getDashboardAdvancedReportItems(dashboard).filter((item) => !HIDDEN_DASHBOARD_ADVANCED_TITLES.has(item.title));
 }
 
-const HIDDEN_DASHBOARD_ADVANCED_TITLES = new Set(["Rendimiento proyectado de cartera"]);
+const HIDDEN_DASHBOARD_ADVANCED_TITLES = new Set([
+  "Rendimiento proyectado de cartera",
+  "Proyeccion a 3 meses",
+  "Proyeccion a 6 meses",
+  "Proyeccion a 12 meses",
+]);
 
 function getDashboardAdvancedReportItems(dashboard) {
   const m = dashboard.metrics;
