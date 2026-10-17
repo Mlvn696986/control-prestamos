@@ -1,6 +1,6 @@
 const { renderLegalContent } = require('./legal.cjs');
+const { ORIGIN, PUBLIC_PLANS, structuredData, socialMetadata } = require('./metadata.cjs');
 
-const ORIGIN = 'https://ermif.com';
 const SIGNUP = '/app/?mode=signup';
 const LOGIN = '/app/?mode=login';
 const icons = {
@@ -60,19 +60,12 @@ function footer() {
 }
 
 function page({ path, title, description, body, extraClass = '' }) {
-  const data = { '@context':'https://schema.org', '@graph':[
-    { '@type':'Organization', '@id':ORIGIN+'/#organization', name:'ERMIF', url:ORIGIN+'/', logo:ORIGIN+'/ermif-logo-960.webp', email:'ventas@ermif.com' },
-    { '@type':'WebSite', '@id':ORIGIN+'/#website', name:'ERMIF', url:ORIGIN+'/', inLanguage:'es', publisher:{'@id':ORIGIN+'/#organization'} },
-  ]};
-  if (path !== '/') data['@graph'].push({ '@type':'BreadcrumbList', itemListElement:[
-    {'@type':'ListItem',position:1,name:'Inicio',item:ORIGIN+'/'},
-    {'@type':'ListItem',position:2,name:title.split(' | ')[0],item:ORIGIN+path},
-  ]});
+  const metadata = { path, title, description };
+  const data = structuredData(metadata);
   return '<!doctype html>\n<html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>' +
     '<title>' + escape(title) + '</title><meta name="description" content="' + escape(description) + '"/><link rel="canonical" href="' + ORIGIN + path + '"/>' +
     '<meta name="theme-color" content="#093b39"/><link rel="icon" type="image/png" href="/ermif-mark-small.png"/>' +
-    '<meta property="og:type" content="website"/><meta property="og:locale" content="es_PE"/><meta property="og:site_name" content="ERMIF"/><meta property="og:title" content="' + escape(title) + '"/><meta property="og:description" content="' + escape(description) + '"/><meta property="og:url" content="' + ORIGIN + path + '"/><meta property="og:image" content="' + ORIGIN + '/dashboard-preview-hd.webp"/><meta property="og:image:alt" content="Resumen financiero de ERMIF con datos ficticios de demostración"/>' +
-    '<meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="' + escape(title) + '"/><meta name="twitter:description" content="' + escape(description) + '"/><meta name="twitter:image" content="' + ORIGIN + '/dashboard-preview-hd.webp"/>' +
+    socialMetadata(metadata, escape) +
     '<link rel="stylesheet" href="/landing.css"/><link rel="stylesheet" href="/acquisition.css"/><script src="/landing.js" defer></script><script src="/acquisition.js" defer></script><script type="application/ld+json">' + JSON.stringify(data).replace(/</g,'\\u003c') + '</script></head>' +
     '<body class="' + extraClass + '">' + header(path) + '<main id="contenido">' + body + '</main>' + footer() + '</body></html>\n';
 }
@@ -88,11 +81,7 @@ function featureCards() {
 }
 
 function pricing() {
-  return '<div class="pricing-grid">' + [
-    { name:'Gratis', price:0, capacity:'Hasta 10 clientes', text:'Para conocer ERMIF y empezar a organizar tu cartera.', button:'Crear cuenta gratis', style:'light' },
-    { name:'Básico', price:29, capacity:'Hasta 50 clientes', text:'Más espacio para una cartera que está creciendo.', button:'Empezar con mi cuenta', style:'featured' },
-    { name:'Pro', price:59, capacity:'Clientes ilimitados', text:'Para administrar una cartera de mayor tamaño.', button:'Empezar con mi cuenta', style:'light' },
-  ].map(p => '<article class="price-card ' + p.style + '"><div class="plan-top"><h3>' + p.name + '</h3>' + (p.style === 'featured' ? '<span class="plan-label">Más capacidad</span>' : '') + '</div><p class="plan-description">' + p.text + '</p><p class="price"><span class="currency">S/</span> ' + p.price + '<span class="period">' + (p.price ? '/ mes' : 'sin costo') + '</span></p><p class="capacity">' + icon('people') + p.capacity + '</p><ul class="check-list"><li>' + icon('check') + 'Préstamos y ampliaciones</li><li>' + icon('check') + 'Cobros e historial de pagos</li><li>' + icon('check') + 'Resumen de tu cartera</li><li>' + icon('check') + 'Exportación a Excel y respaldo</li></ul>' + link(SIGNUP,p.button,p.style === 'featured' ? 'primary' : 'outline') + '<p class="plan-note">' + (p.price ? 'Contrata el plan desde tu cuenta.' : 'No necesitas tarjeta para empezar.') + '</p></article>').join('') + '</div><p class="pricing-note">Precios en soles peruanos. Básico y Pro se cobran mensualmente. Pro está sujeto a uso razonable. <a href="/terminos/">Consulta las condiciones del servicio.</a></p>';
+  return '<div class="pricing-grid">' + PUBLIC_PLANS.map(p => '<article class="price-card ' + p.style + '"><div class="plan-top"><h3>' + p.name + '</h3>' + (p.style === 'featured' ? '<span class="plan-label">Más capacidad</span>' : '') + '</div><p class="plan-description">' + p.text + '</p><p class="price"><span class="currency">S/</span> ' + p.price + '<span class="period">' + (p.price ? '/ mes' : 'sin costo') + '</span></p><p class="capacity">' + icon('people') + p.capacity + '</p><ul class="check-list"><li>' + icon('check') + 'Préstamos y ampliaciones</li><li>' + icon('check') + 'Cobros e historial de pagos</li><li>' + icon('check') + 'Resumen de tu cartera</li><li>' + icon('check') + 'Exportación a Excel y respaldo</li></ul>' + link(SIGNUP,p.button,p.style === 'featured' ? 'primary' : 'outline') + '<p class="plan-note">' + (p.price ? 'Contrata el plan desde tu cuenta.' : 'No necesitas tarjeta para empezar.') + '</p></article>').join('') + '</div><p class="pricing-note">Precios en soles peruanos. Básico y Pro se cobran mensualmente. Pro está sujeto a uso razonable. <a href="/terminos/">Consulta las condiciones del servicio.</a></p>';
 }
 
 const questions = [
