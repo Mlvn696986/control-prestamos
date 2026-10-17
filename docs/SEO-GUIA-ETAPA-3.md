@@ -4,6 +4,32 @@ Revisión: **17/10/2026**, America/Lima. Objetivo: atraer visitas que necesitan 
 
 ## Investigación y decisión
 
+### Posicionamiento corregido por el propietario, 17/10/2026
+
+ERMIF ofrece **control de préstamos fácil de usar, sin configuración técnica previa, con analítica detallada y comprensible**. El público prioritario incluye a personas que prestan a compañeros o miembros de su propia organización y llevan su propia cartera. Otro caso central es el préstamo con intereses mensuales acordados y abonos voluntarios al capital, sin cuotas fijas de capital. Este mensaje debe orientar las próximas herramientas y guías.
+
+No presentar ERMIF como un sistema de administración de organizaciones, cooperativas o equipos de cobradores: pertenecer a una organización describe a las personas usuarias, no una función de permisos compartidos, afiliación o gestión institucional. «Sin configuración técnica» significa que los formularios y paneles están preparados; el usuario sí registra clientes, capital, interés y fechas de cada operación. Los intereses se pagan según el acuerdo y se registran en el sistema; no hay cobro automático. El capital pendiente debe devolverse aunque sus abonos no sean cuotas fijas.
+
+Se corrigieron portada, Cómo funciona, introducción de Precios, Cobranzas, preguntas frecuentes y descripción estructurada del software. Se conservan las diez rutas existentes, precios, condiciones, analítica con consentimiento y funciones de la aplicación.
+
+| Problema que puede resolver | Beneficio comunicado | Evidencia en el producto |
+|---|---|---|
+| Dificultad para empezar con herramientas complejas | Empezar desde el navegador, sin instalaciones ni configuración técnica previa | Registro, formularios y Resumen ya preparados |
+| Confundir un pago de intereses con devolución del préstamo | Registrar intereses y capital por separado, incluido capital pagado en cero | `handlePaymentSubmit`, `buildPaymentTransactionPreview` y regresiones de abonos parciales |
+| Consultas sobre cuánto debe una persona conocida | Historial por cliente con préstamos, ampliaciones, pagos y saldo | Ficha del cliente y movimientos existentes |
+| No distinguir dinero disponible, prestado y ganado | Analítica de capital, ganancia real y proyecciones con gráficos y filtros | Resumen y `buildDashboardData` |
+| Perder de vista fechas y atrasos | Consultar próximos cobros y operaciones vencidas para organizar seguimiento | Cobranza rápida y alertas existentes |
+| Entregar capital adicional sin conservar su origen | Mantener ampliaciones vinculadas al préstamo principal | Operaciones principal/ampliación e historial |
+| Depender de la memoria o registros dispersos | Consultar los movimientos en un lugar y exportar una copia | Exportación a Excel y descarga de respaldo |
+
+Investigación complementaria cualitativa: búsquedas sobre software de préstamos con intereses mensuales, abonos al capital y préstamos entre compañeros. Se consultaron la página de [PrestaControl](https://prestacontrol.net/) y la [ficha oficial del desarrollador de Gestor de Créditos en App Store](https://apps.apple.com/sa/app/gestor-de-cr%C3%A9ditos/id6749607856). La primera comunica cuotas, rutas y equipos; la segunda también describe pagos flexibles y préstamos de solo intereses. Por tanto, no se afirma que ERMIF sea el único con esta modalidad ni que otros sistemas sean difíciles. La decisión editorial es destacar sencillez, claridad y encaje con el público indicado por el propietario. Esta muestra no demuestra demanda, volúmenes ni ventajas comparativas medidas.
+
+Los dos ejemplos de Cobranzas son independientes: saldo inicial S/1,000 e interés del período S/50; pagar solo S/50 de interés mantiene S/1,000 de capital, y pagar además S/200 de capital deja S/800. Son ejemplos del registro y no una recomendación de tasa ni una promesa de rendimiento. No se añadieron funciones, cálculos ni tablas nuevas para este ajuste editorial.
+
+Validación del ajuste: `npm run validate` aprobado (177 pruebas, 175 aprobadas, dos omitidas y cero fallos; regresiones financieras, cinco calendarios y build/dry-run). Revisión visual a 390 y 820 píxeles y en escritorio, sin desbordamiento horizontal observado. Enlace desde la nueva sección de público hasta los ejemplos de intereses comprobado en navegador. La comprobación HTTP de producción posterior al despliegue se registra en los resultados de la tarea.
+
+### Investigación inicial de las páginas
+
 Se consultaron búsquedas públicas sobre «software para prestamistas control de cobranzas sistema» y «ampliaciones de préstamos software control», y páginas de proveedores [Prestafolio](https://www.prestafolio.com/es) y [PrestaControl](https://prestacontrol.net/). Es una muestra cualitativa del resultado de búsqueda, no un estudio de volúmenes ni una estimación de tráfico. Los resultados varían según país, fecha y usuario.
 
 La muestra presenta soluciones comerciales centradas en préstamos, cobros y cartera. La oportunidad elegida es explicar dos tareas que ERMIF ya permite: registrar abonos separando capital e intereses y mantener ampliaciones vinculadas a una operación. No se trasladaron al producto promesas de terceros sobre rutas de cobradores, notificaciones automáticas, contabilidad o evaluación crediticia. No se copió su contenido.

@@ -51,7 +51,7 @@ function structuredData({ path, title, description }) {
     const software = {
       '@type': 'WebApplication', ...webpage.mainEntity, name: 'ERMIF', url: ORIGIN + '/',
       applicationCategory: 'BusinessApplication', inLanguage: 'es-PE',
-      description: 'Software para gestionar clientes, préstamos, ampliaciones, cobros y el resumen de tu cartera. ERMIF no otorga préstamos.',
+      description: 'Sistema de control de préstamos fácil de usar, sin configuración técnica previa. Gestiona intereses mensuales, abonos voluntarios al capital y analítica detallada de tu cartera. ERMIF no otorga préstamos.',
       publisher: organization,
     };
     if (path !== '/precios/') {
