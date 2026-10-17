@@ -20,6 +20,13 @@
     "EMAIL_EVENTS_QUEUE": "ermif-email-events"
   },
   "account_id": "85fd7b8b6aee5613ff5ce0865615f51c",
+  "ratelimits": [
+    {
+      "name": "ACQUISITION_RATE_LIMITER",
+      "namespace_id": "20261016",
+      "simple": { "limit": 30, "period": 60 }
+    }
+  ],
   "build": {
     "command": "npm run build"
   },

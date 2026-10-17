@@ -1,5 +1,6 @@
 import { enqueueTransactionalEmail } from "./transactional-email.mjs";
 import { dispatchEmails, consumeEmailEvents } from "./email-dispatcher.mjs";
+import { handleAcquisitionRequest, captureAcquisitionPayment, isAcquisitionPurgeTime } from "./acquisition.js";
 
 const SUPABASE_URL_FALLBACK = "https://kltozglqvivknbdcnnyj.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY_FALLBACK = "sb_publishable_5mT2ypc9r4SYz7DzShUHyg_esdpoD2x";
@@ -41,8 +42,16 @@ const CLAIM_STATUSES = new Set(["received", "in_review", "answered", "closed"]);
 const PRIVACY_REQUEST_TYPES = new Set(["informacion", "acceso", "rectificacion", "cancelacion", "oposicion"]);
 
 export default {
-  async scheduled(_event, env) {
-    return dispatchEmails(env, (name, body) => supabaseFetch(env, 'rpc/' + name, { method: 'POST', body }));
+  async scheduled(event, env) {
+    const send = dispatchEmails(env, (name, body) => supabaseFetch(env, 'rpc/' + name, { method: 'POST', body }));
+    if (env.ENVIRONMENT === "local" || !isAcquisitionPurgeTime(event?.scheduledTime)) return send;
+    const [emails, purge] = await Promise.allSettled([
+      send,
+      supabaseFetch(env, "rpc/acquisition_purge", { method: "POST", body: {} }),
+    ]);
+    if (purge.status === "rejected") console.error("acquisition_purge_failed");
+    if (emails.status === "rejected") throw emails.reason;
+    return emails.value;
   },
   async queue(batch, env) {
     return consumeEmailEvents(batch, env, (name, body) => supabaseFetch(env, 'rpc/' + name, { method: 'POST', body }));
@@ -50,7 +59,8 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    if (request.method === "OPTIONS" && url.pathname.startsWith("/api/")) {
+    const isAcquisitionRoute = url.pathname.startsWith("/api/acquisition/") || url.pathname === "/api/admin/acquisition";
+    if (request.method === "OPTIONS" && url.pathname.startsWith("/api/") && !isAcquisitionRoute) {
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
 
@@ -58,6 +68,13 @@ export default {
       // La demostracion local nunca ejecuta operaciones contra servicios reales.
       if (env.ENVIRONMENT === "local" && url.pathname.startsWith("/api/")) {
         return json({ error: "API externa deshabilitada en la demostracion local. Usa pruebas con servicios simulados." }, 503);
+      }
+      if (isAcquisitionRoute) {
+        return handleAcquisitionRequest(request, env, {
+          user: (input) => getAuthenticatedUser(input, env),
+          admin: (userId) => assertAdminUser(env, userId),
+          rpc: (name, body) => supabaseFetch(env, "rpc/" + name, { method: "POST", body }),
+        });
       }
       if (url.pathname === "/api/billing/checkout" && request.method === "POST") {
         return await handleCheckout(request, env);
@@ -472,13 +489,22 @@ async function handleMercadoPagoWebhook(request, env) {
 
   if (topic.includes("authorized_payment")) {
     const authorizedPayment = await mercadoPagoFetch(env, `/authorized_payments/${encodeURIComponent(resourceId)}`);
-    await processPaymentConfirmation(env, normalizeAuthorizedPayment(authorizedPayment));
+    const reference = normalizeAuthorizedPayment(authorizedPayment);
+    await processPaymentConfirmation(env, reference);
+    // La factura autorizada no basta: consultar el pago real para la medicion.
+    const actualPaymentId = String(authorizedPayment.payment?.id || "");
+    if (/^\d{1,30}$/.test(actualPaymentId)) {
+      const actualPayment = await mercadoPagoFetch(env, "/v1/payments/" + encodeURIComponent(actualPaymentId));
+      await recordAcquisitionPayment(env, actualPayment, reference);
+    }
     return json({ ok: true });
   }
 
   if (topic === "payment" || topic.includes("payment")) {
     const payment = await mercadoPagoFetch(env, `/v1/payments/${encodeURIComponent(resourceId)}`);
-    await processPaymentConfirmation(env, normalizePayment(payment));
+    const reference = normalizePayment(payment);
+    await processPaymentConfirmation(env, reference);
+    await recordAcquisitionPayment(env, payment, reference);
     return json({ ok: true });
   }
 
@@ -494,6 +520,19 @@ async function handleMercadoPagoWebhook(request, env) {
   }
 
   return json({ ok: true, ignored: true, topic });
+}
+
+async function recordAcquisitionPayment(env, payment, reference) {
+  try {
+    return await captureAcquisitionPayment(payment, reference, {
+      findRequest: (input) => findPlanRequest(env, input),
+      rpc: (name, body) => supabaseFetch(env, "rpc/" + name, { method: "POST", body }),
+    });
+  } catch {
+    // La operacion financiera ya se proceso. El proveedor reintentara la evidencia
+    // y la RPC deduplica por pago; nunca devolver errores SQL ni datos privados.
+    throw httpError("No se pudo registrar la confirmacion de medicion. Se reintentara la notificacion.", 500);
+  }
 }
 
 async function processPaymentConfirmation(env, payment) {
@@ -1059,7 +1098,7 @@ function normalizePrivacyRequest(body, userId) {
     status: "received",
     submitted_at: submittedAt,
     due_at: calculatePrivacyDueDate(submittedAt, requestType),
-    policy_version: optionalText(body.policyVersion, 40) || "2026-09-10",
+    policy_version: optionalText(body.policyVersion, 40) || "2026-10-16",
     retention_until: addYears(submittedAt, CLAIM_RETENTION_YEARS),
     legal_hold: true,
   };

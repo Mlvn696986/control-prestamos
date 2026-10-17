@@ -1,0 +1,65 @@
+/* Namespaced so the optional choice works on both marketing pages and the app. */
+.ermif-measurement,
+.ermif-measurement-preferences {
+  box-sizing: border-box;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-weight: 700;
+  color: #153c49;
+}
+.ermif-measurement {
+  position: fixed;
+  z-index: 1100;
+  left: 20px;
+  bottom: 62px;
+  width: min(530px, calc(100vw - 40px));
+  max-height: calc(100dvh - 90px);
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid #c9e3d9;
+  border-top: 3px solid #008a68;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 42px #153c4921;
+  text-align: left;
+  line-height: 1.55;
+  font-size: 13px;
+}
+.ermif-measurement[hidden] { display: none !important; }
+.ermif-measurement-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ermif-measurement-heading strong { font-size: 16px; font-weight: 800; }
+.ermif-measurement p { margin: 10px 0; color: #42606a; font-size: 13px; font-weight: 700; line-height: 1.55; }
+.ermif-measurement a { color: #007657; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+.ermif-measurement button,
+.ermif-measurement-preferences { cursor: pointer; font-size: 12px; font-weight: 800; line-height: 1.3; }
+.ermif-measurement-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.ermif-measurement-actions button {
+  min-height: 44px;
+  border: 1px solid #008263;
+  border-radius: 9px;
+  padding: 10px 12px;
+  color: #006d52;
+  background: #edf8f3;
+}
+.ermif-measurement-actions button:hover { background: #d9f0e6; }
+.ermif-measurement .ermif-measurement-close { min-width: 36px; min-height: 36px; padding: 0; border: 1px solid #dce8e4; border-radius: 8px; background: #fff; color: #42606a; font-size: 22px; }
+.ermif-measurement-preferences {
+  position: fixed;
+  z-index: 1099;
+  bottom: 16px;
+  left: 20px;
+  padding: 9px 13px;
+  min-height: 36px;
+  border: 1px solid #c9ded7;
+  border-radius: 20px;
+  background: #f7fbf9;
+  box-shadow: 0 3px 12px #153c4912;
+}
+.ermif-measurement button:focus-visible,
+.ermif-measurement a:focus-visible,
+.ermif-measurement-preferences:focus-visible { outline: 3px solid #078c6b; outline-offset: 3px; }
+@media (max-width: 480px) {
+  .ermif-measurement { left: 12px; bottom: 62px; width: calc(100vw - 24px); padding: 16px; border-radius: 12px; }
+  .ermif-measurement-preferences { left: 12px; }
+  .ermif-measurement-actions { gap: 8px; }
+  .ermif-measurement-actions button { padding: 10px 8px; }
+}

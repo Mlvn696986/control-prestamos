@@ -97,3 +97,25 @@ Las tareas de este proyecto se completaron mediante la terminal autorizada; node
 Revisar el diff en esta rama; confirmar Builds y Node 24 en Cloudflare; verificar Supabase y el respaldo; probar en un entorno separado; autorizar la publicacion.
 Actualizar main puede disparar Cloudflare automaticamente. No usar push directo a main.
 Los correos ERMIF están activados desde el 08/10/2026; estado, límites, plantillas y pausa en EMAIL-SETUP.md. La activación fue autorizada con el respaldo local verificado, sin una segunda copia externa.
+
+## Medición de captación y conversiones
+
+El informe está en **Admin → Captación y conversiones**. Es analítica propia de ERMIF, sin Google Analytics ni identificador GA requerido. Cuenta navegadores con consentimiento, altas nuevas confirmadas, cuentas con un primer préstamo guardado y primeros pagos de suscripción confirmados por Mercado Pago. No mide los pagos de los clientes prestatarios ni convierte planes concedidos manualmente en ventas.
+
+Los filtros 30/90/180 días agrupan por primera visita medida; los hitos posteriores pertenecen a esa misma cohorte. No es una suma de eventos ocurridos durante el período. No atribuye cuentas anteriores al corte de instalación. La confirmación en otro navegador/dispositivo puede perder atribución; rechazos, bloqueadores y almacenamiento borrado afectan la cobertura. No presentar estos resultados como tráfico total o ingresos netos.
+
+`public/acquisition.js` comparte consentimiento y atribución entre portada y aplicación. Solo tras aceptar genera un UUIDv4, conserva una entrada mínima y llama a `/api/acquisition/visit`. Los reintentos reutilizan el ID. La identificación obtiene el usuario del token validado en servidor; SQL exige correo confirmado y una cuenta creada después de la visita y del corte, dentro de 30 días. La activación usa un trigger acotado y una reconciliación idempotente. Los datos de los préstamos no se copian al informe.
+
+Ejemplo de enlace de campaña admitido:
+
+```text
+https://ermif.com/precios/?utm_source=facebook&utm_medium=paid_social&utm_campaign=lanzamiento-ermif
+```
+
+Orígenes admitidos: `directo`, `google`, `bing`, `duckduckgo`, `facebook`, `instagram`, `tiktok`, `youtube`, `linkedin`, `whatsapp`, `email`, `otro`. Medios: `direct`, `organic`, `paid_search`, `paid_social`, `social`, `email`, `referral`, `other`. Campañas iniciales: `lanzamiento-ermif`, `contenido-educativo`. No se guarda texto UTM arbitrario, `utm_term`, `utm_content`, URLs completas ni referentes completos. Para incorporar campañas, actualizar las listas cerradas del cliente, Worker y SQL en una migración revisada; no usar nombres, correos o documentos en los enlaces.
+
+`supabase-acquisition.sql` agrega tablas privadas y RPC exclusivas del backend. No cambia cálculos ni filas financieras existentes. `subscription_first_payments` conserva un comprobante operativo mínimo del primer pago verificado (cuenta, identificador del proveedor, fecha y plan), independiente de consentimiento; permite conciliar el pago si la identificación llega después. Solo cuentas atribuidas con consentimiento aparecen en el informe. El estado de la factura recurrente no sustituye la consulta del pago real. Un fallo de persistencia responde 500 al webhook para permitir reintento, con deduplicación por pago. No se hacen pagos reales durante las pruebas.
+
+Retención: visitas e hitos hasta 180 días; purga diaria a las 05:00 UTC mediante el cron existente. El informe excluye registros vencidos antes de la purga. Retirar consentimiento elimina visita y atribución; un identificador mínimo de revocación impide recrearlas por solicitudes atrasadas. Los comprobantes operativos de este módulo y las revocaciones también se depuran a los 180 días. Los registros de facturación anteriores del sistema no cambian. La política de privacidad describe la elección opcional y el tratamiento separado de facturación.
+
+Para publicar: verificar respaldo, revisar/aplicar SQL **antes** de desplegar el Worker; conservar `ACQUISITION_RATE_LIMITER` (30 solicitudes/minuto por clave efímera). Ejecutar `npm run validate`. Las pruebas de cliente, Admin, Worker y PGlite cubren consentimiento, autorización, reintentos, revocación, atribución, pagos y retención sin utilizar datos reales. La demo local bloquea peticiones de medición. Para detener la captura, retirar los scripts compartidos y los hooks de identificación; mantener disponible la revocación y la purga durante la retención. No borrar tablas ni restaurar producción para revertir una interfaz.
