@@ -136,7 +136,7 @@ test("every internal public link and fragment resolves to a rendered page, real 
 test("marketing pages do not load the application, Supabase authentication or private dashboard markup", () => {
   for (const [file, html] of Object.entries(pages)) {
     const scripts = tagAttributes(html, "script");
-    assert.deepEqual(scripts.filter((script) => script.src).map((script) => script.src), ["/landing.js"], file);
+    assert.deepEqual(scripts.filter((script) => script.src).map((script) => script.src), ["/landing.js", "/acquisition.js"], file);
     assert.ok(scripts.filter((script) => !script.src).every((script) => script.type === "application/ld+json"), file);
     assert.doesNotMatch(html, /\bid="(?:authScreen|authForm|appShell|clientsView|adminView)"/, file);
     assert.doesNotMatch(html, /<link\b[^>]+href="\/(?:styles\.css|assets\/summary\.css)"/, file);

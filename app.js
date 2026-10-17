@@ -7,7 +7,7 @@ const FREE_CLIENT_LIMIT = 10;
 const CANONICAL_APP_ORIGIN = "https://ermif.com";
 const LEGACY_APP_HOSTS = new Set(["reliable-kleicha-4c46be.netlify.app"]);
 const INDICATOR_ORDER_STORAGE_KEY = "prestamos-dashboard-indicator-order-v1";
-const LEGAL_POLICY_VERSION = "2026-09-10";
+const LEGAL_POLICY_VERSION = "2026-10-16";
 const CLAIM_RESPONSE_BUSINESS_DAYS = 15;
 const CLAIM_RETENTION_YEARS = 2;
 const ACCOUNT_DELETION_RECOVERY_DAYS = 30;
@@ -440,6 +440,7 @@ function openEntryDialog() {
 }
 
 function bindEvents() {
+  window.addEventListener("ermif-acquisition-consent", syncAcquisitionIdentity);
   if (elements.paymentWhatsAppButton) {
     elements.paymentWhatsAppButton.innerHTML = `${icons.whatsapp} Cobrar por WhatsApp`;
   }
@@ -1418,6 +1419,8 @@ async function loadCloudState() {
     capitalMovements: (capitalMovementsResult.data || []).map(capitalMovementFromRow),
   };
 
+  syncAcquisitionIdentity();
+
   if (state.user?.isAdmin) {
     await loadAdminState();
   } else {
@@ -1441,11 +1444,20 @@ async function loadCloudCapitalMovements(userId) {
   return result;
 }
 
+function syncAcquisitionIdentity() {
+  if (!isCloudMode() || !state.user || !saas.session?.access_token || saas.passwordRecovery) return;
+  // La confirmación y elegibilidad se verifican en el servidor; nunca en signUp().
+  void window.ERMIFAcquisition?.identify(saas.session.access_token).catch(() => {});
+}
+
 async function loadAdminState() {
   if (!isCloudMode() || !state.user?.isAdmin) {
     adminState = createEmptyAdminState();
     return;
   }
+
+  // Informe independiente: una caída de medición no impide administrar ERMIF.
+  window.ERMIFAcquisitionReport?.load((path) => apiFetch(path));
 
   const [profilesResult, subscriptionsResult, clientsResult, loansResult, paymentsResult, requestsResult, legalResult] = await Promise.all([
     saas.client.from("profiles").select("*").order("created_at", { ascending: false }),
@@ -3597,6 +3609,7 @@ function getPaymentPeriodStatusLabel(status) {
 }
 
 function render() {
+  if (!state.user?.isAdmin) window.ERMIFAcquisitionReport?.reset();
   if (saas.loading) {
     elements.authScreen.classList.remove("is-hidden");
     elements.appShell.classList.add("is-hidden");

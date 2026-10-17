@@ -53,7 +53,7 @@ function page({ path, title, description, body, extraClass = '' }) {
     '<meta name="theme-color" content="#093b39"/><link rel="icon" type="image/png" href="/assets/ermif-mark.png"/>' +
     '<meta property="og:type" content="website"/><meta property="og:locale" content="es_PE"/><meta property="og:site_name" content="ERMIF"/><meta property="og:title" content="' + escape(title) + '"/><meta property="og:description" content="' + escape(description) + '"/><meta property="og:url" content="' + ORIGIN + path + '"/><meta property="og:image" content="' + ORIGIN + '/dashboard-preview.webp"/><meta property="og:image:alt" content="Resumen financiero de ERMIF con datos ficticios de demostración"/>' +
     '<meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="' + escape(title) + '"/><meta name="twitter:description" content="' + escape(description) + '"/><meta name="twitter:image" content="' + ORIGIN + '/dashboard-preview.webp"/>' +
-    '<link rel="stylesheet" href="/landing.css"/><script src="/landing.js" defer></script><script type="application/ld+json">' + JSON.stringify(data).replace(/</g,'\\u003c') + '</script></head>' +
+    '<link rel="stylesheet" href="/landing.css"/><link rel="stylesheet" href="/acquisition.css"/><script src="/landing.js" defer></script><script src="/acquisition.js" defer></script><script type="application/ld+json">' + JSON.stringify(data).replace(/</g,'\\u003c') + '</script></head>' +
     '<body class="' + extraClass + '">' + header(path) + '<main id="contenido">' + body + '</main>' + footer() + '</body></html>\n';
 }
 

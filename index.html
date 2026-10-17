@@ -7,6 +7,8 @@
     <meta name="robots" content="noindex" />
     <meta name="referrer" content="no-referrer" />
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/acquisition.css" />
+    <link rel="stylesheet" href="/acquisition-admin.css" />
     <link rel="stylesheet" href="/assets/summary.css" />
   </head>
   <body>
@@ -511,6 +513,33 @@
               <strong id="adminMonthlyRevenue">S/ 0</strong>
             </article>
           </div>
+
+          <section class="panel admin-panel acquisition-report" id="acquisitionReport" aria-labelledby="acquisitionReportTitle">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Crecimiento de ERMIF</p>
+                <h3 id="acquisitionReportTitle">Captación y conversiones</h3>
+              </div>
+              <div class="acquisition-report-controls">
+                <label for="acquisitionPeriod">Visitas de los últimos</label>
+                <select id="acquisitionPeriod">
+                  <option value="30">30 días</option>
+                  <option value="90">90 días</option>
+                  <option value="180">180 días</option>
+                </select>
+                <button id="acquisitionRefresh" class="ghost-button small-button" type="button">Actualizar medición</button>
+              </div>
+            </div>
+            <p class="acquisition-report-intro">Del primer contacto al primer pago de suscripción. Solo visitantes que aceptaron la medición.</p>
+            <div id="acquisitionReportBody" aria-live="polite"><p class="acquisition-report-status">La medición se carga al entrar como administrador.</p></div>
+            <details class="acquisition-report-help">
+              <summary>Cómo interpretar estos datos</summary>
+              <p>El período agrupa visitantes por su primera entrada medida. Sus registros, activaciones y primeros pagos posteriores se atribuyen a ese mismo grupo. Una persona puede aparecer como varios visitantes si cambia de navegador o borra el almacenamiento.</p>
+              <p>Registro: cuenta nueva con correo confirmado. Activación: primer préstamo guardado en su cuenta. Primer pago: pago positivo de suscripción confirmado por Mercado Pago; no incluye planes asignados manualmente ni cuenta renovaciones como nuevos clientes.</p>
+              <p>No representa todo el tráfico ni ingresos netos. Un reembolso posterior no borra el hecho de que hubo un primer pago. Las cuentas anteriores al inicio de esta medición y los registros sin atribución quedan fuera de este informe. La confirmación desde otro dispositivo puede perder la atribución.</p>
+              <p>Se conserva la primera página y el primer origen consentidos durante un máximo de 180 días. La vinculación con una cuenta nueva admite hasta 30 días desde esa visita. Retirar el consentimiento elimina esa atribución.</p>
+            </details>
+          </section>
 
           <section class="panel admin-panel">
             <div class="section-heading">
@@ -1402,7 +1431,7 @@
           <p>El prestamista determina la finalidad de los datos de sus clientes. ERMIF actua como proveedor tecnologico y procesa nombres, telefono, documento, direccion, notas, prestamos, saldos, tasas, fechas, pagos e historial financiero solo para prestar el servicio al usuario.</p>
 
           <h4>4. Finalidades</h4>
-          <p>Los datos se usan para prestar el servicio, operar la plataforma, brindar soporte, proteger la seguridad, cumplir obligaciones legales, atender reclamos y gestionar derechos sobre datos personales. ERMIF no usa estos datos para publicidad ni marketing.</p>
+          <p>Los datos se usan para prestar el servicio, operar la plataforma, brindar soporte, proteger la seguridad, cumplir obligaciones legales, atender reclamos y gestionar derechos sobre datos personales. Los datos de los clientes y préstamos administrados en ERMIF no se usan para publicidad ni marketing. Por separado, y solo con tu consentimiento opcional, medimos cómo las visitas a ERMIF se convierten en cuentas y suscripciones, conforme al apartado 13.</p>
 
           <h4>5. Datos necesarios y opcionales</h4>
           <p>Correo, cuenta y datos operativos basicos son necesarios para usar ERMIF. En la cartera del prestamista, telefono, documento, direccion y notas pueden ser opcionales segun la gestion del usuario y el principio de minimizacion.</p>
@@ -1429,7 +1458,10 @@
           <p>Las solicitudes pueden presentarse desde "Privacidad y mis datos" o al correo indicado. La cancelacion de suscripcion, el cierre de cuenta y la cancelacion de datos son procesos distintos.</p>
 
           <h4>13. Cookies y decisiones automatizadas</h4>
-          <p>ERMIF usa almacenamiento tecnico del navegador para sesion, preferencias y respaldos locales cuando corresponde. No se documentan decisiones automatizadas legales sobre titulares de datos.</p>
+          <p>ERMIF usa almacenamiento técnico del navegador para sesión, preferencias y respaldos locales cuando corresponde. No se documentan decisiones automatizadas legales sobre titulares de datos.</p>
+          <p>La medición propia es opcional: antes de aceptarla no creamos identificadores ni guardamos atribución de visitas. Si aceptas, conservamos un identificador aleatorio, la primera página visitada y categorías de origen, medio y campaña autorizada. Si creas y confirmas una cuenta nueva en ese navegador dentro de los siguientes 30 días, vinculamos esa visita con tu cuenta para medir su activación (primer préstamo guardado) y su primer pago de suscripción confirmado. Esa información es seudónima, no anónima.</p>
+          <p>No copiamos a la medición nombres, correos, documentos, datos de tus clientes, importes de préstamos, direcciones completas, tokens de acceso ni IP. No enviamos estos eventos a Google Analytics ni a redes publicitarias. Se procesan con la infraestructura de ERMIF en Cloudflare y Supabase; el administrador consulta resultados agregados. Los controles técnicos de seguridad de la infraestructura son independientes de esta medición.</p>
+          <p>La atribución y sus hitos se conservan hasta 180 días desde la primera visita medida y se depuran diariamente. Puedes aceptar, rechazar o retirar tu consentimiento desde el botón «Medición» del sitio, sin afectar el uso de ERMIF. Al retirarlo se elimina la atribución vinculada a ese navegador; si no hay conexión, la eliminación se reintenta al volver. Conservamos un identificador técnico de revocación hasta 180 días, sin origen ni actividad, para impedir que solicitudes atrasadas reactiven la medición. Los registros operativos de tu cuenta y facturación se gestionan por separado. También puedes ejercer tus derechos mediante privacidad@ermif.com.</p>
 
           <h4>14. Cambios</h4>
           <p>ERMIF podra actualizar esta politica. Las nuevas versiones indicaran fecha de actualizacion y se mostraran antes o durante el uso del servicio cuando sea necesario.</p>
@@ -1601,6 +1633,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/supabase-config.js"></script>
+    <script src="/acquisition.js"></script>
+    <script src="/acquisition-admin.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>
