@@ -6,10 +6,11 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const { renderPages } = require("../marketing/site.cjs");
+const { optimizePublicAsset } = require("../scripts/public-assets.cjs");
 const read = (name) => fs.readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
 const appHtml = read("index.html");
 const appJs = read("app.js");
-const landingJs = read("public/landing.js");
+const landingJs = optimizePublicAsset("landing.js", read("public/landing.js"));
 const pages = renderPages(appHtml);
 const origin = "https://ermif.com";
 const expectedRoutes = {
@@ -194,4 +195,58 @@ test("callback forwarding is limited to legacy root entries and never loops insi
     const result = runLanding({ pathname, search: "?state=fixture", hash: "#access_token=fixture&type=recovery" });
     assert.deepEqual(result.redirects, [], pathname);
   }
+});
+
+test("public resources stay within a download budget and defer scripts outside the application", () => {
+  const { gzipSync } = require('node:zlib');
+  for (const [file, html] of Object.entries(pages)) {
+    const scripts = tagAttributes(html, 'script').filter(tag => tag.src);
+    for (const script of scripts) assert.match(html, new RegExp('<script src="' + script.src.replaceAll('.', '\\.') + '" defer>'), file);
+    const styles = tagAttributes(html, 'link').filter(tag => tag.rel === 'stylesheet');
+    assert.deepEqual(styles.map(tag => tag.href), ['/landing.css', '/acquisition.css'], file);
+    const code = [...scripts.map(tag => tag.src), ...styles.map(tag => tag.href)].map(url => {
+      const name = url.slice(1);
+      return optimizePublicAsset(name, read('public/' + name));
+    });
+    assert.ok(code.reduce((sum, text) => sum + gzipSync(text).length, 0) <= 13 * 1024, file + ': public JS/CSS gzip budget');
+    const imageUrls = new Set(tagAttributes(html, 'img').map(tag => tag.src));
+    for (const link of tagAttributes(html, 'link').filter(tag => tag.rel === 'icon')) imageUrls.add(link.href);
+    let rawBytes = Buffer.byteLength(html) + code.reduce((sum, text) => sum + Buffer.byteLength(text), 0);
+    for (const url of imageUrls) {
+      assert.ok(url.startsWith('/') && !url.startsWith('/assets/'), file + ': use optimized public images');
+      rawBytes += fs.statSync(new URL('../public' + url, import.meta.url)).size;
+    }
+    // Conservative: count the largest fallback image even if mobile selects a smaller variant.
+    assert.ok(rawBytes <= 180 * 1024, file + ': HTML + scripts + styles + image budget');
+  }
+});
+
+test("images reserve their layout, use valid responsive candidates and stay lightweight", async () => {
+  const sharp = require('sharp');
+  const assets = new Map();
+  for (const [file, html] of Object.entries({ ...pages, 'app/index.html': appHtml })) {
+    for (const img of tagAttributes(html, 'img')) {
+      assert.ok(Number(img.width) > 0 && Number(img.height) > 0, file + ': image reserves dimensions');
+      const source = img.src.startsWith('/assets/') ? '..' + img.src : '../public' + img.src;
+      assert.ok(fs.existsSync(new URL(source, import.meta.url)), file + ': image exists');
+      if (!img.srcset) continue;
+      assert.ok(img.sizes, file + ': responsive images declare displayed size');
+      for (const candidate of img.srcset.split(',')) {
+        const match = candidate.trim().match(/^(\/[\w.-]+) (\d+)w$/);
+        assert.ok(match, candidate);
+        assets.set(match[1], Number(match[2]));
+      }
+    }
+  }
+  for (const [url, width] of assets) {
+    const image = new URL('../public' + url, import.meta.url);
+    assert.equal((await sharp(fs.readFileSync(image)).metadata()).width, width, url + ': srcset describes real pixel width');
+    assert.ok(fs.statSync(image).size <= 80 * 1024, url + ': image budget');
+  }
+  assert.ok(fs.statSync(new URL('../public/ermif-mark-small.png', import.meta.url)).size <= 12 * 1024);
+  const hero = tagAttributes(pages['index.html'], 'img').find(img => img.src.includes('dashboard-preview'));
+  const demo = tagAttributes(pages['como-funciona/index.html'], 'img').find(img => img.src.includes('dashboard-preview'));
+  assert.equal(hero.fetchpriority, 'high');
+  assert.notEqual(hero.loading, 'lazy', 'do not delay the main visual');
+  assert.equal(demo.loading, 'lazy', 'defer the lower-page demonstration');
 });

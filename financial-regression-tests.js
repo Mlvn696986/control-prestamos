@@ -1173,8 +1173,8 @@ assertCondition(!stylesCode.includes(".summary-compact-card strong"), "Resumen: 
 assertFileIncludes(htmlCode, "<h3>Indicadores:</h3>", "Resumen: el titulo de Indicadores debe incluir dos puntos.");
 assertFileIncludes(htmlCode, "Los bloques principales son fijos. Mantén presionadas las tarjetas inferiores y arrástralas para ordenarlas como prefieras.", "Resumen: debe distinguir los bloques fijos de las tarjetas que se pueden ordenar.");
 assertFileIncludes(stylesCode, ".section-helper", "Resumen: el texto de ayuda debe tener estilo propio.");
-assertFileIncludes(htmlCode, 'src="/assets/ermif-logo.png"', "Marca: el login debe usar el logo completo ERMIF desde cualquier ruta de la app.");
-assertFileIncludes(htmlCode, 'src="/assets/ermif-mark.png"', "Marca: la barra lateral debe usar el simbolo compacto ERMIF desde cualquier ruta de la app.");
+assertFileIncludes(htmlCode, 'src="/ermif-logo-480.webp"', "Marca: el login debe usar el logo completo optimizado ERMIF desde cualquier ruta de la app.");
+assertFileIncludes(htmlCode, 'src="/ermif-mark-small.png"', "Marca: la barra lateral debe usar el simbolo compacto optimizado ERMIF desde cualquier ruta de la app.");
 assertFileIncludes(htmlCode, '<span id="ownerLabel" class="is-hidden">Prestamista</span>', "Sidebar: Prestamista no debe mostrarse visualmente debajo del nombre del negocio.");
 assertFileIncludes(htmlCode, 'id="profileEditTrigger"', "Perfil: el nombre del sidebar debe abrir edicion de perfil.");
 assertFileIncludes(htmlCode, 'id="profileEditDialog"', "Perfil: debe existir modal Editar mi perfil.");

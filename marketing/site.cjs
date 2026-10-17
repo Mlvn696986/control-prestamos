@@ -23,7 +23,7 @@ const escape = (value) => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','
 
 function header(path) {
   return '<a class="skip-link" href="#contenido">Saltar al contenido</a><header class="site-header"><div class="container nav-bar">' +
-    '<a class="brand" href="/" aria-label="ERMIF, inicio"><img src="/assets/ermif-mark.png" width="37" height="37" alt=""/><span>ERMIF<span class="brand-dot">.</span></span></a>' +
+    '<a class="brand" href="/" aria-label="ERMIF, inicio"><img src="/ermif-mark-small.png" width="37" height="37" alt=""/><span>ERMIF<span class="brand-dot">.</span></span></a>' +
     '<button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Abrir menú">' + icon('menu') + '</button>' +
     '<nav class="main-nav" id="main-nav" aria-label="Navegación principal"><a href="/#funciones">Funciones</a>' +
     '<a href="/como-funciona/"' + (path === '/como-funciona/' ? ' aria-current="page"' : '') + '>Cómo funciona</a>' +
@@ -41,7 +41,7 @@ function footer() {
 
 function page({ path, title, description, body, extraClass = '' }) {
   const data = { '@context':'https://schema.org', '@graph':[
-    { '@type':'Organization', '@id':ORIGIN+'/#organization', name:'ERMIF', url:ORIGIN+'/', logo:ORIGIN+'/assets/ermif-logo.png', email:'ventas@ermif.com' },
+    { '@type':'Organization', '@id':ORIGIN+'/#organization', name:'ERMIF', url:ORIGIN+'/', logo:ORIGIN+'/ermif-logo-960.webp', email:'ventas@ermif.com' },
     { '@type':'WebSite', '@id':ORIGIN+'/#website', name:'ERMIF', url:ORIGIN+'/', inLanguage:'es', publisher:{'@id':ORIGIN+'/#organization'} },
   ]};
   if (path !== '/') data['@graph'].push({ '@type':'BreadcrumbList', itemListElement:[
@@ -50,7 +50,7 @@ function page({ path, title, description, body, extraClass = '' }) {
   ]});
   return '<!doctype html>\n<html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>' +
     '<title>' + escape(title) + '</title><meta name="description" content="' + escape(description) + '"/><link rel="canonical" href="' + ORIGIN + path + '"/>' +
-    '<meta name="theme-color" content="#093b39"/><link rel="icon" type="image/png" href="/assets/ermif-mark.png"/>' +
+    '<meta name="theme-color" content="#093b39"/><link rel="icon" type="image/png" href="/ermif-mark-small.png"/>' +
     '<meta property="og:type" content="website"/><meta property="og:locale" content="es_PE"/><meta property="og:site_name" content="ERMIF"/><meta property="og:title" content="' + escape(title) + '"/><meta property="og:description" content="' + escape(description) + '"/><meta property="og:url" content="' + ORIGIN + path + '"/><meta property="og:image" content="' + ORIGIN + '/dashboard-preview.webp"/><meta property="og:image:alt" content="Resumen financiero de ERMIF con datos ficticios de demostración"/>' +
     '<meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="' + escape(title) + '"/><meta name="twitter:description" content="' + escape(description) + '"/><meta name="twitter:image" content="' + ORIGIN + '/dashboard-preview.webp"/>' +
     '<link rel="stylesheet" href="/landing.css"/><link rel="stylesheet" href="/acquisition.css"/><script src="/landing.js" defer></script><script src="/acquisition.js" defer></script><script type="application/ld+json">' + JSON.stringify(data).replace(/</g,'\\u003c') + '</script></head>' +
@@ -93,7 +93,11 @@ function intro(kicker, title, description) {
   return '<section class="container page-intro"><a class="breadcrumb" href="/">Inicio ' + icon('arrow') + '</a><span class="eyebrow">' + kicker + '</span><h1>' + title + '</h1><p>' + description + '</p></section>';
 }
 function screenshot(extraClass = '') {
-  return '<figure class="product-window ' + extraClass + '"><div class="window-top"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>ERMIF / Resumen financiero</span><span class="window-secure">' + icon('shield') + 'Tu espacio de trabajo</span></div><img src="/dashboard-preview.webp" width="1265" height="854" alt="Pantalla real del resumen de ERMIF con capital disponible, préstamos y ganancias; todos los datos son ficticios" ' + (extraClass === 'hero-window' ? 'fetchpriority="high"' : 'loading="lazy"') + '/><figcaption>Vista real del sistema · Datos ficticios de demostración</figcaption></figure>';
+  const hero = extraClass === 'hero-window';
+  const sizes = hero
+    ? '(max-width: 590px) calc(100vw - 36px), (max-width: 850px) min(650px, calc(90vw - 43px)), (max-width: 1100px) calc(51.22vw - 26px), (min-width: 1500px) 698px, min(673px, calc(55.24vw - 35px))'
+    : '(max-width: 590px) calc(100vw - 66px), (max-width: 1100px) calc(100vw - 126px), min(1122px, calc(100vw - 158px))';
+  return '<figure class="product-window ' + extraClass + '"><div class="window-top"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>ERMIF / Resumen financiero</span><span class="window-secure">' + icon('shield') + 'Tu espacio de trabajo</span></div><img src="/dashboard-preview.webp" srcset="/dashboard-preview-480.webp 480w, /dashboard-preview-800.webp 800w, /dashboard-preview.webp 1265w" sizes="' + sizes + '" width="1265" height="854" decoding="async" alt="Pantalla real del resumen de ERMIF con capital disponible, préstamos y ganancias; todos los datos son ficticios" ' + (hero ? 'fetchpriority="high"' : 'loading="lazy"') + '/><figcaption>Vista real del sistema · Datos ficticios de demostración</figcaption></figure>';
 }
 
 function home() {

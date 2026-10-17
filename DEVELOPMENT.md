@@ -119,3 +119,15 @@ Orígenes admitidos: `directo`, `google`, `bing`, `duckduckgo`, `facebook`, `ins
 Retención: visitas e hitos hasta 180 días; purga diaria a las 05:00 UTC mediante el cron existente. El informe excluye registros vencidos antes de la purga. Retirar consentimiento elimina visita y atribución; un identificador mínimo de revocación impide recrearlas por solicitudes atrasadas. Los comprobantes operativos de este módulo y las revocaciones también se depuran a los 180 días. Los registros de facturación anteriores del sistema no cambian. La política de privacidad describe la elección opcional y el tratamiento separado de facturación.
 
 Para publicar: verificar respaldo, revisar/aplicar SQL **antes** de desplegar el Worker; conservar `ACQUISITION_RATE_LIMITER` (30 solicitudes/minuto por clave efímera). Ejecutar `npm run validate`. Las pruebas de cliente, Admin, Worker y PGlite cubren consentimiento, autorización, reintentos, revocación, atribución, pagos y retención sin utilizar datos reales. La demo local bloquea peticiones de medición. Para detener la captura, retirar los scripts compartidos y los hooks de identificación; mantener disponible la revocación y la purga durante la retención. No borrar tablas ni restaurar producción para revertir una interfaz.
+
+## Recursos publicos ligeros
+
+La web comercial usa exclusivamente `landing.css`, `landing.js` y los dos recursos de consentimiento `acquisition.*`. La aplicacion completa, Supabase y los estilos de resumen se cargan al entrar en `/app/`; esa ruta conserva registro, acceso, recuperacion y formularios existentes.
+
+El build compacta solo esos cuatro archivos publicos con esbuild; los fuentes permanecen legibles y la demo usa la misma transformacion. Las pruebas de consentimiento y callbacks ejecutan el JavaScript transformado. No se compactan ni mezclan `app.js`, codigo de terceros ni el modulo de administracion.
+
+`npm run images:optimize` regenera cinco derivados en `public/` desde los logos originales y la captura con datos ficticios. Conserva los originales. Ejecutarlo solo al cambiar esas imagenes, revisar visualmente y guardar los derivados en Git. No hace falta procesar imagenes en cada publicacion.
+
+El logo pequeno se reutiliza como icono y en la barra lateral. El logo de acceso tiene versiones de 480/960 px. La captura comercial ofrece 480/800/1265 px mediante `srcset` y `sizes`; mantiene prioridad alta en portada y carga diferida en la demostracion inferior. Las imagenes declaran dimensiones para reservar espacio.
+
+Las pruebas protegen la separacion entre web comercial y aplicacion, el tamano real de las variantes y presupuestos de recursos: 13 KiB gzip para JS/CSS publico, 180 KiB sin compresion para HTML + JS/CSS + imagenes referenciadas de cada pagina, usando como estimacion conservadora la captura mas grande. Estos limites tecnicos no son una medicion de Core Web Vitals de usuarios reales.

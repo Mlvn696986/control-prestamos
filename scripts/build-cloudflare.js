@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { renderPages } = require("../marketing/site.cjs");
+const { optimizePublicAsset } = require("./public-assets.cjs");
 
 const rootDir = path.resolve(__dirname, "..");
 const local = process.argv.includes("--local");
@@ -63,7 +64,7 @@ for (const [name, source] of copies) {
   const content = local && name === "supabase-config.js"
     ? 'window.SUPABASE_CONFIG = { url: "", publishableKey: "" };\n'
     : fs.readFileSync(source);
-  writeOutput(name, content);
+  writeOutput(name, optimizePublicAsset(name, content));
 }
 for (const [name, content] of Object.entries(pages)) writeOutput(name, content);
 writeOutput("app/index.html", appHtml);
