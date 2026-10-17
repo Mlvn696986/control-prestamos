@@ -4,6 +4,7 @@ const ORIGIN = 'https://ermif.com';
 const SIGNUP = '/app/?mode=signup';
 const LOGIN = '/app/?mode=login';
 const icons = {
+  expand: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>',
   arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
   check: '<path d="m5 12 4 4L19 6"/>',
   people: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/><circle cx="9" cy="7" r="4"/>',
@@ -51,8 +52,8 @@ function page({ path, title, description, body, extraClass = '' }) {
   return '<!doctype html>\n<html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>' +
     '<title>' + escape(title) + '</title><meta name="description" content="' + escape(description) + '"/><link rel="canonical" href="' + ORIGIN + path + '"/>' +
     '<meta name="theme-color" content="#093b39"/><link rel="icon" type="image/png" href="/ermif-mark-small.png"/>' +
-    '<meta property="og:type" content="website"/><meta property="og:locale" content="es_PE"/><meta property="og:site_name" content="ERMIF"/><meta property="og:title" content="' + escape(title) + '"/><meta property="og:description" content="' + escape(description) + '"/><meta property="og:url" content="' + ORIGIN + path + '"/><meta property="og:image" content="' + ORIGIN + '/dashboard-preview.webp"/><meta property="og:image:alt" content="Resumen financiero de ERMIF con datos ficticios de demostración"/>' +
-    '<meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="' + escape(title) + '"/><meta name="twitter:description" content="' + escape(description) + '"/><meta name="twitter:image" content="' + ORIGIN + '/dashboard-preview.webp"/>' +
+    '<meta property="og:type" content="website"/><meta property="og:locale" content="es_PE"/><meta property="og:site_name" content="ERMIF"/><meta property="og:title" content="' + escape(title) + '"/><meta property="og:description" content="' + escape(description) + '"/><meta property="og:url" content="' + ORIGIN + path + '"/><meta property="og:image" content="' + ORIGIN + '/dashboard-preview-hd.webp"/><meta property="og:image:alt" content="Resumen financiero de ERMIF con datos ficticios de demostración"/>' +
+    '<meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="' + escape(title) + '"/><meta name="twitter:description" content="' + escape(description) + '"/><meta name="twitter:image" content="' + ORIGIN + '/dashboard-preview-hd.webp"/>' +
     '<link rel="stylesheet" href="/landing.css"/><link rel="stylesheet" href="/acquisition.css"/><script src="/landing.js" defer></script><script src="/acquisition.js" defer></script><script type="application/ld+json">' + JSON.stringify(data).replace(/</g,'\\u003c') + '</script></head>' +
     '<body class="' + extraClass + '">' + header(path) + '<main id="contenido">' + body + '</main>' + footer() + '</body></html>\n';
 }
@@ -97,7 +98,7 @@ function screenshot(extraClass = '') {
   const sizes = hero
     ? '(max-width: 590px) calc(100vw - 36px), (max-width: 850px) min(650px, calc(90vw - 43px)), (max-width: 1100px) calc(51.22vw - 26px), (min-width: 1500px) 698px, min(673px, calc(55.24vw - 35px))'
     : '(max-width: 590px) calc(100vw - 66px), (max-width: 1100px) calc(100vw - 126px), min(1122px, calc(100vw - 158px))';
-  return '<figure class="product-window ' + extraClass + '"><div class="window-top"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>ERMIF / Resumen financiero</span><span class="window-secure">' + icon('shield') + 'Tu espacio de trabajo</span></div><img src="/dashboard-preview.webp" srcset="/dashboard-preview-480.webp 480w, /dashboard-preview-800.webp 800w, /dashboard-preview.webp 1265w" sizes="' + sizes + '" width="1265" height="854" decoding="async" alt="Pantalla real del resumen de ERMIF con capital disponible, préstamos y ganancias; todos los datos son ficticios" ' + (hero ? 'fetchpriority="high"' : 'loading="lazy"') + '/><figcaption>Vista real del sistema · Datos ficticios de demostración</figcaption></figure>';
+  return '<figure class="product-window ' + extraClass + '"><div class="window-top"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>ERMIF / Resumen financiero</span><span class="window-secure">' + icon('shield') + 'Tu espacio de trabajo</span></div><img src="/dashboard-preview-hd.webp" srcset="/dashboard-preview-hd.webp 1280w, /dashboard-preview-1920.webp 1920w, /dashboard-preview-2560.webp 2560w" sizes="' + sizes + '" width="2560" height="1728" decoding="async" alt="Pantalla real del resumen de ERMIF con capital disponible, préstamos y ganancias; todos los datos son ficticios" ' + (hero ? 'fetchpriority="high"' : 'loading="lazy"') + '/><figcaption><span>Vista real del sistema · Datos ficticios de demostración</span><a class="preview-expand" href="/dashboard-preview-2560.webp" target="_blank" rel="noopener" aria-label="Ampliar imagen del resumen financiero en otra pestaña">' + icon('expand') + 'Ampliar imagen</a></figcaption></figure>';
 }
 
 function home() {
