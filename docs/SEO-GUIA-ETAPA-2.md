@@ -34,6 +34,8 @@ Entrar en [Google Analytics — ERMIF](https://analytics.google.com/analytics/we
 
 `subscription_paid` es un **evento personalizado de primer pago**, no el evento de comercio electrónico `purchase`. No envía importes, artículos ni identificadores de pago; no genera ingresos monetarios en GA4. Nunca interpretar una visita al checkout como una venta.
 
+Además de estos diez eventos instrumentados, la etiqueta de Google puede generar sus eventos técnicos normales, como `first_visit`, `session_start` y `user_engagement`, después del consentimiento. Desactivar la medición mejorada no desactiva esos eventos básicos.
+
 Los cuatro hitos se devuelven al navegador como booleanos, sin nombres, correo, UID de la cuenta, ID de pago ni información de prestatarios. La emisión a GA4 se deduplica por navegador/atribución con bloqueo entre pestañas cuando está disponible. Si Google está bloqueado, el navegador se cierra o no se vuelve a ERMIF tras pagar, puede faltar el evento en GA4. Un pago tardío se verá en Google cuando el navegador vuelva a sincronizar; la fecha del evento de Google será la de esa observación.
 
 **Fuente principal de conversiones comerciales:** ERMIF → Admin → Captación y conversiones. Su registro confirmado, primer cliente, primer préstamo y primer pago se verifican en servidor. Su informe permanece disponible aunque Google esté bloqueado. Los informes agrupan por primera visita medida de los últimos 30/90/180 días; no son eventos ocurridos únicamente dentro del período ni ingresos netos. Un reembolso no borra el hecho histórico del primer pago.
@@ -82,6 +84,16 @@ Los valores desconocidos se descartan o agrupan como Otro; nunca se guarda texto
 La migración v2 se aplicó el 17/10/2026 después de un respaldo privado del módulo de adquisición: cinco tablas, definiciones de funciones/privilegios, restricciones y triggers. Se comprobó el SHA256 de la copia; es **un respaldo acotado, no de toda la base**. La revisión posterior conservó las dos visitas existentes, confirmó las nuevas columnas y el trigger único. Las nuevas RPC rechazan ejecución directa de `anon` y `authenticated`; solo el backend puede utilizarlas. No se modificaron filas de clientes, préstamos o pagos para probar conversiones.
 
 Orden: pruebas → respaldo → SQL v2 → validación/build → revisión y publicación de código → comprobación pública. Para revertir la interfaz, retirar la carga de Google y volver al cliente anterior; las RPC antiguas permanecen compatibles. No borrar tablas ni restaurar la base completa para desactivar analítica.
+
+## Comprobación de producción del 17/10/2026
+
+- Código publicado mediante [PR 23](https://github.com/Mlvn696986/control-prestamos/pull/23), commit de producción `e6435e82d194fece08e9822bcf7a02f96087bd73`. La etiqueta correcta está disponible en `https://ermif.com/measurement.js` con HTTP 200.
+- Validación completa: **174 pruebas, 172 aprobadas, 0 fallos y 2 omitidas por requisitos de integración**, además de regresiones financieras, cinco escenarios de calendario, build y Wrangler dry-run. Validación de GitHub aprobada antes de integrar.
+- **17 comprobaciones HTTP aprobadas después de publicar**, sin fallos; [evidencia fechada](seo-stage2-2026-10-17.json). No constituye una medición de Core Web Vitals ni demuestra indexación.
+- En la web pública, antes de permitir Google: cero etiquetas externas y cero módulos `measurement.js`. Tras marcar la casilla adicional y aceptar: una etiqueta y un módulo.
+- **Google Analytics → ERMIF → Resumen en tiempo real** mostró un usuario activo y la página `ERMIF | Inicio`, con `page_view`, `first_visit`, `session_start` y `user_engagement`. Es nuestra visita de comprobación, no un cliente adquirido ni una conversión comercial.
+- Al finalizar se eligió **Continuar sin medición**. Tras recargar la página, se confirmaron cero etiquetas de Google, cero módulos de medición opcional y ningún error o advertencia de consola en esa comprobación. La retirada no elimina retroactivamente la visita ya recibida en GA4.
+- No se crearon clientes, préstamos, registros ni pagos ficticios en producción. Los cuatro eventos clave están configurados y su lógica está cubierta por pruebas; recibir conversiones comerciales reales queda pendiente de que ocurran dentro de la cobertura consentida.
 
 ## Cómo comprobar y corregir problemas
 

@@ -31,7 +31,8 @@ Conservar ambos registros DNS de verificación. No se sustituyeron registros de 
 - [x] ChatGPT, página Seguridad y categorías cerradas de utm_content incorporadas; primera atribución preservada.
 - [x] Respaldo acotado del módulo verificado; migración v2 aplicada; RPC exclusivas del servidor y dos visitas existentes preservadas.
 - [x] Validación completa de código/build y pruebas financieras, de privacidad, atribución y PostgreSQL.
-- [ ] Verificación final del despliegue y recepción de una visita en Tiempo real de Google. No confundir eventos configurados con conversiones recibidas.
+- [x] Publicación verificada y **una visita de comprobación recibida en Tiempo real de Google**; `page_view` y eventos técnicos visibles. Consentimiento y retirada comprobados en producción. No confundir esta visita con una conversión comercial.
+- [x] **17 comprobaciones HTTP aprobadas después de publicar**, sin fallos; [evidencia de la etapa 2](seo-stage2-2026-10-17.json).
 - [ ] Observar registros y pagos reales futuros; no se generaron conversiones ficticias en producción.
 - [ ] Renovaciones: propuesta de módulo de retención separada; no implementadas ni confundidas con primeros pagos.
 
@@ -68,7 +69,7 @@ Si todas las solicitudes fallan por restricciones de red del entorno, habilitar 
 | Consolidación de dominio | `www` devuelve **301** hacia HTTPS sin www, conservando ruta y parámetros |
 | Navegación comercial | Enlaces HTML con `href` en las siete páginas públicas |
 | Títulos y descripciones | Presentes y únicos; una canonical propia y un H1 por página |
-| Analítica anterior | Implementación propia con consentimiento y pruebas existentes; **limitación de `/seguridad/` pendiente**, descrita abajo; no equivale a GA4 |
+| Analítica | Medición propia ampliada a `/seguridad/` y GA4 opcional publicado; recepción de una visita verificada. Las conversiones reales dependen de actividad comercial futura y consentimiento |
 | Recursos públicos | Páginas comerciales sin `app.js`, `styles.css` del sistema, `summary.css` ni SDK Supabase; aplicación separada en `/app/` |
 | Información de confianza | Contacto, seguridad, privacidad y términos públicos; formularios actuales conservados |
 | Presentación social y datos estructurados | OG, tarjetas X y JSON-LD presentes; no implica que un buscador conceda resultados enriquecidos |
@@ -76,7 +77,7 @@ Si todas las solicitudes fallan por restricciones de red del entorno, habilitar 
 
 La aplicación `/app/` mantiene `noindex`; no se utilizó esa etiqueta como sustituto de autenticación, permisos o RLS. Esta etapa no altera datos privados ni sus controles.
 
-Pruebas del proyecto: **165 casos, 163 aprobados, 0 fallos y 2 omitidos de integración de respaldos**, además de cálculos financieros, cinco escenarios de calendario, build público y Wrangler dry-run correctos. Las seis pruebas nuevas cubren errores reales del verificador: directivas `noindex` acumuladas o por bot, exclusión general de la aplicación, reglas inesperadas en robots y rechazo de dominios externos.
+Pruebas del proyecto al cerrar la etapa 2: **174 casos, 172 aprobados, 0 fallos y 2 omitidos de integración**, además de cálculos financieros, cinco escenarios de calendario, build público y Wrangler dry-run correctos. Incluyen privacidad de GA4, atribución, migración PostgreSQL y los controles del verificador HTTP incorporados en la etapa 1.
 
 El diagnóstico HTTP no ejecuta JavaScript ni valida exhaustivamente HTML/XML. Los User-Agent simulados no acreditan solicitudes de bots auténticos. No mide Core Web Vitals, conversiones reales ni indexación. No realiza envíos de formularios o datos comerciales.
 
@@ -102,13 +103,13 @@ No falta ninguna acción manual para completar las verificaciones de propiedad. 
 
 ## Incidencia corregida en la etapa 2: atribución desde Seguridad
 
-**PROBLEMA:** `/seguridad/` es pública e indexable, pero no está admitida como página de entrada por todas las capas de la medición propia.
+**PROBLEMA ORIGINAL:** `/seguridad/` era pública e indexable, pero no estaba admitida como página de entrada por todas las capas de la medición propia. **Corregido y publicado el 17/10/2026.**
 
-**CAUSA:** falta en las listas de `public/acquisition.js`, `src/acquisition.js` y en la restricción/RPC de `supabase-acquisition.sql`.
+**CAUSA:** faltaba en las listas de `public/acquisition.js`, `src/acquisition.js` y en la restricción/RPC de `supabase-acquisition.sql`.
 
-**IMPACTO:** una visita que empieza en Seguridad puede quedar fuera de la atribución incluso si acepta la medición. No afecta la indexación ni los cálculos financieros. No se considera completa la cobertura de analítica.
+**IMPACTO ORIGINAL:** una visita que empezaba en Seguridad podía quedar fuera de la atribución incluso si aceptaba la medición. No afectaba la indexación ni los cálculos financieros.
 
-**SOLUCIÓN RECOMENDADA:** primera tarea de la etapa 2; actualizar coherentemente cliente, servidor y esquema de adquisición mediante una migración idempotente específica. Cambiar solo JavaScript dejaría la base de datos rechazando esa ruta.
+**SOLUCIÓN APLICADA:** cliente, servidor y esquema de adquisición actualizados mediante una migración idempotente específica. Cambiar solo JavaScript habría dejado la base de datos rechazando esa ruta.
 
 **PASO A PASO:**
 
@@ -123,7 +124,7 @@ No falta ninguna acción manual para completar las verificaciones de propiedad. 
 
 | Etapa | Estado y siguiente entrega |
 |---|---|
-| 2 · Analítica y atribución | Medición propia existente de visita consentida → registro confirmado → primer préstamo → primer pago verificado de suscripción. Completar cobertura y validación real. **GA4 configurado y diez eventos instrumentados con consentimiento adicional**. ChatGPT y `utm_content` implementados; primer cliente añadido. Ver checklist de etapa 2 para distinguir publicación y recepción real de eventos. No confundir pago de suscripción con pagos de los préstamos del cliente. |
+| 2 · Analítica y atribución | **Implementación publicada y visita recibida en GA4.** Diez eventos instrumentados con consentimiento adicional; ChatGPT, `utm_content` y primer cliente incorporados. El informe propio conserva hitos verificados en servidor. Pendiente observar conversiones comerciales futuras; renovaciones propuestas como módulo separado. No confundir pago de suscripción con pagos de los préstamos del cliente. |
 | 3 · Páginas y arquitectura comercial | Existen siete páginas públicas. `/reclamaciones/` independiente y las páginas de cobranzas, ampliaciones, herramientas y guías siguen pendientes; el formulario de reclamaciones actual permanece disponible en la aplicación. Crear contenido útil antes de ampliar el sitemap. |
 | 4 · Captación y contenido | Investigar intención y competencia antes de calculadoras, Excel y guías. Sin volúmenes ni resultados comerciales inventados. |
 | 5 · Rendimiento | Medir campo y laboratorio; corregir solo problemas demostrados. |
