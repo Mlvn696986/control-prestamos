@@ -132,6 +132,14 @@ El logo pequeno se reutiliza como icono y en la barra lateral. El logo de acceso
 
 Las pruebas protegen la separacion entre web comercial y aplicacion, el tamano real de las variantes y presupuestos de recursos: 13 KiB gzip para JS/CSS publico, 220 KiB sin compresion para HTML + JS/CSS + imagenes referenciadas de cada pagina, contando la captura de respaldo de 1280 px. Las variantes de 1280/1920/2560 px tienen limites separados de 120/220/320 KiB para conservar texto legible en pantallas de alta densidad. El aumento acotado del presupuesto prioriza nitidez; la pagina sigue sin cargar recursos del sistema. Estos limites tecnicos no son una medicion de Core Web Vitals de usuarios reales.
 
+## Presentación social y datos estructurados
+
+`marketing/metadata.cjs` mantiene Open Graph, tarjetas de X y JSON-LD para las siete páginas públicas. Cada documento conserva su título, descripción y URL canónica. La marca, el sitio, la página y las migas de navegación usan identificadores estables y referencias conectadas. Solo Inicio, Precios y Cómo funciona describen el software mediante `WebApplication`; solo Inicio y Precios incluyen las ofertas que muestran al visitante. Las tarjetas visibles y las ofertas comparten catálogo, contrastado en pruebas con `PLAN_CATALOG`. Los importes están en PEN y los planes de pago indican precio por mes, sin inventar plazos contractuales.
+
+`npm run images:social` genera `public/ermif-social.jpg` (1200 × 630) con el logo original y la captura real con datos ficticios de `marketing/dashboard-source.jpg`. Revisar visualmente y guardar el JPEG cuando cambie la marca o la captura. El build lo publica automáticamente; no se descarga como imagen en la portada, solo lo consultan los lectores de metadatos. Open Graph declara tipo, dimensiones y texto alternativo; X incluye el mismo texto alternativo. No se añaden perfiles sociales sin verificar.
+
+No se publican reseñas, estrellas ni valoraciones inventadas. Google exige una reseña o valoración real para la elegibilidad del resultado enriquecido de aplicaciones; este marcado describe el producto, pero no garantiza ese resultado ni su aparición en Google. Documentación: https://developers.google.com/search/docs/appearance/structured-data/software-app . Las plataformas sociales pueden conservar vistas previas anteriores hasta volver a consultar el enlace.
+
 ## Información pública de confianza
 
 Contacto, privacidad, términos y seguridad se consultan sin iniciar sesión. Comparten navegación de enlaces HTML, aparecen en el pie de página y en el sitemap. La portada enlaza los cuatro documentos. `marketing/site.cjs` genera `/seguridad/` con información sobre acceso, separación de cuentas, HTTPS y descarga de copias basada en las funciones existentes; no declara certificaciones ni garantías de disponibilidad. El correo de reportes es `seguridad@ermif.com`.

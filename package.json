@@ -9,6 +9,7 @@
     "build": "node scripts/build-cloudflare.js",
     "build:local": "node scripts/build-cloudflare.js --local",
     "images:optimize": "node scripts/optimize-public-images.cjs",
+    "images:social": "node scripts/generate-social-image.cjs",
     "dev": "npm run build:local && wrangler dev --config wrangler.local.jsonc --local --ip 127.0.0.1 --port 8787",
     "test": "npm run test:financial && npm run test:unit",
     "test:financial": "node financial-regression-tests.js",
