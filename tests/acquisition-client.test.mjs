@@ -59,6 +59,17 @@ function harness({ url = 'https://ermif.com/', referrer = '', stored = {}, share
   };
 }
 
+test('las nuevas páginas conservan su entrada solo después de aceptar medición', async () => {
+  for (const path of ['/control-de-cobranzas/','/ampliaciones-de-prestamos/','/reclamaciones/']) {
+    const h = harness({url:'https://ermif.com'+path+'?utm_source=google&utm_medium=organic&email=private'});
+    assert.equal(h.requests.length,0);
+    await h.choose('accept');
+    assert.equal(h.requests[0].payload.landing_path,path);
+    assert.equal(h.requests[0].payload.source,'google');
+    assert.ok(!JSON.stringify(h.requests[0].payload).includes('private'));
+  }
+});
+
 test('sin consentimiento no hay ID, almacenamiento de atribución ni petición de medición', async () => {
   const h = harness({ url: 'https://ermif.com/?utm_source=facebook' });
   assert.equal(h.chooser().hidden, false);

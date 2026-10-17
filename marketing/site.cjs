@@ -1,4 +1,5 @@
 const { renderLegalContent } = require('./legal.cjs');
+const { productPages } = require('./product-pages.cjs');
 const { ORIGIN, PUBLIC_PLANS, structuredData, socialMetadata } = require('./metadata.cjs');
 
 const SIGNUP = '/app/?mode=signup';
@@ -32,12 +33,13 @@ function header(path) {
     '<div class="nav-actions"><a class="login-link" href="' + LOGIN + '">Entrar a mi cuenta</a>' + link(SIGNUP, 'Empezar gratis') + '</div></nav></div></header>';
 }
 
-// Public trust navigation is shared by the landing and all four information pages.
+// Public trust navigation is shared by the landing and information pages.
 const trustPages = [
   ['/contacto/', 'Contacto y titular', 'mail'],
   ['/privacidad/', 'Privacidad', 'people'],
   ['/terminos/', 'Términos y condiciones', 'layers'],
   ['/seguridad/', 'Seguridad', 'shield'],
+  ['/reclamaciones/', 'Reclamaciones', 'mail'],
 ];
 function trustNavigation(currentPath = '') {
   return '<nav class="trust-links" aria-label="Información y confianza">' + trustPages.map(([href, label, name]) =>
@@ -53,9 +55,9 @@ function trustPageNavigation(path) {
 
 function footer() {
   return '<footer class="site-footer"><div class="container footer-grid"><div><a class="brand" href="/">ERMIF<span class="brand-dot">.</span></a><p>Claridad para administrar<br>tu cartera de préstamos.</p><p class="small">Software de gestión. ERMIF no otorga préstamos.</p></div>' +
-    '<div><h2>Producto</h2><a href="/#funciones">Funciones</a><a href="/como-funciona/">Cómo funciona</a><a href="/precios/">Planes y precios</a><a href="' + LOGIN + '">Entrar al sistema</a></div>' +
+    '<div><h2>Producto</h2><a href="/#funciones">Funciones</a><a href="/control-de-cobranzas/">Control de cobranzas</a><a href="/ampliaciones-de-prestamos/">Gestión de ampliaciones</a><a href="/como-funciona/">Cómo funciona</a><a href="/precios/">Planes y precios</a><a href="' + LOGIN + '">Entrar al sistema</a></div>' +
     '<div><h2>Hablemos</h2><a href="mailto:ventas@ermif.com">ventas@ermif.com</a><a href="/contacto/">Todos los canales</a><a href="https://wa.me/51984096252">Consultar por WhatsApp</a></div>' +
-    '<div><h2>Información</h2><a href="/privacidad/">Política de privacidad</a><a href="/terminos/">Términos y condiciones</a><a href="/seguridad/">Seguridad</a><a href="/app/?dialog=privacy-request">Privacidad y mis datos</a><a href="/app/?dialog=claims">Libro de Reclamaciones</a></div></div>' +
+    '<div><h2>Información</h2><a href="/privacidad/">Política de privacidad</a><a href="/terminos/">Términos y condiciones</a><a href="/seguridad/">Seguridad</a><a href="/app/?dialog=privacy-request">Privacidad y mis datos</a><a href="/reclamaciones/">Reclamaciones y atención</a><a href="/app/?dialog=claims">Abrir Libro de Reclamaciones</a></div></div>' +
     '<div class="container footer-bottom"><span>© ERMIF · HOYOS BUENO MELVIN · RUC 10735063818</span><span>Hecho para llevar el control.</span></div></footer>';
 }
 
@@ -77,7 +79,11 @@ const features = [
   ['chart','Capital y ganancias','Consulta tu capital disponible, el que tienes prestado y la diferencia entre ganancia cobrada y proyectada.','resumen'],
 ];
 function featureCards() {
-  return '<div class="feature-grid">' + features.map(([i,h,p,id]) => '<article class="feature-card"><span class="icon-box">' + icon(i) + '</span><h3>' + h + '</h3><p>' + p + '</p><a class="text-link" href="/como-funciona/#' + id + '">Ver cómo funciona ' + icon('arrow') + '</a></article>').join('') + '</div>';
+  const destinations = { prestamos: ['/ampliaciones-de-prestamos/', 'Gestionar ampliaciones'], cobros: ['/control-de-cobranzas/', 'Organizar cobranzas'] };
+  return '<div class="feature-grid">' + features.map(([i,h,p,id]) => {
+    const [href, label] = destinations[id] || ['/como-funciona/#' + id, 'Ver cómo funciona'];
+    return '<article class="feature-card"><span class="icon-box">' + icon(i) + '</span><h3>' + h + '</h3><p>' + p + '</p><a class="text-link" href="' + href + '">' + label + ' ' + icon('arrow') + '</a></article>';
+  }).join('') + '</div>';
 }
 
 function pricing() {
@@ -111,7 +117,7 @@ function screenshot(extraClass = '') {
 
 function home() {
   return page({path:'/',title:'Software para prestamistas y control de préstamos | ERMIF',description:'Organiza clientes, préstamos, ampliaciones y cobranzas con ERMIF. Consulta tu capital y ganancias. Empieza gratis con hasta 10 clientes.',body:
-    '<section class="hero"><div class="container hero-grid"><div class="hero-copy"><span class="eyebrow"><span class="status-dot"></span> SOFTWARE PARA PRESTAMISTAS</span><h1>Tus préstamos,<br><span>bajo control.</span></h1><p class="hero-description">Clientes, pagos, ampliaciones y vencimientos en un solo lugar. La claridad que necesitas para administrar tu cartera.</p><div class="hero-actions">' + link(SIGNUP,'Empezar gratis') + '<a class="button button--subtle" href="/como-funciona/#demostracion">' + icon('play') + 'Ver cómo funciona</a></div><p class="hero-promise">' + icon('check') + 'Hasta 10 clientes gratis <span>·</span> Sin tarjeta</p><p class="lender-note">ERMIF es un software de gestión. No otorga préstamos.</p></div><div class="hero-visual"><div class="visual-orbit" aria-hidden="true"></div>' + screenshot('hero-window') + '<div class="visual-caption"><span class="caption-icon">' + icon('chart') + '</span><div>Tu cartera, en perspectiva.<small>Capital, ganancias y vencimientos a la vista.</small></div></div></div></div></section>' +
+    '<section class="hero"><div class="container hero-grid"><div class="hero-copy"><span class="eyebrow"><span class="status-dot"></span> SOFTWARE PARA PRESTAMISTAS</span><h1>Controla tus préstamos,<br><span>clientes y cobranzas.</span></h1><p class="hero-description">Registra pagos, administra ampliaciones y consulta tu capital en un solo lugar. Empieza gratis con hasta 10 clientes.</p><div class="hero-actions">' + link(SIGNUP,'Empezar gratis') + '<a class="button button--subtle" href="/como-funciona/#demostracion">' + icon('play') + 'Ver cómo funciona</a></div><p class="hero-promise">' + icon('check') + 'Hasta 10 clientes gratis <span>·</span> Sin tarjeta</p><p class="lender-note">ERMIF es un software de gestión. No otorga préstamos.</p></div><div class="hero-visual"><div class="visual-orbit" aria-hidden="true"></div>' + screenshot('hero-window') + '<div class="visual-caption"><span class="caption-icon">' + icon('chart') + '</span><div>Tu cartera, en perspectiva.<small>Capital, ganancias y vencimientos a la vista.</small></div></div></div></div></section>' +
     '<div class="container benefit-strip"><div>' + icon('people') + '<span>Organiza tus clientes</span></div><div>' + icon('calendar') + '<span>Ubica tu próximo cobro</span></div><div>' + icon('wallet') + '<span>Entiende tu capital</span></div></div>' +
     '<section class="container section" id="funciones"><div class="section-heading"><div><span class="eyebrow">CADA MOVIMIENTO CUENTA</span><h2>De cada cliente<br>al próximo cobro.</h2></div><p>Una misma herramienta para el detalle del día a día y la visión general de tu negocio.</p></div>' + featureCards() + '<div class="export-note">' + icon('download') + '<p><strong>Tu información también puede acompañarte.</strong> Exporta a Excel y descarga un respaldo de tus datos desde el sistema.</p></div></section>' +
     '<section class="workflow-section"><div class="container"><div class="section-heading"><div><span class="eyebrow">EMPEZAR ES SENCILLO</span><h2>Un orden claro.<br>Desde el primer préstamo.</h2></div><a class="text-link" href="/como-funciona/">Conoce el recorrido completo ' + icon('arrow') + '</a></div><ol class="steps"><li><span>01</span><h3>Crea tu cuenta</h3><p>Registra tu negocio y empieza con el plan Gratis.</p></li><li><span>02</span><h3>Organiza tu cartera</h3><p>Añade tus clientes, registra préstamos y define fechas de cobro.</p></li><li><span>03</span><h3>Sigue cada movimiento</h3><p>Registra pagos y ampliaciones. Consulta saldos e indicadores.</p></li></ol></div></section>' +
@@ -134,8 +140,8 @@ function how() {
     '<section class="container demo-section" id="demostracion"><div class="demo-heading"><span class="eyebrow">ASÍ SE VE ERMIF</span><h2>Una vista de tu negocio.</h2><p>Esta captura muestra la interfaz real con datos ficticios. Los indicadores de tu cuenta reflejarán las operaciones que registres.</p></div>' + screenshot() + '</section>' +
     '<section class="container section walkthrough">' + [
       ['clientes','01','Registra a tus clientes','Guarda la información de cada cliente y consulta sus operaciones desde su ficha. Así puedes seguir varios préstamos sin mezclar sus historiales.','Ejemplo: un cliente puede tener un préstamo y ampliaciones vinculadas.'],
-      ['prestamos','02','Define el préstamo y sus ampliaciones','Registra el capital, la modalidad de interés y las fechas. Si entregas una ampliación, agrégala vinculada a la operación correspondiente.','Cada operación conserva sus datos para que puedas consultar el detalle.'],
-      ['cobros','03','Registra lo que realmente cobras','Indica cuánto del pago corresponde a capital y cuánto a intereses. Consulta los próximos vencimientos y los préstamos atrasados.','Si recibes S/120 y registras S/100 de capital y S/20 de intereses, ambos conceptos quedan separados en el pago.'],
+      ['prestamos','02','Define el préstamo y sus ampliaciones','Registra el capital, la modalidad de interés y las fechas. Si entregas una ampliación, agrégala vinculada a la operación correspondiente.','Cada operación conserva sus datos para que puedas consultar el detalle. <a href="/ampliaciones-de-prestamos/">Conoce cómo gestionar ampliaciones.</a>'],
+      ['cobros','03','Registra lo que realmente cobras','Indica cuánto del pago corresponde a capital y cuánto a intereses. Consulta los próximos vencimientos y los préstamos atrasados.','Si recibes S/120 y registras S/100 de capital y S/20 de intereses, ambos conceptos quedan separados en el pago. <a href="/control-de-cobranzas/">Organiza tus cobranzas y abonos.</a>'],
       ['resumen','04','Consulta tu capital y tus resultados','El resumen reúne los indicadores de cartera: capital disponible y prestado, ganancia real, ganancia proyectada y vencimientos.','Ganancia cobrada y ganancia proyectada se muestran por separado: una proyección no equivale a dinero recibido.'],
     ].map(([id,n,h,p,example])=>'<article class="walkthrough-step" id="'+id+'"><span class="step-number">'+n+'</span><div><h2>'+h+'</h2><p>'+p+'</p><p class="example-note">'+example+'</p></div></article>').join('') + '</section>' +
     '<section class="container info-panel"><h2>Trabaja desde tu navegador</h2><p>Accede desde computadora, tablet o celular con conexión a Internet. También puedes exportar información a Excel o descargar un respaldo. Las condiciones de cada préstamo las defines tú; ERMIF es una herramienta para registrarlas y llevar su control.</p></section>' + finalCta()
@@ -180,6 +186,7 @@ function security() {
 
 function renderPages(appHtml) {
   return {
+    ...productPages({ page, intro, icon, link, finalCta, trustPageNavigation }),
     'index.html': home(),
     'precios/index.html': prices(),
     'como-funciona/index.html': how(),

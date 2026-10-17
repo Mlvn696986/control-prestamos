@@ -19,6 +19,9 @@ const expectedRoutes = {
   "como-funciona/index.html": "/como-funciona/",
   "contacto/index.html": "/contacto/",
   "seguridad/index.html": "/seguridad/",
+  "control-de-cobranzas/index.html": "/control-de-cobranzas/",
+  "ampliaciones-de-prestamos/index.html": "/ampliaciones-de-prestamos/",
+  "reclamaciones/index.html": "/reclamaciones/",
   "privacidad/index.html": "/privacidad/",
   "terminos/index.html": "/terminos/",
 };
@@ -44,7 +47,7 @@ function normalize(text) {
   return plain(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-test("marketing publishes exactly the seven intended public documents with distinct metadata and complete static content", () => {
+test("marketing publishes exactly the ten intended public documents with distinct metadata and complete static content", () => {
   assert.deepEqual(Object.keys(pages).sort(), Object.keys(expectedRoutes).sort());
   const titles = new Set();
   const descriptions = new Set();
@@ -79,7 +82,7 @@ test("marketing publishes exactly the seven intended public documents with disti
 });
 
 test("trust documents are discoverable without login and retain access to the existing request forms", () => {
-  const trustRoutes = ['/contacto/', '/privacidad/', '/terminos/', '/seguridad/'];
+  const trustRoutes = ['/contacto/', '/privacidad/', '/terminos/', '/seguridad/', '/reclamaciones/'];
   for (const [file, html] of Object.entries(pages)) {
     const footer = html.match(/<footer\b[\s\S]*?<\/footer>/)?.[0];
     assert.ok(footer, file + ': public footer');
@@ -164,6 +167,25 @@ test("every internal public link and fragment resolves to a rendered page, real 
       }
     }
   }
+});
+
+test("sitemap includes exactly the rendered public pages and all are reachable from the homepage", () => {
+  const locations = [...read('sitemap.xml').matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => match[1]);
+  assert.equal(new Set(locations).size, locations.length, 'no duplicated canonical URLs');
+  assert.deepEqual(locations.sort(), Object.values(expectedRoutes).map(path => origin + path).sort());
+  const byPath = new Map(Object.entries(expectedRoutes).map(([file, path]) => [path, pages[file]]));
+  const visited = new Set();
+  const queue = ['/'];
+  while (queue.length) {
+    const path = queue.shift();
+    if (visited.has(path)) continue;
+    visited.add(path);
+    for (const anchor of tagAttributes(byPath.get(path), 'a')) {
+      const target = new URL(anchor.href.replace(/&amp;/g,'&'), origin + path);
+      if (target.origin === origin && byPath.has(target.pathname) && !visited.has(target.pathname)) queue.push(target.pathname);
+    }
+  }
+  assert.deepEqual([...visited].sort(), [...byPath.keys()].sort(), 'no isolated public pages');
 });
 
 test("marketing pages do not load the application, Supabase authentication or private dashboard markup", () => {

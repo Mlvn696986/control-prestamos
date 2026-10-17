@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const ORIGIN = 'https://ermif.com';
-const PUBLIC_PATHS = ['/', '/precios/', '/como-funciona/', '/contacto/', '/seguridad/', '/privacidad/', '/terminos/'];
+const PUBLIC_PATHS = ['/', '/precios/', '/como-funciona/', '/contacto/', '/seguridad/', '/control-de-cobranzas/', '/ampliaciones-de-prestamos/', '/reclamaciones/', '/privacidad/', '/terminos/'];
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 const TIMEOUT_MS = 15000;
 const DEFAULT_UA = 'ERMIF-SEO-Baseline/1.0 (read-only HTTP verification)';

@@ -16,7 +16,7 @@ create table if not exists public.acquisition_visits (
   expires_at timestamptz not null default (now() + interval '180 days'),
   consent_version text not null check (consent_version = '2026-10-16'),
   landing_path text not null check (landing_path in (
-    '/', '/precios/', '/como-funciona/', '/contacto/', '/seguridad/', '/privacidad/', '/terminos/', '/app/'
+    '/', '/precios/', '/como-funciona/', '/contacto/', '/seguridad/', '/control-de-cobranzas/', '/ampliaciones-de-prestamos/', '/reclamaciones/', '/privacidad/', '/terminos/', '/app/'
   )),
   source text not null check (source in (
     'directo', 'google', 'bing', 'duckduckgo', 'chatgpt', 'facebook', 'instagram', 'tiktok',
@@ -92,7 +92,7 @@ declare
 begin
   if p_visitor_id is null or p_visitor_id::text !~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
     or p_consent_version is distinct from '2026-10-16'
-    or p_landing_path is null or p_landing_path not in ('/', '/precios/', '/como-funciona/', '/contacto/', '/seguridad/', '/privacidad/', '/terminos/', '/app/')
+    or p_landing_path is null or p_landing_path not in ('/', '/precios/', '/como-funciona/', '/contacto/', '/seguridad/', '/control-de-cobranzas/', '/ampliaciones-de-prestamos/', '/reclamaciones/', '/privacidad/', '/terminos/', '/app/')
     or p_source is null or p_source not in ('directo', 'google', 'bing', 'duckduckgo', 'chatgpt', 'facebook', 'instagram', 'tiktok', 'youtube', 'linkedin', 'whatsapp', 'email', 'otro')
     or p_medium is null or p_medium not in ('direct', 'organic', 'paid_search', 'paid_social', 'social', 'email', 'referral', 'other')
     or p_campaign_id is null or p_campaign_id not in ('', 'lanzamiento-ermif', 'contenido-educativo') then

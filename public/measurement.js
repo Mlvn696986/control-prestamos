@@ -8,7 +8,7 @@
   const MEDIA = new Set(['direct','organic','paid_search','paid_social','social','email','referral','other']);
   const CAMPAIGNS = new Set(['','lanzamiento-ermif','contenido-educativo']);
   const CONTENTS = new Set(['','menu','portada','precios','video-demo','guia','calculadora','enlace-perfil']);
-  const PAGES = {'/':'Inicio', '/precios/':'Precios', '/como-funciona/':'Cómo funciona', '/contacto/':'Contacto', '/seguridad/':'Seguridad', '/privacidad/':'Privacidad', '/terminos/':'Términos', '/app/':'Aplicación'};
+  const PAGES = {'/':'Inicio', '/precios/':'Precios', '/como-funciona/':'Cómo funciona', '/contacto/':'Contacto', '/seguridad/':'Seguridad', '/control-de-cobranzas/':'Control de cobranzas', '/ampliaciones-de-prestamos/':'Gestión de ampliaciones', '/reclamaciones/':'Reclamaciones', '/privacidad/':'Privacidad', '/terminos/':'Términos', '/app/':'Aplicación'};
   let enabled = false;
   let loaded = false;
   let viewed = false;

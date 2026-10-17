@@ -7,6 +7,7 @@ import { handleAcquisitionRequest } from '../src/acquisition.js';
 
 const old = fs.readFileSync(new URL('./fixtures/acquisition-v1.sql', import.meta.url), 'utf8');
 const upgrade = fs.readFileSync(new URL('../supabase-acquisition-attribution-v2.sql', import.meta.url), 'utf8');
+const pagesUpgrade = fs.readFileSync(new URL('../supabase-acquisition-public-pages-v3.sql', import.meta.url), 'utf8');
 const fresh = fs.readFileSync(new URL('../supabase-acquisition.sql', import.meta.url), 'utf8');
 const fixture = [
   'create role anon; create role authenticated; create role service_role; create schema auth;',
@@ -55,6 +56,27 @@ test('upgrade preserves old attribution, permissions and cutover; new paths and 
     await scalar('select acquisition_revoke($1)',[newId]);
     assert.deepEqual(await create(newId), { revoked: true });
     assert.equal(await scalar('select count(*)::integer from acquisition_visits'), 1);
+    await db.exec(pagesUpgrade);
+    await db.exec(pagesUpgrade);
+    assert.deepEqual(await scalar('select cutover_at from acquisition_settings'), cutover);
+    assert.equal(await scalar('select count(*)::integer from acquisition_visits'), 1);
+    const existing = (await db.query('select * from acquisition_visits where id=$1',[oldId])).rows[0];
+    assert.deepEqual(existing, { ...before.rows[0], content_id: '' });
+    for (const path of ['/control-de-cobranzas/','/ampliaciones-de-prestamos/','/reclamaciones/']) {
+      const id = randomUUID();
+      await create(id, path);
+      await create(id, '/');
+      assert.equal(await scalar('select landing_path from acquisition_visits where id=$1',[id]), path);
+      await scalar('select acquisition_revoke($1)', [id]);
+      assert.deepEqual(await create(id,path), { revoked: true });
+    }
+    for (const path of ['/app/private-client/','/reclamaciones/private-id/','/control-de-cobranzas/?email=private','/guias/']) {
+      await assert.rejects(create(randomUUID(),path), /no permitid/);
+    }
+    for (const role of ['anon','authenticated']) {
+      assert.equal(await scalar("select has_function_privilege($1,$2,'EXECUTE')",[role,signature]), false);
+      assert.equal(await scalar("select has_function_privilege($1,'public.acquisition_visit_create(uuid,text,text,text,text,text)','EXECUTE')",[role]), false);
+    }
     // The three affected RPC definitions must match fresh installations.
     const definitions = await db.query("select proname,pg_get_functiondef(oid) as definition from pg_proc where proname in ('acquisition_visit_create','acquisition_visit_create_v2','acquisition_report') order by proname");
     const clean = new PGlite();
@@ -79,4 +101,9 @@ test('worker accepts Seguridad/ChatGPT with approved content, rejects private co
   const legacy={...body};delete legacy.content_id;
   assert.equal((await handleAcquisitionRequest(request(legacy),env,services)).status,201);
   assert.equal(calls[1].body.p_content_id,'');
+  for (const path of ['/control-de-cobranzas/','/ampliaciones-de-prestamos/','/reclamaciones/']) {
+    assert.equal((await handleAcquisitionRequest(request({...body,landing_path:path}),env,services)).status,201);
+    assert.equal(calls.at(-1).body.p_landing_path,path);
+  }
+  assert.equal((await handleAcquisitionRequest(request({...body,landing_path:'/reclamaciones/private-id/'}),env,services)).status,400);
 });

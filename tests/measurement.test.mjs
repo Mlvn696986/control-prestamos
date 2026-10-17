@@ -18,6 +18,17 @@ function harness(url='https://ermif.com/', storage=new Map()) {
   return {api:window.ERMIFAnalytics,window,scripts,events,cookies,storage,
     calls:()=>JSON.parse(JSON.stringify((window.dataLayer||[]).map(x=>[...x])))};
 }
+test('new public pages send a bounded page name and path only after Google consent',()=>{
+  for (const path of ['/control-de-cobranzas/','/ampliaciones-de-prestamos/','/reclamaciones/']) {
+    const h=harness('https://ermif.com'+path+'?email=private#private');
+    assert.equal(h.scripts.length,0);
+    h.api.setConsent(true,attribution);
+    assert.equal(h.scripts.length,1);
+    const event=h.calls().find(c=>c[0]==='event'&&c[1]==='page_view');
+    assert.equal(event[2].page_location,'https://ermif.com'+path);
+    assert.ok(!JSON.stringify(h.calls()).includes('private'));
+  }
+});
 test('Google never loads or receives events without explicit additional consent; reject disables it',async()=>{
   const h=harness();h.api.track('page_view');await h.api.milestones(visitor,{sign_up:true});
   assert.equal(h.scripts.length,0);assert.equal(h.calls().length,0);

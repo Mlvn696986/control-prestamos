@@ -1950,6 +1950,82 @@ summary:focus-visible {
     padding-bottom: 45px;
   }
 }
+/* Product pages: shared layout, static examples and readable mobile content. */
+.product-hero { display:grid; grid-template-columns:1.15fr 1fr; gap:64px; align-items:center; padding-block:48px 56px; }
+.product-hero h1 { font-size:clamp(38px,4.1vw,58px); }
+.product-hero h1 span { color:var(--green); }
+.product-hero .eyebrow { margin-bottom:16px; }
+.product-lead { margin-top:22px; max-width:58ch; }
+.product-hero .hero-actions { margin-block:26px 12px; }
+.product-hero .small + .small { margin-top:8px; }
+.product-demo { padding:28px; border:1px solid var(--line); border-radius:20px; background:linear-gradient(145deg,#f0f8f4,#fff); box-shadow:0 18px 48px #123b3710; }
+.product-demo-heading { display:flex; align-items:center; gap:10px; }
+.product-demo-heading svg { color:var(--green); }
+.product-demo h2 { font-size:21px; }
+.demo-label { font-size:11px; margin:10px 0 20px; }
+.demo-ledger { padding:0; margin:0 0 18px; list-style:none; display:grid; gap:10px; }
+.demo-ledger li { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px; border:1px solid var(--line); border-radius:12px; background:white; }
+.demo-ledger strong,.demo-ledger small { display:block; }
+.demo-ledger strong { margin-block:8px 3px; font-size:14px; }
+.demo-ledger small { font-size:12px; color:var(--muted); line-height:1.5; }
+.demo-status { display:inline-block; padding:3px 8px; border-radius:5px; background:#e9f1f4; color:#254c60; font-size:10px; }
+.demo-status--overdue { background:#fff0f1; color:#b5283e; }
+.demo-status--paid { background:#e1f5eb; color:#006a50; }
+.product-benefits { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; padding-bottom:56px; }
+.product-benefits article { padding:25px; border:1px solid var(--line); border-radius:14px; }
+.product-benefits h2 { font-size:21px; margin:20px 0 12px; }
+.product-benefits p,.product-steps p { font-size:14px; }
+.product-detail { display:grid; grid-template-columns:1fr 1.1fr; gap:72px; padding-block:42px 64px; border-top:1px solid var(--line); }
+.product-detail h2,.product-example h2 { font-size:clamp(28px,3vw,38px); margin-bottom:20px; }
+.product-related { display:grid; gap:12px; margin-top:25px; }
+.product-related a { display:flex; align-items:center; gap:10px; color:var(--green); font-size:14px; }
+.product-steps { display:grid; gap:24px; padding:0; margin:0; list-style:none; }
+.product-steps li { display:flex; gap:18px; }
+.step-number { display:grid; place-items:center; flex-shrink:0; width:38px; height:38px; border:1px solid var(--line); border-radius:11px; color:var(--green); background:var(--pale); font-size:13px; }
+.product-steps h3 { font-size:19px; margin-bottom:9px; }
+.product-example { display:grid; grid-template-columns:1.2fr 1fr; gap:46px; padding:36px; background:var(--pale); border:1px solid var(--line); border-radius:18px; }
+.product-example p + p { margin-top:14px; }
+.example-amounts { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:0; }
+.example-amounts div { padding:19px; border:1px solid var(--line); border-radius:10px; background:white; }
+.example-amounts dt { font-size:12px; color:var(--muted); }
+.example-amounts dd { margin:8px 0 0; font-size:28px; font-variant-numeric:tabular-nums; color:var(--green); }
+.extension-ledger { margin:22px 0; }
+.extension-ledger div { display:flex; align-items:center; justify-content:space-between; gap:20px; padding-block:16px; border-bottom:1px solid var(--line); }
+.extension-ledger dt { font-size:13px; }
+.extension-ledger dd { margin:0; white-space:nowrap; font-size:21px; font-variant-numeric:tabular-nums; }
+.extension-ledger .extension-total { border:0; padding-top:24px; color:var(--green); }
+.extension-total dd { font-size:30px; }
+.product-example-note { padding:25px; background:white; border:1px solid var(--line); border-radius:12px; }
+.product-example-note h3 { margin-bottom:16px; }
+.product-example-note a { margin-top:20px; }
+.product-faq { display:grid; grid-template-columns:.7fr 1.3fr; gap:60px; }
+.claims-entry { display:grid; grid-template-columns:1.1fr 1fr; gap:50px; padding-block:30px 55px; }
+.claims-entry h2 { font-size:28px; margin:20px 0; }
+.claims-entry p + p { margin-top:16px; }
+.claims-entry .button { margin-block:25px 15px; }
+.claims-contact { border:1px solid var(--line); border-radius:16px; background:var(--pale); padding:28px; overflow-wrap:anywhere; }
+.claims-contact h2 { margin-top:0; }
+.claims-contact > a { display:inline-block; margin-top:20px; }
+.claims-other { padding-bottom:60px; }
+.claims-other h2 { font-size:28px; margin-bottom:20px; }
+.claims-other p { max-width:80ch; margin-bottom:14px; }
+@media (max-width:850px) {
+  .product-hero,.product-detail,.product-example,.product-faq,.claims-entry { grid-template-columns:1fr; gap:30px; }
+  .product-hero { padding-block:30px 36px; }
+  .product-benefits { grid-template-columns:1fr; gap:12px; padding-bottom:35px; }
+  .product-benefits article { padding:22px; }
+  .product-benefits h2 { margin-top:12px; }
+  .product-detail { padding-block:30px 40px; }
+  .product-demo { max-width:620px; width:100%; }
+}
+@media (max-width:590px) {
+  .product-hero h1 { font-size:38px; }
+  .product-demo,.product-example,.claims-contact { padding:20px; }
+  .example-amounts div { padding:14px; }
+  .example-amounts dd { font-size:25px; }
+  .extension-total dd { font-size:25px; }
+  .product-hero .hero-actions { flex-wrap:wrap; }
+}
 @media (prefers-reduced-motion: reduce) {
   :root {
     scroll-behavior: auto;
