@@ -114,10 +114,26 @@ svg {
 }
 
 .brand-logo-auth {
-  width: min(100%, 430px);
+  width: min(100%, 300px);
   height: auto;
   max-height: 180px;
   margin: 0 auto;
+}
+
+.auth-heading {
+  margin: 14px 0 8px;
+  font-size: clamp(1.3rem, 3vw, 1.6rem);
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.auth-description {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .brand-lockup.compact.brand-sidebar-lockup {
@@ -653,6 +669,7 @@ h3 {
   background: rgba(6, 24, 38, 0.08);
   border: 1px solid var(--line);
   border-radius: 8px;
+  margin-bottom: 14px;
 }
 
 .auth-mode {
@@ -660,14 +677,22 @@ h3 {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: var(--muted);
+  color: var(--ink);
   font-weight: 900;
 }
 
 .auth-mode.active {
   color: #fff;
-  background: var(--accent);
+  background: var(--accent-strong);
 }
+
+.auth-mode:focus-visible,
+.auth-fields:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.auth-fields { border-radius: 8px; }
 
 .auth-notice {
   min-height: 40px;
@@ -839,6 +864,7 @@ h3 {
 
 .auth-legal-links {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -847,6 +873,8 @@ h3 {
   font-size: 0.82rem;
   font-weight: 800;
 }
+
+.auth-legal-links > span[aria-hidden="true"] { display: none; }
 
 .google-auth-button {
   display: inline-flex;

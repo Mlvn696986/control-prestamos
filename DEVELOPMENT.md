@@ -126,7 +126,7 @@ La web comercial usa exclusivamente `landing.css`, `landing.js` y los dos recurs
 
 El build compacta solo esos cuatro archivos publicos con esbuild; los fuentes permanecen legibles y la demo usa la misma transformacion. Las pruebas de consentimiento y callbacks ejecutan el JavaScript transformado. No se compactan ni mezclan `app.js`, codigo de terceros ni el modulo de administracion.
 
-`npm run images:optimize` regenera seis derivados en `public/` desde los logos originales y `marketing/dashboard-source.jpg` (2560 × 1728, captura nueva del sistema con datos ficticios). Conserva los originales. Ejecutarlo solo al cambiar esas imagenes, revisar visualmente y guardar los derivados en Git. No hace falta procesar imagenes en cada publicacion.
+`npm run images:optimize` regenera siete derivados en `public/` desde los logos originales y `marketing/dashboard-source.jpg` (2560 × 1728, captura nueva del sistema con datos ficticios). Incluye `favicon.png`, cuadrado de 96 × 96, compartido por las páginas públicas, la aplicación y el error 404. Conserva los originales. Ejecutarlo solo al cambiar esas imagenes, revisar visualmente y guardar los derivados en Git. No hace falta procesar imagenes en cada publicacion.
 
 El logo pequeno se reutiliza como icono y en la barra lateral. El logo de acceso tiene versiones de 480/960 px. La captura comercial ofrece 1280/1920/2560 px mediante `srcset` y `sizes`; el original se captura a escala 2x y cada variante se genera directamente desde ese archivo con WebP de calidad 94, sin recomprimir miniaturas. El enlace «Ampliar imagen» abre la variante de 2560 px. Se muestra de frente, sin transformaciones 3D ni recortes. Mantiene prioridad alta en portada y carga diferida en la demostracion inferior. Las imagenes declaran dimensiones para reservar espacio.
 
@@ -139,6 +139,10 @@ Las pruebas protegen la separacion entre web comercial y aplicacion, el tamano r
 `npm run images:social` genera `public/ermif-social.jpg` (1200 × 630) con el logo original y la captura real con datos ficticios de `marketing/dashboard-source.jpg`. Revisar visualmente y guardar el JPEG cuando cambie la marca o la captura. El build lo publica automáticamente; no se descarga como imagen en la portada, solo lo consultan los lectores de metadatos. Open Graph declara tipo, dimensiones y texto alternativo; X incluye el mismo texto alternativo. No se añaden perfiles sociales sin verificar.
 
 No se publican reseñas, estrellas ni valoraciones inventadas. Google exige una reseña o valoración real para la elegibilidad del resultado enriquecido de aplicaciones; este marcado describe el producto, pero no garantiza ese resultado ni su aparición en Google. Documentación: https://developers.google.com/search/docs/appearance/structured-data/software-app . Las plataformas sociales pueden conservar vistas previas anteriores hasta volver a consultar el enlace.
+
+## Accesibilidad del acceso
+
+El acceso en `/app/` presenta un título visible para registro, inicio de sesión y recuperación, más una descripción del software independiente del logo. Las pestañas de autenticación comparten un único formulario para preservar campos y validaciones. `aria-selected`, el orden de tabulación y la etiqueta del panel se actualizan desde `setAuthMode`. Las flechas y Home/End mueven el foco; Enter/Espacio activan mediante el botón nativo. Las flechas no cambian de modo ni borran campos. Los avisos usan una región de estado y las contraseñas indican `current-password` para acceso o `new-password` para registro y recuperación. La revisión de teclado y lectores de pantalla se apoya en el patrón de pestañas de WAI-ARIA: https://www.w3.org/WAI/ARIA/apg/patterns/tabs/ .
 
 ## Información pública de confianza
 

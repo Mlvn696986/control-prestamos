@@ -137,6 +137,8 @@ const $$ = (selector) => document.querySelectorAll(selector);
 
 const elements = {
   authScreen: $("#authScreen"),
+  authTitle: $("#authTitle"),
+  authFields: $("#authFields"),
   appShell: $("#appShell"),
   registerForm: $("#registerForm"),
   authEmail: $("#authEmail"),
@@ -500,6 +502,9 @@ function bindEvents() {
   elements.showLogin.addEventListener("click", () => {
     saas.passwordRecovery = false;
     setAuthMode("login");
+  });
+  [elements.showSignup, elements.showLogin].forEach((tab) => {
+    tab.addEventListener("keydown", handleAuthTabKeydown);
   });
   elements.forgotPassword.addEventListener("click", handleForgotPassword);
   elements.forgotPasswordForm.addEventListener("submit", handleForgotPasswordSubmit);
@@ -989,6 +994,15 @@ function setAuthMode(mode) {
   elements.authMode.value = mode;
   const isLogin = mode === "login";
   const isRecovery = mode === "recovery";
+  const activeTab = isLogin || isRecovery ? elements.showLogin : elements.showSignup;
+  [elements.showSignup, elements.showLogin].forEach((tab) => {
+    tab.setAttribute("aria-selected", String(tab === activeTab));
+    tab.tabIndex = tab === activeTab ? 0 : -1;
+  });
+  // The shared panel keeps the same form and fields when its accessible label changes.
+  elements.authFields.setAttribute("aria-labelledby", activeTab.id);
+  elements.authTitle.textContent = isRecovery ? "Recupera tu acceso" : isLogin ? "Inicia sesión en ERMIF" : "Crea tu cuenta en ERMIF";
+  elements.authPassword.autocomplete = isLogin ? "current-password" : "new-password";
   elements.showSignup.classList.toggle("active", mode === "signup");
   elements.showLogin.classList.toggle("active", isLogin || isRecovery);
   $("#businessName").closest("label").classList.toggle("is-hidden", isLogin || isRecovery);
@@ -1019,6 +1033,22 @@ function setAuthMode(mode) {
       : "Registra hasta 10 clientes gratis, prueba el sistema con calma y pasa a Premium cuando quieras crecer.",
     isRecovery || isLogin ? "info" : "trial"
   );
+}
+
+function handleAuthTabKeydown(event) {
+  const tabs = [elements.showSignup, elements.showLogin];
+  const index = tabs.indexOf(event.currentTarget);
+  if (index < 0 || event.altKey || event.ctrlKey || event.metaKey) return;
+  let next;
+  if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+  else if (event.key === "ArrowLeft") next = (index + tabs.length - 1) % tabs.length;
+  else if (event.key === "Home") next = 0;
+  else if (event.key === "End") next = tabs.length - 1;
+  else return;
+  event.preventDefault();
+  // Manual activation: arrows only move focus; Enter/Space use the native button click.
+  // This avoids clearing confirmation fields merely while exploring the tabs.
+  tabs[next].focus();
 }
 
 function setAuthNotice(message, variant = "info") {
