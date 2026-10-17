@@ -421,10 +421,22 @@ function redirectLegacyHost() {
 async function init() {
   setDefaultDates();
   bindEvents();
-  setAuthMode("signup");
+  setAuthMode(getInitialAuthMode());
   await initSaaS();
   render();
   refreshBackupStatus();
+  openEntryDialog();
+}
+
+function getInitialAuthMode() {
+  return new URLSearchParams(window.location.search).get("mode") === "signup" ? "signup" : "login";
+}
+
+function openEntryDialog() {
+  if (saas.passwordRecovery) return;
+  const dialog = new URLSearchParams(window.location.search).get("dialog");
+  if (dialog === "claims") openClaimBookDialog();
+  if (dialog === "privacy-request") openPrivacyRequestDialog();
 }
 
 function bindEvents() {
@@ -995,7 +1007,7 @@ function setAuthMode(mode) {
   elements.forgotPassword.classList.toggle("is-hidden", !isLogin);
   elements.authPasswordLabelText.textContent = isRecovery ? "Nueva contrasena" : "Contrasena";
   elements.authPassword.placeholder = isRecovery ? "Minimo 6 caracteres nuevos" : "Minimo 6 caracteres";
-  elements.authSubmitText.textContent = isRecovery ? "Guardar nueva contrasena" : isLogin ? "Iniciar sesion" : "Crear mi plataforma";
+  elements.authSubmitText.textContent = isRecovery ? "Guardar nueva contrasena" : isLogin ? "Iniciar sesion" : "Crear cuenta gratis";
   elements.googleAuthButton.classList.toggle("is-hidden", isRecovery);
   elements.googleAuthText.textContent = "Continuar con Google";
   setAuthNotice(
@@ -2612,6 +2624,8 @@ async function insertCloudLoanRows(loans, userId) {
 async function initSaaS() {
   const config = window.SUPABASE_CONFIG || {};
   const hasConfig = config.url && config.publishableKey && window.supabase;
+  // El SDK puede consumir el fragmento antes de suscribir PASSWORD_RECOVERY.
+  const recoveryRequested = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("type") === "recovery";
 
   if (!hasConfig) {
     saas.mode = "local";
@@ -2628,6 +2642,10 @@ async function initSaaS() {
   try {
     const { data } = await saas.client.auth.getSession();
     saas.session = data.session;
+    if (recoveryRequested && saas.session) {
+      saas.passwordRecovery = true;
+      setAuthMode("recovery");
+    }
   } catch (error) {
     setAuthNotice(error.message || "No se pudo conectar con Supabase.");
   }
@@ -2653,7 +2671,7 @@ async function initSaaS() {
     render();
   });
 
-  if (saas.session) {
+  if (saas.session && !saas.passwordRecovery) {
     try {
       await loadCloudState();
     } catch (error) {
@@ -2803,9 +2821,10 @@ function setForgotPasswordNotice(message) {
 
 function getAuthRedirectUrl() {
   if (window.location.protocol === "http:" || window.location.protocol === "https:") {
-    return `${window.location.origin}${window.location.pathname}`;
+    // Conservar la raiz ya autorizada en Supabase; la portada reenvia el callback a /app/.
+    return `${window.location.origin}/`;
   }
-  return "http://localhost:3000/index.html";
+  return "http://localhost:3000/";
 }
 
 function showAuthRedirectMessage() {
@@ -4484,7 +4503,7 @@ function getIndicatorId(item) {
 
 // Presentation helpers for Resumen. Calculations and saved indicator order are unchanged.
 function summaryIcon(name) {
-  return `<svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#${name}"></use></svg>`;
+  return `<svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#${name}"></use></svg>`;
 }
 
 function dashboardIndicatorIcon(item) {

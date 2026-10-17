@@ -1173,8 +1173,8 @@ assertCondition(!stylesCode.includes(".summary-compact-card strong"), "Resumen: 
 assertFileIncludes(htmlCode, "<h3>Indicadores:</h3>", "Resumen: el titulo de Indicadores debe incluir dos puntos.");
 assertFileIncludes(htmlCode, "Los bloques principales son fijos. Mantén presionadas las tarjetas inferiores y arrástralas para ordenarlas como prefieras.", "Resumen: debe distinguir los bloques fijos de las tarjetas que se pueden ordenar.");
 assertFileIncludes(stylesCode, ".section-helper", "Resumen: el texto de ayuda debe tener estilo propio.");
-assertFileIncludes(htmlCode, 'src="assets/ermif-logo.png"', "Marca: el login debe usar el logo completo ERMIF.");
-assertFileIncludes(htmlCode, 'src="assets/ermif-mark.png"', "Marca: la barra lateral debe usar el simbolo compacto ERMIF.");
+assertFileIncludes(htmlCode, 'src="/assets/ermif-logo.png"', "Marca: el login debe usar el logo completo ERMIF desde cualquier ruta de la app.");
+assertFileIncludes(htmlCode, 'src="/assets/ermif-mark.png"', "Marca: la barra lateral debe usar el simbolo compacto ERMIF desde cualquier ruta de la app.");
 assertFileIncludes(htmlCode, '<span id="ownerLabel" class="is-hidden">Prestamista</span>', "Sidebar: Prestamista no debe mostrarse visualmente debajo del nombre del negocio.");
 assertFileIncludes(htmlCode, 'id="profileEditTrigger"', "Perfil: el nombre del sidebar debe abrir edicion de perfil.");
 assertFileIncludes(htmlCode, 'id="profileEditDialog"', "Perfil: debe existir modal Editar mi perfil.");
@@ -1214,8 +1214,11 @@ assertFileIncludes(appCode, "pendingProfileCompletion", "Google Auth: debe detec
 assertFileIncludes(appCode, "openCompleteProfileDialog", "Google Auth: debe abrir el modal de perfil pendiente.");
 assertFileIncludes(appCode, "business_name: businessName || \"Mi negocio\"", "Registro: el nombre del negocio debe guardarse en metadata de Auth.");
 assertFileIncludes(appCode, "metadata.business_name || metadata.businessName || \"\"", "Carga de perfil: debe recuperar nombre del negocio desde metadata si falta profile.");
-assertFileIncludes(cloudflareBuildCode, 'const publicDirs = ["assets"]', "Cloudflare: el build debe copiar la carpeta assets.");
-assertFileIncludes(cloudflareBuildCode, "fs.cpSync", "Cloudflare: el build debe copiar assets de forma recursiva.");
+assertFileIncludes(cloudflareBuildCode, 'collectFiles(path.join(rootDir, "assets"), "assets")', "Cloudflare: el build debe incluir la carpeta assets en el manifiesto de archivos.");
+assertFileIncludes(cloudflareBuildCode, "if (entry.isDirectory()) collectFiles(source, relative, publicContent)", "Cloudflare: el build debe recorrer assets de forma recursiva.");
+assertFileIncludes(cloudflareBuildCode, "for (const [name, source] of copies)", "Cloudflare: el build debe copiar todos los archivos del manifiesto.");
+assertFileIncludes(cloudflareBuildCode, "fs.readFileSync(source)", "Cloudflare: el build debe conservar los bytes originales de los assets.");
+assertFileIncludes(cloudflareBuildCode, "writeOutput(name, content)", "Cloudflare: los assets incluidos deben escribirse en el build.");
 assertFileIncludes(appCode, 'CANONICAL_APP_ORIGIN = "https://ermif.com"', "Dominio: la app debe tener ermif.com como origen canonico.");
 assertFileIncludes(appCode, "redirectLegacyHost", "Dominio: la app debe redirigir hosts antiguos al dominio canonico.");
 assertFileIncludes(appCode, "reliable-kleicha-4c46be.netlify.app", "Dominio: debe cubrir el antiguo despliegue de Netlify.");
@@ -1346,7 +1349,7 @@ assertFileIncludes(stylesCode, ".billing-terms-note", "Pagos: la nota legal de s
 assertFileIncludes(htmlCode, 'id="termsDialog"', "Legal: debe existir modal de Terminos y Condiciones.");
 assertFileIncludes(htmlCode, "sidebar-legal", "Legal: debe existir acceso a terminos en la barra lateral.");
 assertFileIncludes(htmlCode, 'data-open-claims', "Legal: debe existir acceso lateral al Libro de Reclamaciones.");
-assertFileIncludes(htmlCode, 'assets/libro-reclamaciones.png', "Legal: el acceso lateral debe usar la imagen del Libro de Reclamaciones.");
+assertFileIncludes(htmlCode, 'src="/assets/libro-reclamaciones.png"', "Legal: el acceso lateral debe usar la imagen del Libro de Reclamaciones desde cualquier ruta de la app.");
 assertFileIncludes(htmlCode, 'id="claimsDialog"', "Legal: debe existir modal de Libro de Reclamaciones.");
 assertFileIncludes(htmlCode, 'id="claimBookForm"', "Legal: debe existir formulario de Libro de Reclamaciones.");
 assertFileIncludes(htmlCode, 'data-open-privacy', "Privacidad: debe existir acceso visible a Politica de Privacidad.");

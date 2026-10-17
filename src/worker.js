@@ -111,7 +111,28 @@ export default {
         });
       }
 
-      return env.ASSETS.fetch(request);
+      // Conservar los destinos de OAuth, recuperacion y pagos ya autorizados.
+      // Los fragmentos # de Supabase no llegan al servidor: landing.js los reenvia.
+      const isNavigation = ["GET", "HEAD"].includes(request.method);
+      const isLegacyEntry = url.pathname === "/" || url.pathname === "/index.html";
+      const isAuthOrBillingReturn = ["code", "error", "error_code"].some((key) => url.searchParams.has(key)) || url.searchParams.get("billing") === "return";
+      if (isNavigation && isLegacyEntry && isAuthOrBillingReturn) {
+        url.pathname = "/app/";
+        return new Response(null, {
+          status: 302,
+          headers: { Location: url.href, "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" },
+        });
+      }
+
+      const response = await env.ASSETS.fetch(request);
+      if (url.pathname === "/app" || url.pathname.startsWith("/app/")) {
+        const headers = new Headers(response.headers);
+        headers.set("X-Robots-Tag", "noindex");
+        headers.set("Referrer-Policy", "no-referrer");
+        headers.set("Cache-Control", "no-store");
+        return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+      }
+      return response;
     } catch (error) {
       const status = Number(error.status || 500);
       return json({ error: error.message || "Error interno." }, status);

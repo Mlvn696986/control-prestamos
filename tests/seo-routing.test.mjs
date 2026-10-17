@@ -21,19 +21,47 @@ test("www redirige navegacion GET y HEAD al dominio principal sin perder ruta ni
   }
 });
 
-test("la raiz canonica conserva callbacks y sigue delegando a ASSETS", async () => {
-  for (const suffix of ["/", "/?billing=return", "/?code=fixture&state=prueba"]) {
+test("la portada conserva visitas normales y las paginas comerciales", async () => {
+  for (const suffix of ["/", "/?utm_source=facebook", "/precios/", "/como-funciona/"]) {
     let calls = 0;
     const request = new Request("https://ermif.com" + suffix);
     const response = await worker.fetch(request, assetsEnv((forwarded) => {
       calls++;
       assert.equal(forwarded.url, request.url);
-      assert.equal(forwarded.method, "GET");
-      return new Response("aplicacion", { headers: { "Content-Type": "text/html" } });
+      return new Response("portada", { headers: { "Content-Type": "text/html" } });
     }));
     assert.equal(calls, 1);
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("Location"), null);
+    assert.equal(response.headers.get("X-Robots-Tag"), null);
+  }
+});
+
+test("callbacks anteriores de acceso y pago llegan a app sin perder parametros", async () => {
+  for (const method of ["GET", "HEAD"]) {
+    for (const entry of ["/", "/index.html"]) {
+      for (const query of ["?billing=return", "?code=fixture&state=prueba&next=https%3A%2F%2Fexample.invalid", "?error_code=otp_expired&error_description=fixture", "?error=access_denied"]) {
+        const response = await worker.fetch(new Request("https://ermif.com" + entry + query, { method }), forbiddenAssets());
+        assert.equal(response.status, 302);
+        assert.equal(response.headers.get("Location"), "https://ermif.com/app/" + query);
+        assert.equal(response.headers.get("Cache-Control"), "no-store");
+        assert.equal(response.headers.get("Referrer-Policy"), "no-referrer");
+      }
+    }
+  }
+});
+
+test("app conserva callbacks sin bucles y se excluye del indice", async () => {
+  for (const suffix of ["/app/", "/app/?mode=signup", "/app/?billing=return", "/app/?code=fixture"]) {
+    const request = new Request("https://ermif.com" + suffix);
+    const response = await worker.fetch(request, assetsEnv((forwarded) => {
+      assert.equal(forwarded.url, request.url);
+      return new Response("aplicacion");
+    }));
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("Location"), null);
+    assert.equal(response.headers.get("X-Robots-Tag"), "noindex");
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
     assert.equal(await response.text(), "aplicacion");
   }
 });
