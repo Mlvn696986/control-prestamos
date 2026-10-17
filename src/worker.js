@@ -99,6 +99,18 @@ export default {
         return json({ error: "Ruta no encontrada." }, 404);
       }
 
+      // Consolidar solo la navegacion publica. Las API y los POST conservan
+      // su metodo, cuerpo y autenticacion; los callbacks mantienen su query.
+      if (url.hostname === "www.ermif.com" && ["GET", "HEAD"].includes(request.method)) {
+        url.protocol = "https:";
+        url.hostname = "ermif.com";
+        url.port = "";
+        return new Response(null, {
+          status: 301,
+          headers: { Location: url.href, "Cache-Control": "no-store" },
+        });
+      }
+
       return env.ASSETS.fetch(request);
     } catch (error) {
       const status = Number(error.status || 500);

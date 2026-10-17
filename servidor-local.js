@@ -2,14 +2,14 @@ const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 const root = path.join(__dirname, "dist-local");
-const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "application/javascript; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml" };
+const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "application/javascript; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml", ".txt": "text/plain; charset=utf-8", ".xml": "application/xml; charset=utf-8" };
 function createLocalServer() {
   return http.createServer((request, response) => {
     let name;
     try { name = decodeURIComponent(new URL(request.url, "http://localhost").pathname).slice(1) || "index.html"; }
     catch { response.writeHead(400); response.end("Ruta invalida"); return; }
     if (!["GET", "HEAD"].includes(request.method) ||
-        !(/^(index\.html|app\.js|styles\.css|supabase-config\.js)$/.test(name) || /^assets\/(?:[a-zA-Z0-9_-]+\.png|summary\.css|summary-icons\.svg)$/.test(name))) {
+        !(/^(index\.html|404\.html|robots\.txt|sitemap\.xml|app\.js|styles\.css|supabase-config\.js)$/.test(name) || /^assets\/(?:[a-zA-Z0-9_-]+\.png|summary\.css|summary-icons\.svg)$/.test(name))) {
       response.writeHead(404); response.end("No encontrado"); return;
     }
     const file = path.join(root, name);

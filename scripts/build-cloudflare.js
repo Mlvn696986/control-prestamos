@@ -4,7 +4,7 @@ const path = require("path");
 const rootDir = path.resolve(__dirname, "..");
 const local = process.argv.includes("--local");
 const distDir = path.join(rootDir, local ? "dist-local" : "dist");
-const publicFiles = ["index.html", "app.js", "styles.css", "supabase-config.js"];
+const publicFiles = ["index.html", "app.js", "styles.css", "supabase-config.js", "robots.txt", "sitemap.xml", "404.html"];
 const publicDirs = ["assets"];
 
 // Solo se eliminan las carpetas generadas, nunca enlaces ni rutas externas.
