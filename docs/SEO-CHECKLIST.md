@@ -1,6 +1,6 @@
 # ERMIF · Estado y administración SEO
 
-Última revisión: **17 de octubre de 2026**, America/Lima. Etapa actual: **2 — analítica, conversiones y atribución**. Este archivo registra resultados comprobados; la [guía de operación](SEO-GUIA-ETAPA-1.md) contiene instrucciones, errores habituales y fuentes oficiales.
+Última revisión: **17 de octubre de 2026**, America/Lima. Etapa actual: **3 — páginas comerciales y navegación**. Este archivo registra resultados comprobados; las guías de cada etapa contienen instrucciones, errores habituales y fuentes oficiales.
 
 ERMIF es software para administrar préstamos; no otorga préstamos. Una configuración correcta permite el rastreo y la medición, pero no garantiza indexación, posiciones, citas en IA ni ventas.
 
@@ -38,7 +38,23 @@ Conservar ambos registros DNS de verificación. No se sustituyeron registros de 
 
 La [guía de la etapa 2](SEO-GUIA-ETAPA-2.md) explica cada evento, cobertura, UTM, archivos modificados, comprobaciones, errores y límites. El informe de ERMIF es la fuente de los hitos comerciales verificados; Google depende además de su consentimiento específico y del navegador.
 
-## Resultados observados por página
+## Estado de la etapa 3
+
+- [x] Comprobación previa: 17 verificaciones HTTP correctas, sin regresiones de las correcciones anteriores.
+- [x] Investigación cualitativa de intención y proveedores, sin inventar volúmenes de búsqueda ni copiar promesas comerciales.
+- [x] Páginas de control de cobranzas, gestión de ampliaciones y reclamaciones con contenido propio, ejemplos ficticios identificados y metadatos completos.
+- [x] Portada más explícita; enlaces contextuales y navegación pública; sitemap ampliado a diez documentos reales.
+- [x] Ampliación coherente de rutas permitidas en cliente, servidor y migración SQL; conservación de primera atribución y consentimiento.
+- [x] Revisión visual de móvil, tablet y escritorio; apertura del formulario actual de reclamaciones sin enviar datos.
+- [x] Validación completa: 177 pruebas, 175 aprobadas, 0 fallos y 2 omitidas; cálculos financieros, calendario y build/dry-run correctos.
+- [x] Migración v3 aplicada tras respaldo privado verificado; rutas nuevas admitidas, RLS activo y ejecución de la RPC limitada al servidor. Dos visitas existentes conservadas.
+- [ ] Publicación y verificación HTTP en el dominio de las diez páginas.
+- [ ] Solicitudes de descubrimiento o indexación de las páginas nuevas, con estado observado en consola.
+- [ ] Confirmar indexación y medir impresiones, clics, registros y primeros pagos reales cuando haya datos.
+
+La [guía de etapa 3](SEO-GUIA-ETAPA-3.md) documenta intención, recorrido, archivos, publicación, comprobación y resolución de errores. Herramientas y guías se publicarán con recursos útiles completos en la siguiente etapa.
+
+## Resultados observados por página en la etapa 1
 
 | Página | Google: información del índice | Google: prueba actual | Bing: información del índice | Bing: prueba actual |
 |---|---|---|---|---|
@@ -125,7 +141,7 @@ No falta ninguna acción manual para completar las verificaciones de propiedad. 
 | Etapa | Estado y siguiente entrega |
 |---|---|
 | 2 · Analítica y atribución | **Implementación publicada y visita recibida en GA4.** Diez eventos instrumentados con consentimiento adicional; ChatGPT, `utm_content` y primer cliente incorporados. El informe propio conserva hitos verificados en servidor. Pendiente observar conversiones comerciales futuras; renovaciones propuestas como módulo separado. No confundir pago de suscripción con pagos de los préstamos del cliente. |
-| 3 · Páginas y arquitectura comercial | Existen siete páginas públicas. `/reclamaciones/` independiente y las páginas de cobranzas, ampliaciones, herramientas y guías siguen pendientes; el formulario de reclamaciones actual permanece disponible en la aplicación. Crear contenido útil antes de ampliar el sitemap. |
+| 3 · Páginas y arquitectura comercial | Tres páginas añadidas: cobranzas, ampliaciones y reclamaciones. Portada y enlaces mejorados; diez páginas en el sitemap. Ver checklist de etapa 3 para distinguir implementación, publicación e indexación. |
 | 4 · Captación y contenido | Investigar intención y competencia antes de calculadoras, Excel y guías. Sin volúmenes ni resultados comerciales inventados. |
 | 5 · Rendimiento | Medir campo y laboratorio; corregir solo problemas demostrados. |
 

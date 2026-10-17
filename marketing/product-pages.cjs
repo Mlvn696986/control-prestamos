@@ -1,0 +1,73 @@
+// Public product explanations. Examples are illustrative, never customer records.
+function productPages({ page, intro, icon, link, finalCta, trustPageNavigation }) {
+  const signup = '/app/?mode=signup';
+  const related = (items) => '<nav class="product-related" aria-label="Continúa explorando ERMIF">' + items.map(([href, text]) => '<a href="' + href + '">' + text + icon('arrow') + '</a>').join('') + '</nav>';
+  const questions = (items) => '<section class="container section product-faq"><h2>Antes de empezar</h2><div class="faq-list">' + items.map(([q,a]) => '<details><summary>' + q + '<span aria-hidden="true">+</span></summary><p>' + a + '</p></details>').join('') + '</div></section>';
+  const cards = (items) => '<section class="container product-benefits" aria-label="Funciones del sistema">' + items.map(([i,h,p]) => '<article><span class="icon-box">' + icon(i) + '</span><h2>' + h + '</h2><p>' + p + '</p></article>').join('') + '</section>';
+  const steps = (items) => '<ol class="product-steps">' + items.map(([h,p],i) => '<li><span class="step-number" aria-hidden="true">0' + (i+1) + '</span><div><h3>' + h + '</h3><p>' + p + '</p></div></li>').join('') + '</ol>';
+  const hero = (kicker,h,p,demo) => '<section class="container product-hero"><div><a class="breadcrumb" href="/">Inicio ' + icon('arrow') + '</a><span class="eyebrow">' + kicker + '</span><h1>' + h + '</h1><p class="product-lead">' + p + '</p><div class="hero-actions">' + link(signup,'Empezar gratis') + '<a class="text-link" href="/precios/">Ver planes</a></div><p class="small">Hasta 10 clientes gratis · Sin tarjeta</p><p class="small">ERMIF es software de gestión. No otorga préstamos.</p></div>' + demo + '</section>';
+
+  const collections = page({
+    path:'/control-de-cobranzas/', title:'Software de control de cobranzas para prestamistas | ERMIF',
+    description:'Organiza cobros, vencimientos y abonos de tus préstamos con ERMIF. Separa capital e intereses y consulta el historial. Empieza con hasta 10 clientes gratis.',
+    body: hero('CONTROL DE COBRANZAS','Control de cobranzas.<br><span>Cada saldo, en orden.</span>','Controla las cobranzas de tus préstamos desde una sola cuenta: consulta próximos vencimientos, identifica atrasos y registra los pagos que recibes.',
+      '<aside class="product-demo" aria-label="Ejemplo ilustrativo de seguimiento de cobros"><div class="product-demo-heading">' + icon('calendar') + '<h2>Una cartera fácil de revisar</h2></div><p class="demo-label">Ejemplo ilustrativo · Datos ficticios</p><ul class="demo-ledger"><li><div><span class="demo-status">Por cobrar</span><strong>Próximo vencimiento</strong><small>Consulta la fecha y el importe pendiente.</small></div>' + icon('calendar') + '</li><li><div><span class="demo-status demo-status--overdue">Vencido</span><strong>Un atraso visible</strong><small>Revisa la operación antes de contactar al cliente.</small></div>' + icon('shield') + '</li><li><div><span class="demo-status demo-status--paid">Pago registrado</span><strong>Capital e intereses separados</strong><small>Conserva el detalle en el historial.</small></div>' + icon('check') + '</li></ul><p class="small">Tú registras lo recibido. Una fecha vencida no es un pago.</p></aside>') +
+      cards([
+        ['calendar','Ubica lo que toca cobrar','En Resumen, consulta los cobros de hoy, los próximos vencimientos y las operaciones vencidas. Así puedes organizar la revisión de tu cartera.'],
+        ['wallet','Distingue capital e intereses','Al registrar un abono, indica cuánto corresponde a capital y cuánto a intereses. Un cobro total no equivale por completo a ganancia.'],
+        ['people','Consulta el historial por cliente','Revisa préstamos, ampliaciones y pagos dentro de la ficha correspondiente. Conserva el contexto cuando una persona tiene varias operaciones.'],
+      ]) +
+      '<section class="container product-detail"><div><span class="eyebrow">DEL VENCIMIENTO AL REGISTRO</span><h2>Cómo llevar el control de tus cobranzas</h2><p>El seguimiento empieza con fechas correctas y termina con el registro del dinero recibido. ERMIF te ayuda a consultar esa información; la gestión del cobro la realizas tú.</p>' + related([['/como-funciona/#cobros','Ver el recorrido de un cobro'],['/ampliaciones-de-prestamos/','Organizar préstamos con ampliaciones']]) + '</div>' + steps([
+        ['Registra la operación','Añade el cliente, el capital, la modalidad y las fechas del préstamo. Comprueba esos datos antes de guardarlo.'],
+        ['Consulta cobros y vencimientos','Abre Resumen y revisa la sección de cobranza rápida. Selecciona la operación que quieres atender.'],
+        ['Registra el pago recibido','Indica la fecha y los importes de capital e intereses. Si el pago es parcial, registra solamente lo recibido.'],
+        ['Comprueba el saldo y el historial','Verifica el pago en la ficha del cliente y el capital pendiente. Consulta las ampliaciones vinculadas cuando existan.'],
+      ]) + '</section>' +
+      '<section class="container product-example"><div><span class="eyebrow">UN ABONO, DOS CONCEPTOS</span><h2>Recibir S/120 no significa ganar S/120</h2><p>Ejemplo ficticio: hay S/1,000 de capital pendiente y recibes S/120. Si registras S/100 como capital y S/20 como intereses, quedan S/900 de capital pendiente.</p><p>El ejemplo explica el registro de un pago; no propone una tasa ni calcula intereses futuros.</p></div><dl class="example-amounts"><div><dt>Total recibido</dt><dd>S/120</dd></div><div><dt>Capital recuperado</dt><dd>S/100</dd></div><div><dt>Intereses recibidos</dt><dd>S/20</dd></div><div><dt>Capital pendiente después</dt><dd>S/900</dd></div></dl></section>' +
+      questions([
+        ['¿ERMIF cobra automáticamente a mis clientes?','No. Esta función organiza información y permite registrar los pagos que recibes. Consultar un vencimiento o pulsar Cobro no realiza un cargo automático al cliente.'],
+        ['¿Puedo registrar un pago parcial?','Sí. Registra el capital y los intereses efectivamente recibidos. Después comprueba el movimiento y el saldo de la operación.'],
+        ['¿Puedo consultar la cobranza desde el celular?','Sí, desde el navegador con conexión a Internet. Utiliza tu cuenta para consultar tu cartera y registrar movimientos.'],
+        ['¿La función está incluida en el plan Gratis?','Sí. El plan Gratis incluye la gestión de préstamos, ampliaciones, cobros e historial, con capacidad para hasta 10 clientes. Compara la capacidad de los planes en la página de precios.'],
+      ]) + finalCta(),
+  });
+
+  const extensions = page({
+    path:'/ampliaciones-de-prestamos/', title:'Gestión de ampliaciones de préstamos | ERMIF',
+    description:'Registra ampliaciones vinculadas al préstamo original, conserva sus fechas y consulta pagos y capital pendiente por cliente. Conoce cómo funciona ERMIF.',
+    body: hero('GESTIÓN DE AMPLIACIONES','Gestiona tus<br><span>ampliaciones de préstamos.</span>','Cuando entregas capital adicional, registra la ampliación vinculada al préstamo original. Consulta su importe, sus fechas y sus pagos sin perder la relación entre las operaciones.',
+      '<aside class="product-demo" aria-label="Ejemplo ilustrativo de una ampliación"><div class="product-demo-heading">' + icon('layers') + '<h2>Operaciones vinculadas</h2></div><p class="demo-label">Ejemplo ilustrativo · Datos ficticios</p><dl class="extension-ledger"><div><dt>Capital del préstamo original</dt><dd>S/1,000</dd></div><div><dt>Capital ya devuelto</dt><dd>− S/200</dd></div><div><dt>Capital de la ampliación</dt><dd>+ S/300</dd></div><div class="extension-total"><dt>Capital pendiente conjunto</dt><dd>S/1,100</dd></div></dl><p class="small">Solo capital. Los intereses se registran y consultan por separado.</p></aside>') +
+      cards([
+        ['layers','Conserva la relación','La ampliación se asocia a un préstamo principal del cliente. Puedes identificar la operación original y las entregas adicionales.'],
+        ['calendar','Mantén el detalle de cada operación','Registra el importe, la modalidad y las fechas que correspondan a la ampliación. Revisa las condiciones antes de guardar.'],
+        ['chart','Sigue capital y pagos','Consulta el historial para distinguir lo entregado, lo devuelto y lo pendiente. No confundas nuevo capital con ganancia.'],
+      ]) +
+      '<section class="container product-detail"><div><span class="eyebrow">SIN PERDER EL CONTEXTO</span><h2>Cómo registrar una ampliación en ERMIF</h2><p>Una ampliación representa una entrega adicional de capital vinculada a una operación existente. No es un abono ni una devolución de dinero.</p>' + related([['/como-funciona/#prestamos','Conocer préstamos y operaciones'],['/control-de-cobranzas/','Revisar los cobros de tu cartera']]) + '</div>' + steps([
+        ['Selecciona al cliente','Localiza su ficha y revisa el préstamo principal al que corresponde la nueva entrega.'],
+        ['Registra la ampliación','Indica el capital adicional y los datos de modalidad, interés y fechas que solicita el formulario.'],
+        ['Comprueba la vinculación','Antes de guardar, verifica el cliente y la operación principal. Evita registrar dos veces la misma entrega.'],
+        ['Consulta y registra los pagos','Revisa el detalle de la ampliación junto al préstamo. Al cobrar, distingue los importes de capital e intereses de cada operación.'],
+      ]) + '</section>' +
+      '<section class="container product-example"><div><span class="eyebrow">UN EJEMPLO SENCILLO</span><h2>La ampliación aumenta el capital pendiente</h2><p>En el ejemplo, de los S/1,000 originales ya se devolvieron S/200: quedan S/800. Al entregar otros S/300, el capital pendiente conjunto pasa a S/1,100.</p><p>Los intereses no se incluyen en esa suma. La ampliación conserva su registro para que puedas consultar de dónde viene cada importe.</p></div><div class="product-example-note"><h3>Dos movimientos diferentes</h3><p><strong>Ampliación:</strong> entregas capital adicional al cliente.</p><p><strong>Abono a capital:</strong> recibes una devolución que reduce el capital pendiente.</p><a class="text-link" href="/control-de-cobranzas/">Cómo registrar un abono ' + icon('arrow') + '</a></div></section>' +
+      questions([
+        ['¿Una ampliación es lo mismo que renovar un préstamo?','En ERMIF, la ampliación registra capital adicional vinculado al préstamo principal. No debe utilizarse para representar solamente un cambio de fecha o confundirlo con la renovación de tu suscripción al software.'],
+        ['¿El dinero de la ampliación es una ganancia?','No. Es capital que entregas. La ganancia cobrada corresponde a los intereses recibidos y registrados, no al capital adicional.'],
+        ['¿Puedo identificar a qué préstamo pertenece?','Sí. ERMIF vincula la ampliación a la operación principal para conservar la relación dentro del historial del cliente.'],
+        ['¿Necesito un plan de pago para utilizarla?','La gestión de ampliaciones está incluida en los tres planes. Puedes empezar gratis con hasta 10 clientes y consultar otras capacidades en Precios.'],
+      ]) + finalCta(),
+  });
+
+  const claims = page({
+    path:'/reclamaciones/', title:'Libro de Reclamaciones y atención del servicio | ERMIF',
+    description:'Accede al Libro de Reclamaciones de ERMIF, conoce el canal de atención y conserva el código de seguimiento de tu reclamo o queja sobre el servicio.',
+    body: intro('ATENCIÓN DEL SERVICIO','Libro de Reclamaciones','Un canal para registrar reclamos o quejas sobre el servicio de ERMIF y recibir una respuesta al correo que indiques.') + trustPageNavigation('/reclamaciones/') +
+      '<section class="container claims-entry"><div><span class="icon-box">' + icon('mail') + '</span><h2>Registra tu reclamo o queja</h2><p>Abre el formulario del Libro de Reclamaciones, completa la información solicitada y describe lo ocurrido y tu pedido. Al registrarlo recibirás un código de seguimiento.</p>' + link('/app/?dialog=claims','Abrir Libro de Reclamaciones') + '<p class="small">El botón abre el formulario de ERMIF. Esta página no envía una reclamación por sí sola.</p></div><div class="claims-contact"><h2>Canal de atención</h2><p><a href="mailto:reclamaciones@ermif.com">reclamaciones@ermif.com</a></p><p>ERMIF atiende reclamos y quejas en un plazo máximo de 15 días hábiles, según la información publicada en su formulario.</p><p>La respuesta se envía al correo indicado en la hoja. Conserva el código para consultar el seguimiento.</p><a href="/contacto/#titular">Consultar los datos del titular del servicio</a></div></section>' +
+      '<section class="container product-detail"><div><span class="eyebrow">PREPARA TU SOLICITUD</span><h2>Información clara para atenderte</h2><p>Este canal corresponde al servicio de software de ERMIF. ERMIF no otorga préstamos ni administra en nombre del usuario el cobro de sus clientes.</p></div>' + steps([
+        ['Describe lo sucedido','Indica la función o servicio relacionado y las fechas pertinentes. Explica qué solución solicitas.'],
+        ['Revisa tu correo de contacto','Comprueba que esté escrito correctamente para recibir la respuesta.'],
+        ['Conserva el código de seguimiento','Guárdalo después de registrar la hoja. Si necesitas consultar el estado, utiliza el correo de reclamaciones.'],
+      ]) + '</section><section class="container claims-other"><h2>Otros canales disponibles</h2><p>Para una consulta sobre cobros o renovación de tu suscripción, escribe a <a href="mailto:facturacion@ermif.com">facturacion@ermif.com</a>. Para solicitudes sobre datos personales, abre <a href="/app/?dialog=privacy-request">Privacidad y mis datos</a>. Estos canales no sustituyen tu acceso al Libro de Reclamaciones.</p><p>Consulta también la <a href="/privacidad/">política de privacidad</a> y los <a href="/terminos/">términos del servicio</a>.</p></section>',
+  });
+  return {'control-de-cobranzas/index.html': collections, 'ampliaciones-de-prestamos/index.html': extensions, 'reclamaciones/index.html': claims};
+}
+module.exports = { productPages };

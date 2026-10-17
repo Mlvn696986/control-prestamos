@@ -40,7 +40,7 @@ test("servidor antiguo sirve solo demo y no expone archivos privados", async () 
     const sitemapText = await sitemap.text();
     assert.match(sitemapText, /<urlset\b[^>]*xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9"/);
     const locations = Array.from(sitemapText.matchAll(/<loc>\s*([^<]+)\s*<\/loc>/g), match => match[1].trim());
-    assert.deepEqual(locations, ["", "precios/", "como-funciona/", "contacto/", "privacidad/", "terminos/", "seguridad/"].map((route) => "https://ermif.com/" + route));
+    assert.deepEqual(locations, ["", "precios/", "como-funciona/", "contacto/", "privacidad/", "terminos/", "seguridad/", "control-de-cobranzas/", "ampliaciones-de-prestamos/", "reclamaciones/"].map((route) => "https://ermif.com/" + route));
     for (const location of locations) {
       const url = new URL(location);
       const page = await fetch(base + url.pathname);

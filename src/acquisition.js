@@ -1,5 +1,5 @@
 const CONSENT_VERSION = "2026-10-16";
-const PUBLIC_PATHS = new Set(["/", "/precios/", "/como-funciona/", "/contacto/", "/seguridad/", "/privacidad/", "/terminos/", "/app/"]);
+const PUBLIC_PATHS = new Set(["/", "/precios/", "/como-funciona/", "/contacto/", "/seguridad/", "/control-de-cobranzas/", "/ampliaciones-de-prestamos/", "/reclamaciones/", "/privacidad/", "/terminos/", "/app/"]);
 const SOURCES = new Set(["directo", "google", "bing", "duckduckgo", "chatgpt", "facebook", "instagram", "tiktok", "youtube", "linkedin", "whatsapp", "email", "otro"]);
 const MEDIUMS = new Set(["direct", "organic", "paid_search", "paid_social", "social", "email", "referral", "other"]);
 const CAMPAIGNS = new Set(["", "lanzamiento-ermif", "contenido-educativo"]);
