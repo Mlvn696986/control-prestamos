@@ -6,6 +6,7 @@ const sharp = require('sharp');
 const root = path.resolve(__dirname, '..');
 async function main() {
   const outputs = [
+    ['assets/ermif-mark.png', 'public/favicon.png', { width: 96, height: 96, fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }, 'png'],
     ['assets/ermif-mark.png', 'public/ermif-mark-small.png', { height: 96 }, 'png'],
     ['assets/ermif-logo.png', 'public/ermif-logo-480.webp', { width: 480 }, 'webp'],
     ['assets/ermif-logo.png', 'public/ermif-logo-960.webp', { width: 960 }, 'webp'],

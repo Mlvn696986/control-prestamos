@@ -64,7 +64,7 @@ function page({ path, title, description, body, extraClass = '' }) {
   const data = structuredData(metadata);
   return '<!doctype html>\n<html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>' +
     '<title>' + escape(title) + '</title><meta name="description" content="' + escape(description) + '"/><link rel="canonical" href="' + ORIGIN + path + '"/>' +
-    '<meta name="theme-color" content="#093b39"/><link rel="icon" type="image/png" href="/ermif-mark-small.png"/>' +
+    '<meta name="theme-color" content="#093b39"/><link rel="icon" type="image/png" sizes="96x96" href="/favicon.png"/>' +
     socialMetadata(metadata, escape) +
     '<link rel="stylesheet" href="/landing.css"/><link rel="stylesheet" href="/acquisition.css"/><script src="/landing.js" defer></script><script src="/acquisition.js" defer></script><script type="application/ld+json">' + JSON.stringify(data).replace(/</g,'\\u003c') + '</script></head>' +
     '<body class="' + extraClass + '">' + header(path) + '<main id="contenido">' + body + '</main>' + footer() + '</body></html>\n';
