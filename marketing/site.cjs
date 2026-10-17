@@ -32,11 +32,30 @@ function header(path) {
     '<div class="nav-actions"><a class="login-link" href="' + LOGIN + '">Entrar a mi cuenta</a>' + link(SIGNUP, 'Empezar gratis') + '</div></nav></div></header>';
 }
 
+// Public trust navigation is shared by the landing and all four information pages.
+const trustPages = [
+  ['/contacto/', 'Contacto y titular', 'mail'],
+  ['/privacidad/', 'Privacidad', 'people'],
+  ['/terminos/', 'Términos y condiciones', 'layers'],
+  ['/seguridad/', 'Seguridad', 'shield'],
+];
+function trustNavigation(currentPath = '') {
+  return '<nav class="trust-links" aria-label="Información y confianza">' + trustPages.map(([href, label, name]) =>
+    '<a href="' + href + '"' + (href === currentPath ? ' aria-current="page"' : '') + '>' + icon(name) + '<span>' + label + '</span></a>'
+  ).join('') + '</nav>';
+}
+function trustOverview() {
+  return '<section class="container trust-overview"><div><span class="eyebrow">INFORMACIÓN A TU ALCANCE</span><h2>Conoce ERMIF antes de empezar.</h2><p>Consulta quién presta el servicio, las condiciones de uso y cómo se trata tu información.</p></div>' + trustNavigation() + '</section>';
+}
+function trustPageNavigation(path) {
+  return '<div class="container trust-navigation">' + trustNavigation(path) + '</div>';
+}
+
 function footer() {
   return '<footer class="site-footer"><div class="container footer-grid"><div><a class="brand" href="/">ERMIF<span class="brand-dot">.</span></a><p>Claridad para administrar<br>tu cartera de préstamos.</p><p class="small">Software de gestión. ERMIF no otorga préstamos.</p></div>' +
     '<div><h2>Producto</h2><a href="/#funciones">Funciones</a><a href="/como-funciona/">Cómo funciona</a><a href="/precios/">Planes y precios</a><a href="' + LOGIN + '">Entrar al sistema</a></div>' +
     '<div><h2>Hablemos</h2><a href="mailto:ventas@ermif.com">ventas@ermif.com</a><a href="/contacto/">Todos los canales</a><a href="https://wa.me/51984096252">Consultar por WhatsApp</a></div>' +
-    '<div><h2>Información</h2><a href="/privacidad/">Política de privacidad</a><a href="/terminos/">Términos y condiciones</a><a href="/app/?dialog=privacy-request">Privacidad y mis datos</a><a href="/app/?dialog=claims">Libro de Reclamaciones</a></div></div>' +
+    '<div><h2>Información</h2><a href="/privacidad/">Política de privacidad</a><a href="/terminos/">Términos y condiciones</a><a href="/seguridad/">Seguridad</a><a href="/app/?dialog=privacy-request">Privacidad y mis datos</a><a href="/app/?dialog=claims">Libro de Reclamaciones</a></div></div>' +
     '<div class="container footer-bottom"><span>© ERMIF · HOYOS BUENO MELVIN · RUC 10735063818</span><span>Hecho para llevar el control.</span></div></footer>';
 }
 
@@ -108,7 +127,7 @@ function home() {
     '<section class="container section" id="funciones"><div class="section-heading"><div><span class="eyebrow">CADA MOVIMIENTO CUENTA</span><h2>De cada cliente<br>al próximo cobro.</h2></div><p>Una misma herramienta para el detalle del día a día y la visión general de tu negocio.</p></div>' + featureCards() + '<div class="export-note">' + icon('download') + '<p><strong>Tu información también puede acompañarte.</strong> Exporta a Excel y descarga un respaldo de tus datos desde el sistema.</p></div></section>' +
     '<section class="workflow-section"><div class="container"><div class="section-heading"><div><span class="eyebrow">EMPEZAR ES SENCILLO</span><h2>Un orden claro.<br>Desde el primer préstamo.</h2></div><a class="text-link" href="/como-funciona/">Conoce el recorrido completo ' + icon('arrow') + '</a></div><ol class="steps"><li><span>01</span><h3>Crea tu cuenta</h3><p>Registra tu negocio y empieza con el plan Gratis.</p></li><li><span>02</span><h3>Organiza tu cartera</h3><p>Añade tus clientes, registra préstamos y define fechas de cobro.</p></li><li><span>03</span><h3>Sigue cada movimiento</h3><p>Registra pagos y ampliaciones. Consulta saldos e indicadores.</p></li></ol></div></section>' +
     '<section class="container section" id="planes"><div class="section-heading centered"><span class="eyebrow">UN PLAN PARA TU CARTERA</span><h2>Empieza gratis.<br>Crece a tu ritmo.</h2><p>Las herramientas de gestión en todos los planes.<br>Elige la capacidad que necesitas.</p></div>' + pricing() + '<div class="center-link"><a class="text-link" href="/precios/">Comparar planes en detalle ' + icon('arrow') + '</a></div></section>' +
-    '<section class="container section faq-section" id="preguntas"><div><span class="eyebrow">ANTES DE EMPEZAR</span><h2>Respuestas claras.</h2><p>Conoce el servicio y elige con tranquilidad.</p><a class="text-link" href="/contacto/">Hablemos ' + icon('arrow') + '</a></div>' + faq() + '</section>' + finalCta()
+    '<section class="container section faq-section" id="preguntas"><div><span class="eyebrow">ANTES DE EMPEZAR</span><h2>Respuestas claras.</h2><p>Conoce el servicio y elige con tranquilidad.</p><a class="text-link" href="/contacto/">Hablemos ' + icon('arrow') + '</a></div>' + faq() + '</section>' + trustOverview() + finalCta()
   });
 }
 
@@ -136,7 +155,7 @@ function how() {
 
 function contact() {
   return page({path:'/contacto/',title:'Contacto y atención | ERMIF',description:'Contacta con ERMIF para consultas sobre planes, facturación, privacidad, reclamaciones o seguridad. Encuentra el canal adecuado para tu solicitud.',body:
-    intro('ESTAMOS PARA ORIENTARTE','Una consulta.<br>El canal correcto.','Cuéntanos qué necesitas y utiliza el correo correspondiente para que tu consulta llegue al área adecuada.') +
+    intro('ESTAMOS PARA ORIENTARTE','Una consulta.<br>El canal correcto.','Cuéntanos qué necesitas y utiliza el correo correspondiente para que tu consulta llegue al área adecuada.') + trustPageNavigation('/contacto/') +
     '<section class="container section section--compact contact-grid">' + [
       ['mail','Planes y demostraciones','ventas@ermif.com','Para conocer el sistema o consultar qué plan se adapta a tu cartera.'],
       ['wallet','Facturación y suscripción','facturacion@ermif.com','Para consultas sobre cobros, renovaciones, comprobantes o cancelaciones de ERMIF.'],
@@ -145,7 +164,28 @@ function contact() {
       ['shield','Seguridad','seguridad@ermif.com','Para reportar accesos sospechosos o posibles fallos de seguridad.'],
     ].map(([i,h,email,p])=>'<article class="contact-card"><span class="icon-box">'+icon(i)+'</span><h2>'+h+'</h2><p>'+p+'</p><a href="mailto:'+email+'">'+email+'</a></article>').join('') +
     '<article class="contact-card contact-card--dark"><span class="eyebrow">CONVERSEMOS</span><h2>También por WhatsApp.</h2><p>Horario de atención: 8:00 a. m. a 6:00 p. m.</p>' + link('https://wa.me/51984096252','Abrir WhatsApp','white') + '</article></section>' +
-    '<section class="container info-panel"><h2>Canales de solicitudes</h2><p>Puedes utilizar el <a href="/app/?dialog=claims">Libro de Reclamaciones</a> o el formulario de <a href="/app/?dialog=privacy-request">Privacidad y mis datos</a>. ERMIF es un servicio de software de HOYOS BUENO MELVIN, RUC 10735063818.</p></section>'
+    '<section class="container info-panel" id="titular"><h2>Quién presta el servicio</h2><p><strong>ERMIF</strong> es un servicio de software de <strong>HOYOS BUENO MELVIN</strong>, RUC <strong>10735063818</strong>.</p><p>Puedes utilizar el <a href="/app/?dialog=claims">Libro de Reclamaciones</a> o el formulario de <a href="/app/?dialog=privacy-request">Privacidad y mis datos</a> para registrar tu solicitud y recibir seguimiento por los canales correspondientes.</p></section>'
+  });
+}
+
+function security() {
+  const cards = [
+    ['shield', 'Acceso a tu cuenta', 'El sistema requiere iniciar sesión para acceder a tu cartera. Si olvidas tu contraseña, puedes solicitar un enlace de recuperación desde la pantalla de acceso.'],
+    ['people', 'Información por cuenta', 'Los clientes, préstamos y pagos se vinculan a la cuenta que los registra. El sistema utiliza controles de acceso por usuario para separar la información de cada cartera.'],
+    ['check', 'Conexión cifrada', 'La web de ERMIF utiliza HTTPS para proteger la información durante su envío entre tu navegador y el servicio. Comprueba que estás en https://ermif.com antes de iniciar sesión.'],
+    ['download', 'Copias bajo tu control', 'En el menú Seguridad de datos puedes consultar el estado de tus copias y usar Descargar copia para guardar una en tu dispositivo. Conserva ese archivo en un lugar al que solo tú o las personas autorizadas puedan acceder.'],
+  ];
+  return page({
+    path: '/seguridad/',
+    title: 'Seguridad de tu cuenta y tus datos | ERMIF',
+    description: 'Conoce las medidas de acceso y protección de datos de ERMIF, cómo descargar una copia y dónde reportar un problema de seguridad.',
+    body: intro('SEGURIDAD Y CONFIANZA', 'Tu información merece<br>un cuidado claro.', 'Conoce las medidas del sistema, las herramientas a tu alcance y el canal para comunicar un problema de seguridad.') +
+      trustPageNavigation('/seguridad/') +
+      '<section class="container security-grid" aria-label="Medidas y herramientas de seguridad">' + cards.map(([name, title, text]) =>
+        '<article class="security-card"><span class="icon-box">' + icon(name) + '</span><h2>' + title + '</h2><p>' + text + '</p></article>'
+      ).join('') + '</section>' +
+      '<section class="container security-report" id="reportar"><div><span class="eyebrow">UN CANAL DIRECTO</span><h2>¿Detectaste algo sospechoso?</h2><p>Si observas un acceso que no reconoces o un posible fallo de seguridad, escribe a <a href="mailto:seguridad@ermif.com">seguridad@ermif.com</a>.</p>' + link('mailto:seguridad@ermif.com', 'Reportar un problema', 'white') + '</div><div class="security-report-details"><h3>Qué incluir en tu reporte</h3><ul><li>Qué ocurrió y en qué sección lo observaste.</li><li>La fecha aproximada y el navegador que utilizabas.</li><li>Si adjuntas una captura, oculta los datos de tus clientes.</li></ul><p>No envíes contraseñas, códigos de acceso ni copias completas de tu cartera.</p></div></section>' +
+      '<section class="container security-help"><div><h2>Cuida también tu acceso</h2><p>Utiliza una contraseña exclusiva para tu cuenta, mantén actualizado tu navegador y cierra la sesión al terminar en un equipo compartido.</p><a class="text-link" href="' + LOGIN + '">Ir al acceso de mi cuenta ' + icon('arrow') + '</a></div><div><h2>Tu privacidad y tus solicitudes</h2><p>Consulta la <a href="/privacidad/">política de privacidad</a> para conocer el uso de tus datos y el <a href="/contacto/#titular">titular del servicio</a> para saber a quién dirigirte.</p><div class="security-help-links"><a href="/app/?dialog=privacy-request">Privacidad y mis datos</a><a href="/app/?dialog=claims">Libro de Reclamaciones</a></div></div></section>',
   });
 }
 
@@ -155,8 +195,9 @@ function renderPages(appHtml) {
     'precios/index.html': prices(),
     'como-funciona/index.html': how(),
     'contacto/index.html': contact(),
-    'privacidad/index.html': page({path:'/privacidad/',title:'Política de privacidad | ERMIF',description:'Consulta la política de privacidad de ERMIF y los canales para ejercer tus derechos sobre tus datos personales.',body:intro('INFORMACIÓN DEL SERVICIO','Política de privacidad','Conoce el tratamiento de datos y los canales disponibles para tus solicitudes.')+'<article class="container legal-document">'+renderLegalContent(appHtml,'privacy')+'</article>'}),
-    'terminos/index.html': page({path:'/terminos/',title:'Términos y condiciones | ERMIF',description:'Consulta las condiciones de uso, planes, pagos y atención del servicio de gestión de préstamos ERMIF.',body:intro('INFORMACIÓN DEL SERVICIO','Términos y condiciones','Condiciones aplicables al uso del software y a la contratación del servicio.')+'<article class="container legal-document">'+renderLegalContent(appHtml,'terms')+'</article>'}),
+    'seguridad/index.html': security(),
+    'privacidad/index.html': page({path:'/privacidad/',title:'Política de privacidad | ERMIF',description:'Consulta la política de privacidad de ERMIF y los canales para ejercer tus derechos sobre tus datos personales.',body:intro('INFORMACIÓN DEL SERVICIO','Política de privacidad','Conoce el tratamiento de datos y los canales disponibles para tus solicitudes.')+trustPageNavigation('/privacidad/')+'<article class="container legal-document">'+renderLegalContent(appHtml,'privacy')+'</article>'}),
+    'terminos/index.html': page({path:'/terminos/',title:'Términos y condiciones | ERMIF',description:'Consulta las condiciones de uso, planes, pagos y atención del servicio de gestión de préstamos ERMIF.',body:intro('INFORMACIÓN DEL SERVICIO','Términos y condiciones','Condiciones aplicables al uso del software y a la contratación del servicio.')+trustPageNavigation('/terminos/')+'<article class="container legal-document">'+renderLegalContent(appHtml,'terms')+'</article>'}),
   };
 }
 module.exports = { renderPages };

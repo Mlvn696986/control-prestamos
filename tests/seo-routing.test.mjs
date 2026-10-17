@@ -12,7 +12,7 @@ function forbiddenAssets() {
 
 test("www redirige navegacion GET y HEAD al dominio principal sin perder ruta ni parametros", async () => {
   for (const method of ["GET", "HEAD"]) {
-    for (const suffix of ["/", "/?billing=return", "/?code=fixture&next=%2F", "/robots.txt", "/assets/summary.css?v=2", "/ruta-inexistente?origen=prueba"]) {
+    for (const suffix of ["/", "/?billing=return", "/?code=fixture&next=%2F", "/robots.txt", "/seguridad/?origen=web", "/assets/summary.css?v=2", "/ruta-inexistente?origen=prueba"]) {
       const response = await worker.fetch(new Request("https://www.ermif.com" + suffix, { method }), forbiddenAssets());
       assert.equal(response.status, 301, method + " " + suffix);
       assert.equal(response.headers.get("Location"), "https://ermif.com" + suffix);
@@ -22,7 +22,7 @@ test("www redirige navegacion GET y HEAD al dominio principal sin perder ruta ni
 });
 
 test("la portada conserva visitas normales y las paginas comerciales", async () => {
-  for (const suffix of ["/", "/?utm_source=facebook", "/precios/", "/como-funciona/"]) {
+  for (const suffix of ["/", "/?utm_source=facebook", "/precios/", "/como-funciona/", "/contacto/", "/privacidad/", "/terminos/", "/seguridad/"]) {
     let calls = 0;
     const request = new Request("https://ermif.com" + suffix);
     const response = await worker.fetch(request, assetsEnv((forwarded) => {

@@ -18,6 +18,7 @@ const expectedRoutes = {
   "precios/index.html": "/precios/",
   "como-funciona/index.html": "/como-funciona/",
   "contacto/index.html": "/contacto/",
+  "seguridad/index.html": "/seguridad/",
   "privacidad/index.html": "/privacidad/",
   "terminos/index.html": "/terminos/",
 };
@@ -43,7 +44,7 @@ function normalize(text) {
   return plain(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-test("marketing publishes exactly the six intended public documents with distinct metadata and complete static content", () => {
+test("marketing publishes exactly the seven intended public documents with distinct metadata and complete static content", () => {
   assert.deepEqual(Object.keys(pages).sort(), Object.keys(expectedRoutes).sort());
   const titles = new Set();
   const descriptions = new Set();
@@ -75,6 +76,30 @@ test("marketing publishes exactly the six intended public documents with distinc
     assert.ok(main && plain(main).length > 300, `${file}: useful content exists without JavaScript`);
     assert.match(html, /ERMIF no otorga préstamos/, `${file}: product is not advertised as a lender`);
   }
+});
+
+test("trust documents are discoverable without login and retain access to the existing request forms", () => {
+  const trustRoutes = ['/contacto/', '/privacidad/', '/terminos/', '/seguridad/'];
+  for (const [file, html] of Object.entries(pages)) {
+    const footer = html.match(/<footer\b[\s\S]*?<\/footer>/)?.[0];
+    assert.ok(footer, file + ': public footer');
+    const footerLinks = tagAttributes(footer, 'a').map(tag => tag.href);
+    for (const route of trustRoutes) assert.ok(footerLinks.includes(route), file + ': footer links ' + route);
+    for (const action of ['claims', 'privacy-request']) {
+      assert.ok(footerLinks.includes('/app/?dialog=' + action), file + ': existing form remains accessible');
+    }
+  }
+  for (const route of ['/', ...trustRoutes]) {
+    const file = Object.keys(expectedRoutes).find(file => expectedRoutes[file] === route);
+    const nav = pages[file].match(/<nav class="trust-links"[\s\S]*?<\/nav>/)?.[0];
+    assert.ok(nav, file + ': visible trust navigation');
+    const links = tagAttributes(nav, 'a');
+    assert.deepEqual(links.map(tag => tag.href), trustRoutes);
+    assert.deepEqual(links.filter(tag => tag['aria-current'] === 'page').map(tag => tag.href), route === '/' ? [] : [route]);
+  }
+  assert.match(pages['seguridad/index.html'], /href="mailto:seguridad@ermif\.com"/);
+  assert.match(pages['seguridad/index.html'], /href="\/contacto\/#titular"/);
+  assert.match(pages['contacto/index.html'], /id="titular"/);
 });
 
 test("marketing prices, plan names and client limits agree with the application's live plan catalog", () => {
