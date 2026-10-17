@@ -42,6 +42,7 @@ La [guía de la etapa 2](SEO-GUIA-ETAPA-2.md) explica cada evento, cobertura, UT
 
 - [x] Comprobación previa: 17 verificaciones HTTP correctas, sin regresiones de las correcciones anteriores.
 - [x] Investigación cualitativa de intención y proveedores, sin inventar volúmenes de búsqueda ni copiar promesas comerciales.
+- [x] Mensaje comercial corregido con el propietario: facilidad de uso, ausencia de configuración técnica previa, analítica detallada, préstamos entre miembros de una organización e intereses mensuales con abonos voluntarios al capital. Detalle y evidencia en la guía de etapa 3.
 - [x] Páginas de control de cobranzas, gestión de ampliaciones y reclamaciones con contenido propio, ejemplos ficticios identificados y metadatos completos.
 - [x] Portada más explícita; enlaces contextuales y navegación pública; sitemap ampliado a diez documentos reales.
 - [x] Ampliación coherente de rutas permitidas en cliente, servidor y migración SQL; conservación de primera atribución y consentimiento.

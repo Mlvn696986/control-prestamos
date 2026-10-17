@@ -1950,6 +1950,28 @@ summary:focus-visible {
     padding-bottom: 45px;
   }
 }
+/* Product positioning: audience benefits and independent payment examples. */
+.audience-section { padding-top:52px; }
+.audience-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+.audience-grid article { padding:25px; border:1px solid var(--line); border-radius:16px; background:var(--pale); }
+.audience-grid h3 { margin:18px 0 12px; font-size:22px; }
+.audience-grid p { font-size:14px; }
+.audience-link { margin-top:22px; }
+.interest-example { padding-block:34px 50px; border-top:1px solid var(--line); }
+.interest-scenarios { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; }
+.interest-scenarios article { padding:28px; border:1px solid var(--line); border-radius:16px; background:var(--pale); }
+.interest-scenarios h3 { margin-top:14px; font-size:24px; }
+.interest-scenarios p { font-size:14px; }
+.interest-note { margin-top:20px; max-width:95ch; }
+@media (max-width:850px) {
+  .audience-grid { grid-template-columns:1fr; }
+  .audience-section { padding-top:32px; }
+}
+@media (max-width:590px) {
+  .interest-scenarios { grid-template-columns:1fr; gap:14px; }
+  .interest-scenarios article { padding:20px; }
+  .audience-grid article { padding:22px; }
+}
 /* Product pages: shared layout, static examples and readable mobile content. */
 .product-hero { display:grid; grid-template-columns:1.15fr 1fr; gap:64px; align-items:center; padding-block:48px 56px; }
 .product-hero h1 { font-size:clamp(38px,4.1vw,58px); }
