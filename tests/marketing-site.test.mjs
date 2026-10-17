@@ -125,6 +125,13 @@ test("every internal public link and fragment resolves to a rendered page, real 
         );
         continue;
       }
+      if (url.pathname === '/dashboard-preview-2560.webp') {
+        assert.ok(fs.existsSync(new URL('../public' + url.pathname, import.meta.url)), file + ': enlarged preview exists');
+        assert.equal(anchor.target, '_blank');
+        assert.equal(anchor.rel, 'noopener');
+        assert.match(anchor['aria-label'], /otra pestaña/);
+        continue;
+      }
       assert.ok(byPath.has(url.pathname), `${file}: missing page ${anchor.href}`);
       if (url.hash) {
         const targetIds = [...byPath.get(url.pathname).matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
@@ -216,8 +223,8 @@ test("public resources stay within a download budget and defer scripts outside t
       assert.ok(url.startsWith('/') && !url.startsWith('/assets/'), file + ': use optimized public images');
       rawBytes += fs.statSync(new URL('../public' + url, import.meta.url)).size;
     }
-    // Conservative: count the largest fallback image even if mobile selects a smaller variant.
-    assert.ok(rawBytes <= 180 * 1024, file + ': HTML + scripts + styles + image budget');
+    // Conservative: count the 1280px fallback. High-density candidates have separate budgets below.
+    assert.ok(rawBytes <= 220 * 1024, file + ': HTML + scripts + styles + image budget');
   }
 });
 
@@ -241,11 +248,15 @@ test("images reserve their layout, use valid responsive candidates and stay ligh
   for (const [url, width] of assets) {
     const image = new URL('../public' + url, import.meta.url);
     assert.equal((await sharp(fs.readFileSync(image)).metadata()).width, width, url + ': srcset describes real pixel width');
-    assert.ok(fs.statSync(image).size <= 80 * 1024, url + ': image budget');
+    const budget = url.includes('dashboard-preview') ? (width <= 1280 ? 120 : width <= 1920 ? 220 : 320) : 80;
+    assert.ok(fs.statSync(image).size <= budget * 1024, url + ': image budget');
   }
   assert.ok(fs.statSync(new URL('../public/ermif-mark-small.png', import.meta.url)).size <= 12 * 1024);
   const hero = tagAttributes(pages['index.html'], 'img').find(img => img.src.includes('dashboard-preview'));
   const demo = tagAttributes(pages['como-funciona/index.html'], 'img').find(img => img.src.includes('dashboard-preview'));
+  assert.equal(hero.srcset, demo.srcset, 'both previews use the fresh high-resolution capture');
+  assert.ok(assets.get('/dashboard-preview-2560.webp') >= 2 * 1122, 'sufficient pixels for the largest preview at 2x density');
+  assert.ok(!hero.srcset.includes('-480.') && !hero.srcset.includes('-800.'), 'avoid undersized thumbnails for small UI labels');
   assert.equal(hero.fetchpriority, 'high');
   assert.notEqual(hero.loading, 'lazy', 'do not delay the main visual');
   assert.equal(demo.loading, 'lazy', 'defer the lower-page demonstration');

@@ -43,7 +43,7 @@ El build publica esa portada en `/` y la aplicacion original de `index.html` en 
 Las rutas publicas son `/precios/`, `/como-funciona/`, `/contacto/`, `/terminos/` y `/privacidad/`.
 Los textos legales se extraen del mismo `index.html` mediante `marketing/legal.cjs`, sin mantener copias independientes.
 `/app/?mode=signup` abre registro y `/app/?mode=login` abre acceso. Los callbacks antiguos a la raiz se conservan.
-La captura `public/dashboard-preview.webp` utiliza datos ficticios y se debe regenerar con una cartera de demostracion, nunca con clientes reales.
+La captura `public/dashboard-preview-hd.webp` utiliza datos ficticios y se debe regenerar con una cartera de demostracion, nunca con clientes reales.
 Tras cambiarlos, vuelve a ejecutar `npm run build:local`; si la vigilancia de archivos de Windows se detiene, reinicia `npm run dev`.
 No edites `dist` ni `dist-local`: son resultados generados.
 Para probar autenticacion real o SQL hace falta un proyecto Supabase de pruebas separado, autorizado y con datos ficticios.
@@ -126,8 +126,8 @@ La web comercial usa exclusivamente `landing.css`, `landing.js` y los dos recurs
 
 El build compacta solo esos cuatro archivos publicos con esbuild; los fuentes permanecen legibles y la demo usa la misma transformacion. Las pruebas de consentimiento y callbacks ejecutan el JavaScript transformado. No se compactan ni mezclan `app.js`, codigo de terceros ni el modulo de administracion.
 
-`npm run images:optimize` regenera cinco derivados en `public/` desde los logos originales y la captura con datos ficticios. Conserva los originales. Ejecutarlo solo al cambiar esas imagenes, revisar visualmente y guardar los derivados en Git. No hace falta procesar imagenes en cada publicacion.
+`npm run images:optimize` regenera seis derivados en `public/` desde los logos originales y `marketing/dashboard-source.jpg` (2560 × 1728, captura nueva del sistema con datos ficticios). Conserva los originales. Ejecutarlo solo al cambiar esas imagenes, revisar visualmente y guardar los derivados en Git. No hace falta procesar imagenes en cada publicacion.
 
-El logo pequeno se reutiliza como icono y en la barra lateral. El logo de acceso tiene versiones de 480/960 px. La captura comercial ofrece 480/800/1265 px mediante `srcset` y `sizes`; mantiene prioridad alta en portada y carga diferida en la demostracion inferior. Las imagenes declaran dimensiones para reservar espacio.
+El logo pequeno se reutiliza como icono y en la barra lateral. El logo de acceso tiene versiones de 480/960 px. La captura comercial ofrece 1280/1920/2560 px mediante `srcset` y `sizes`; el original se captura a escala 2x y cada variante se genera directamente desde ese archivo con WebP de calidad 94, sin recomprimir miniaturas. El enlace «Ampliar imagen» abre la variante de 2560 px. Se muestra de frente, sin transformaciones 3D ni recortes. Mantiene prioridad alta en portada y carga diferida en la demostracion inferior. Las imagenes declaran dimensiones para reservar espacio.
 
-Las pruebas protegen la separacion entre web comercial y aplicacion, el tamano real de las variantes y presupuestos de recursos: 13 KiB gzip para JS/CSS publico, 180 KiB sin compresion para HTML + JS/CSS + imagenes referenciadas de cada pagina, usando como estimacion conservadora la captura mas grande. Estos limites tecnicos no son una medicion de Core Web Vitals de usuarios reales.
+Las pruebas protegen la separacion entre web comercial y aplicacion, el tamano real de las variantes y presupuestos de recursos: 13 KiB gzip para JS/CSS publico, 220 KiB sin compresion para HTML + JS/CSS + imagenes referenciadas de cada pagina, contando la captura de respaldo de 1280 px. Las variantes de 1280/1920/2560 px tienen limites separados de 120/220/320 KiB para conservar texto legible en pantallas de alta densidad. El aumento acotado del presupuesto prioriza nitidez; la pagina sigue sin cargar recursos del sistema. Estos limites tecnicos no son una medicion de Core Web Vitals de usuarios reales.
