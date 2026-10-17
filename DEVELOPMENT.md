@@ -40,7 +40,7 @@ Abrir directamente el index.html de la raiz no es el procedimiento de prueba: ma
 Los archivos fuente de interfaz son `index.html`, `app.js`, `styles.css` y `assets`.
 La portada comercial se genera desde `marketing/site.cjs`, con estilos y recursos en `public/`.
 El build publica esa portada en `/` y la aplicacion original de `index.html` en `/app/`.
-Las rutas publicas son `/precios/`, `/como-funciona/`, `/contacto/`, `/terminos/` y `/privacidad/`.
+Las rutas publicas son `/precios/`, `/como-funciona/`, `/contacto/`, `/terminos/` y `/privacidad/` y `/seguridad/`.
 Los textos legales se extraen del mismo `index.html` mediante `marketing/legal.cjs`, sin mantener copias independientes.
 `/app/?mode=signup` abre registro y `/app/?mode=login` abre acceso. Los callbacks antiguos a la raiz se conservan.
 La captura `public/dashboard-preview-hd.webp` utiliza datos ficticios y se debe regenerar con una cartera de demostracion, nunca con clientes reales.
@@ -131,3 +131,9 @@ El build compacta solo esos cuatro archivos publicos con esbuild; los fuentes pe
 El logo pequeno se reutiliza como icono y en la barra lateral. El logo de acceso tiene versiones de 480/960 px. La captura comercial ofrece 1280/1920/2560 px mediante `srcset` y `sizes`; el original se captura a escala 2x y cada variante se genera directamente desde ese archivo con WebP de calidad 94, sin recomprimir miniaturas. El enlace «Ampliar imagen» abre la variante de 2560 px. Se muestra de frente, sin transformaciones 3D ni recortes. Mantiene prioridad alta en portada y carga diferida en la demostracion inferior. Las imagenes declaran dimensiones para reservar espacio.
 
 Las pruebas protegen la separacion entre web comercial y aplicacion, el tamano real de las variantes y presupuestos de recursos: 13 KiB gzip para JS/CSS publico, 220 KiB sin compresion para HTML + JS/CSS + imagenes referenciadas de cada pagina, contando la captura de respaldo de 1280 px. Las variantes de 1280/1920/2560 px tienen limites separados de 120/220/320 KiB para conservar texto legible en pantallas de alta densidad. El aumento acotado del presupuesto prioriza nitidez; la pagina sigue sin cargar recursos del sistema. Estos limites tecnicos no son una medicion de Core Web Vitals de usuarios reales.
+
+## Información pública de confianza
+
+Contacto, privacidad, términos y seguridad se consultan sin iniciar sesión. Comparten navegación de enlaces HTML, aparecen en el pie de página y en el sitemap. La portada enlaza los cuatro documentos. `marketing/site.cjs` genera `/seguridad/` con información sobre acceso, separación de cuentas, HTTPS y descarga de copias basada en las funciones existentes; no declara certificaciones ni garantías de disponibilidad. El correo de reportes es `seguridad@ermif.com`.
+
+Los textos legales siguen extrayéndose de los diálogos de `index.html`, sin versiones independientes ni cambios de condiciones. Los enlaces de solicitudes conservan `/app/?dialog=privacy-request` y `/app/?dialog=claims`. La verificación de interfaz abre los formularios sin enviarlos.

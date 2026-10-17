@@ -40,7 +40,7 @@ test("servidor antiguo sirve solo demo y no expone archivos privados", async () 
     const sitemapText = await sitemap.text();
     assert.match(sitemapText, /<urlset\b[^>]*xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9"/);
     const locations = Array.from(sitemapText.matchAll(/<loc>\s*([^<]+)\s*<\/loc>/g), match => match[1].trim());
-    assert.deepEqual(locations, ["", "precios/", "como-funciona/", "contacto/", "privacidad/", "terminos/"].map((route) => "https://ermif.com/" + route));
+    assert.deepEqual(locations, ["", "precios/", "como-funciona/", "contacto/", "privacidad/", "terminos/", "seguridad/"].map((route) => "https://ermif.com/" + route));
     for (const location of locations) {
       const url = new URL(location);
       const page = await fetch(base + url.pathname);
@@ -54,7 +54,7 @@ test("servidor antiguo sirve solo demo y no expone archivos privados", async () 
       assert.equal(redirected.status, 302, suffix);
       assert.equal(redirected.headers.get("Location"), "/app/" + new URL(base + suffix).search);
     }
-    for (const suffix of ["/app/", "/app/?mode=login", "/app/?mode=signup", "/?code=fixture"]) {
+    for (const suffix of ["/app/", "/app/?mode=login", "/app/?mode=signup", "/app/?dialog=claims", "/app/?dialog=privacy-request", "/?code=fixture"]) {
       const response = await fetch(base + suffix);
       assert.equal(response.status, 200, suffix);
       assert.equal(response.headers.get("X-Robots-Tag"), "noindex");
