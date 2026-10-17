@@ -4357,6 +4357,10 @@ const DASHBOARD_FINANCIAL_CHART_ID = "capital-y-ganancias";
 const DASHBOARD_FINANCIAL_BAR_IDS = [
   "capital-disponible", "capital-actualmente-prestado", "ganancia-real", "ganancia-proyectada",
 ];
+const FIXED_DASHBOARD_INDICATOR_IDS = new Set([
+  "capital-total", DASHBOARD_FINANCIAL_CHART_ID, ...DASHBOARD_FINANCIAL_BAR_IDS,
+  "monto-vencido", "porcentaje-de-morosidad", "tasa-de-recuperacion",
+]);
 
 function getFinancialBarScale(values) {
   const finite = values.map(Number).filter(Number.isFinite);
@@ -4384,7 +4388,7 @@ function renderDashboardFinancialBars(items, dashboard) {
   const showMiddleTick = !crossesZero || (zero >= 20 && zero <= 80);
   const ticks = [{ value: scale.min, position: "start" }, ...(showMiddleTick ? [{ value: middleTick, position: "middle" }] : []), { value: scale.max, position: "end" }];
   return `
-    <article class="dashboard-indicator-card summary-financial-bars" draggable="true" data-indicator-id="${DASHBOARD_FINANCIAL_CHART_ID}" aria-label="Capital y ganancias: gráfico de barras">
+    <article class="dashboard-indicator-card summary-financial-bars" draggable="false" data-indicator-id="${DASHBOARD_FINANCIAL_CHART_ID}" aria-label="Capital y ganancias: gráfico de barras">
       <header class="financial-bars-header">
         <h4>${summaryIcon("chart")} Capital y ganancias</h4>
         <span class="financial-bars-unit">Soles · S/</span>
@@ -4431,23 +4435,25 @@ function getOrderedDashboardIndicatorItems(dashboard) {
   const items = getDashboardIndicatorItems(dashboard);
   const defaultOrder = new Map(DASHBOARD_VISUAL_INDICATOR_ORDER.map((id, index) => [id, index]));
   items.sort((a, b) => (defaultOrder.get(a.indicatorId) ?? 999) - (defaultOrder.get(b.indicatorId) ?? 999));
+  const fixed = items.filter((item) => FIXED_DASHBOARD_INDICATOR_IDS.has(item.indicatorId));
+  const movable = items.filter((item) => !FIXED_DASHBOARD_INDICATOR_IDS.has(item.indicatorId));
   const savedIds = getSavedIndicatorOrder().map(normalizeIndicatorOrderId)
-    .flatMap((id) => id === DASHBOARD_FINANCIAL_CHART_ID ? DASHBOARD_FINANCIAL_BAR_IDS : [id]);
+    .filter((id) => !FIXED_DASHBOARD_INDICATOR_IDS.has(id));
   const seenIds = new Set();
   const order = savedIds.filter((id) => {
     if (seenIds.has(id)) return false;
     seenIds.add(id);
     return true;
   });
-  if (!order.length) return items;
+  if (!order.length) return [...fixed, ...movable];
 
-  const byId = new Map(items.map((item) => [item.indicatorId, item]));
+  const byId = new Map(movable.map((item) => [item.indicatorId, item]));
   const ordered = order.map((id) => byId.get(id)).filter(Boolean);
-  const missing = items.filter((item) => !order.includes(item.indicatorId));
-  return [...ordered, ...missing];
+  const missing = movable.filter((item) => !order.includes(item.indicatorId));
+  return [...fixed, ...ordered, ...missing];
 }
 
-// Presentation order only. A user's saved drag order always takes precedence.
+// Main blocks stay first; saved order applies only to the remaining cards.
 const DASHBOARD_VISUAL_INDICATOR_ORDER = [
   "capital-total", "capital-disponible", "capital-actualmente-prestado", "ganancia-real", "ganancia-proyectada", "monto-vencido",
   "porcentaje-de-morosidad", "tasa-de-recuperacion", "comparativo-capital-vs-interes",
@@ -4527,7 +4533,7 @@ function renderDashboardIndicatorCard(item, dashboard) {
   const messages = getIndicatorMessages(item.title);
   const presentation = getDashboardIndicatorPresentation(item, dashboard);
   return `
-    <article class="${className} dashboard-indicator-card indicator-${presentation.kind}" draggable="true" data-indicator-id="${escapeHTML(item.indicatorId)}" data-summary-tone="${getDashboardIndicatorTone(item, dashboard)}">
+    <article class="${className} dashboard-indicator-card indicator-${presentation.kind}" draggable="${!FIXED_DASHBOARD_INDICATOR_IDS.has(item.indicatorId)}" data-indicator-id="${escapeHTML(item.indicatorId)}" data-summary-tone="${getDashboardIndicatorTone(item, dashboard)}">
       <div class="summary-metric-icon">${summaryIcon(dashboardIndicatorIcon(item))}</div>
       <span>${escapeHTML(item.title)} ${renderInfoDot(tooltipText)}</span>
       <strong class="kpi-value">${escapeHTML(item.value)}</strong>
@@ -4739,7 +4745,7 @@ function initIndicatorOrderEvents() {
 
 function handleIndicatorDragStart(event) {
   const card = event.target.closest(".dashboard-indicator-card");
-  if (!card || isIndicatorDragBlockedTarget(event.target)) {
+  if (!card?.draggable || isIndicatorDragBlockedTarget(event.target)) {
     event.preventDefault();
     return;
   }
@@ -4767,7 +4773,7 @@ function handleIndicatorDrop(event) {
 function handleIndicatorPointerDown(event) {
   if (event.pointerType === "mouse") return;
   const card = event.target.closest(".dashboard-indicator-card");
-  if (!card || isIndicatorDragBlockedTarget(event.target)) return;
+  if (!card?.draggable || isIndicatorDragBlockedTarget(event.target)) return;
   const timer = window.setTimeout(() => {
     if (!indicatorTouchDragState || indicatorTouchDragState.card !== card) return;
     indicatorTouchDragState.active = true;
@@ -4804,8 +4810,10 @@ function handleIndicatorPointerEnd() {
 }
 
 function moveIndicatorCardAtPoint(grid, dragging, clientX, clientY, eventTarget = null) {
+  if (!grid?.contains(dragging) || !dragging.draggable) return;
   const hovered = (eventTarget || document.elementFromPoint(clientX, clientY))?.closest?.(".dashboard-indicator-card");
   if (hovered && hovered !== dragging && grid.contains(hovered)) {
+    if (!hovered.draggable) return;
     const rect = hovered.getBoundingClientRect();
     const before = clientY < rect.top + rect.height / 2;
     grid.insertBefore(dragging, before ? hovered : hovered.nextSibling);
@@ -4821,7 +4829,7 @@ function moveIndicatorCardAtPoint(grid, dragging, clientX, clientY, eventTarget 
 }
 
 function getIndicatorInsertBeforeCard(grid, dragging, clientY) {
-  return Array.from(grid.querySelectorAll(".dashboard-indicator-card:not(.is-dragging)")).reduce(
+  return Array.from(grid.querySelectorAll('.dashboard-indicator-card[draggable="true"]:not(.is-dragging)')).reduce(
     (closest, card) => {
       const rect = card.getBoundingClientRect();
       const offset = clientY - rect.top - rect.height / 2;
@@ -4841,7 +4849,7 @@ function isIndicatorDragBlockedTarget(target) {
 }
 
 function saveCurrentIndicatorOrder() {
-  const order = Array.from(elements.summaryIndicatorsGrid?.querySelectorAll(".dashboard-indicator-card") || [])
+  const order = Array.from(elements.summaryIndicatorsGrid?.querySelectorAll('.dashboard-indicator-card[draggable="true"]') || [])
     .map((card) => card.dataset.indicatorId)
     .filter(Boolean);
   saveIndicatorOrder(order);
