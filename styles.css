@@ -71,6 +71,7 @@ svg {
 .auth-screen {
   min-height: 100vh;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 28px;
   background:
@@ -81,6 +82,7 @@ svg {
 
 .auth-panel {
   width: min(100%, 520px);
+  min-width: 0;
   padding: 32px;
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(255, 176, 0, 0.34);
@@ -113,6 +115,7 @@ svg {
 
 .brand-logo-auth {
   width: min(100%, 430px);
+  height: auto;
   max-height: 180px;
   margin: 0 auto;
 }

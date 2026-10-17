@@ -2,8 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import publicAssets from '../scripts/public-assets.cjs';
 
-const source = fs.readFileSync(new URL('../public/acquisition.js', import.meta.url), 'utf8');
+// Exercise the production transformation, including consent and callback handling.
+const source = publicAssets.optimizePublicAsset('acquisition.js', fs.readFileSync(new URL('../public/acquisition.js', import.meta.url), 'utf8'));
 const CHOICE = 'ermif-measurement-choice-v1';
 const VISITOR = 'ermif-acquisition-visitor-v1';
 const REVOKE = 'ermif-acquisition-revoke-v1';

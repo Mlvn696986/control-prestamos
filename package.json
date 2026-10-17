@@ -8,6 +8,7 @@
   "scripts": {
     "build": "node scripts/build-cloudflare.js",
     "build:local": "node scripts/build-cloudflare.js --local",
+    "images:optimize": "node scripts/optimize-public-images.cjs",
     "dev": "npm run build:local && wrangler dev --config wrangler.local.jsonc --local --ip 127.0.0.1 --port 8787",
     "test": "npm run test:financial && npm run test:unit",
     "test:financial": "node financial-regression-tests.js",
@@ -27,6 +28,8 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
+    "esbuild": "0.28.1",
+    "sharp": "0.35.5",
     "supabase": "2.120.0",
     "wrangler": "4.148.0"
   },
