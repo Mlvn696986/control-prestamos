@@ -1808,12 +1808,15 @@ input.field-success {
 }
 
 .dashboard-indicator-card {
-  cursor: grab;
   transition: opacity 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.dashboard-indicator-card[draggable="true"] {
+  cursor: grab;
   user-select: none;
 }
 
-.dashboard-indicator-card:active {
+.dashboard-indicator-card[draggable="true"]:active {
   cursor: grabbing;
 }
 

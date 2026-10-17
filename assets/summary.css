@@ -937,7 +937,7 @@
 }
 
 @media (hover: hover)  {
-  #dashboardView .dashboard-indicator-card:hover  {
+  #dashboardView .dashboard-indicator-card[draggable="true"]:hover  {
     border-color: #aacfbf;
     box-shadow: 0 5px 15px #153b4b08;
     transform: translateY(-1px);
@@ -1178,7 +1178,7 @@
   #dashboardView .dashboard-indicator-card  {
     transition: none;
   }
-  #dashboardView .dashboard-indicator-card:hover  {
+  #dashboardView .dashboard-indicator-card[draggable="true"]:hover  {
     transform: none;
   }
 }

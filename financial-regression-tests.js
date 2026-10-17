@@ -703,7 +703,7 @@ assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Ampliacion
 assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Cobrado en el periodo"), "Orden guardado: debe ignorar Cobrado en el periodo eliminado visualmente.");
 assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Interes pendiente"), "Orden guardado: debe ignorar Interes pendiente eliminado visualmente.");
 assert(!orderedItemsAfterHiddenRemoval.some((item) => item.title === "Rendimiento proyectado de cartera"), "Orden guardado: debe ignorar Rendimiento proyectado de cartera eliminado visualmente.");
-assertEqual(orderedItemsAfterHiddenRemoval[0].title, "Capital agregado", "Orden guardado: debe conservar los indicadores visibles restantes.");
+assertEqual(orderedItemsAfterHiddenRemoval.find((item) => !FIXED_DASHBOARD_INDICATOR_IDS.has(item.indicatorId)).title, "Capital agregado", "Orden guardado: debe conservar el orden de las tarjetas movibles.");
 const capitalPrestadoIndicator = getDashboardKpiItems(dashboard).find((item) => item.title === "Capital actualmente prestado");
 assert(capitalPrestadoIndicator?.tip.startsWith("Ejemplo:"), "Capital actualmente prestado: el tooltip debe comenzar con Ejemplo.");
 assert(capitalPrestadoIndicator?.tip.includes("Los préstamos vencidos también cuentan"), "Capital actualmente prestado: el tooltip debe aclarar que vencidos siguen contando.");
@@ -712,8 +712,22 @@ assert(totalPrestadoAcumuladoIndicator?.tip.startsWith("Ejemplo:"), "Total prest
 assert(totalPrestadoAcumuladoIndicator?.tip.includes("no disminuye cuando devuelven capital"), "Total prestado acumulado: el tooltip debe aclarar que no baja por devoluciones.");
 saveIndicatorOrder(["prestado-en-el-periodo", "capital-prestado"]);
 const orderedRenamedItems = getOrderedDashboardIndicatorItems(dashboard);
-assertEqual(orderedRenamedItems[0].title, "Total prestado acumulado", "Orden guardado: debe migrar Prestado en el periodo al nuevo indicador acumulado.");
-assertEqual(orderedRenamedItems[1].title, "Capital actualmente prestado", "Orden guardado: debe migrar Capital prestado al nuevo nombre.");
+assertEqual(orderedRenamedItems.find((item) => !FIXED_DASHBOARD_INDICATOR_IDS.has(item.indicatorId)).title, "Total prestado acumulado", "Orden guardado: debe migrar Prestado en el periodo al nuevo indicador acumulado.");
+assertEqual(orderedRenamedItems.filter((item) => item.title === "Capital actualmente prestado").length, 1, "Orden guardado: Capital prestado antiguo no debe duplicar el indicador fijo.");
+saveIndicatorOrder([
+  "capital-en-riesgo", "tasa-de-recuperacion", "prestamos-cerrados", "capital-y-ganancias",
+  "monto-vencido", "capital-total", "porcentaje-de-morosidad", "capital-en-riesgo", "ganancia-real",
+]);
+const pinnedIndicatorOrder = getOrderedDashboardIndicatorItems(dashboard);
+assertEqual(pinnedIndicatorOrder.slice(0, 8).map((item) => item.indicatorId).join(","),
+  "capital-total,capital-disponible,capital-actualmente-prestado,ganancia-real,ganancia-proyectada,monto-vencido,porcentaje-de-morosidad,tasa-de-recuperacion",
+  "Orden antiguo: los cinco bloques principales deben recuperar siempre sus posiciones fijas.");
+assertEqual(pinnedIndicatorOrder.slice(8, 10).map((item) => item.indicatorId).join(","), "capital-en-riesgo,prestamos-cerrados",
+  "Orden antiguo: las demas tarjetas deben conservar la preferencia del usuario sin duplicarse.");
+assertEqual(new Set(pinnedIndicatorOrder.map((item) => item.indicatorId)).size, indicatorItems.length, "Fijar bloques no debe perder ni duplicar indicadores.");
+renderDashboardIndicators(dashboard);
+assertEqual((elements.summaryIndicatorsGrid.innerHTML.match(/draggable="false"/g) || []).length, 5, "Resumen: los cinco bloques principales no permiten arrastre.");
+assertEqual((elements.summaryIndicatorsGrid.innerHTML.match(/draggable="true"/g) || []).length, 10, "Resumen: las diez tarjetas inferiores conservan el arrastre.");
 const capitalAddedIndicator = indicatorItems.find((item) => item.title === "Capital agregado");
 assert(capitalAddedIndicator?.tip === "Aquí te figura solo los aportes que realizas. NO cuenta los intereses.", "Capital agregado: el texto explicativo debe estar en el tooltip.");
 assert(!getIndicatorMessages("Capital agregado").includes(capitalAddedIndicator.tip), "Capital agregado: la frase del tooltip no debe reemplazar los mensajes dinamicos inferiores.");
@@ -1157,7 +1171,7 @@ assertFileIncludes(appCode, 'class="kpi-value"', "Resumen: los valores principal
 assertFileIncludes(stylesCode, ".kpi-value", "Resumen: falta la regla CSS centralizada para valores principales.");
 assertCondition(!stylesCode.includes(".summary-compact-card strong"), "Resumen: los indicadores compactos no deben tener un tamano de valor separado.");
 assertFileIncludes(htmlCode, "<h3>Indicadores:</h3>", "Resumen: el titulo de Indicadores debe incluir dos puntos.");
-assertFileIncludes(htmlCode, "Mantén presionada una tarjeta y arrástrala para ordenar los indicadores como prefieras.", "Resumen: debe explicar como ordenar indicadores arrastrando.");
+assertFileIncludes(htmlCode, "Los bloques principales son fijos. Mantén presionadas las tarjetas inferiores y arrástralas para ordenarlas como prefieras.", "Resumen: debe distinguir los bloques fijos de las tarjetas que se pueden ordenar.");
 assertFileIncludes(stylesCode, ".section-helper", "Resumen: el texto de ayuda debe tener estilo propio.");
 assertFileIncludes(htmlCode, 'src="assets/ermif-logo.png"', "Marca: el login debe usar el logo completo ERMIF.");
 assertFileIncludes(htmlCode, 'src="assets/ermif-mark.png"', "Marca: la barra lateral debe usar el simbolo compacto ERMIF.");
