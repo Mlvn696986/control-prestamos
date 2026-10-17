@@ -1242,6 +1242,17 @@
     font-weight: 700;
     border-radius: 8px;
   }
+  .app-shell:has(#dashboardView.active-view) .sidebar-feedback {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(210px, 1fr) minmax(0, 2fr);
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+  }
+  .app-shell:has(#dashboardView.active-view) .sidebar-feedback p {
+    margin: 0;
+  }
   .app-shell:has(#dashboardView.active-view) .sidebar .sidebar-legal  {
     grid-column: 1 / -1;
     display: flex;
@@ -1274,6 +1285,10 @@
 }
 
 @media (max-width: 680px)  {
+  .app-shell:has(#dashboardView.active-view) .sidebar-feedback {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
   .app-shell:has(#dashboardView.active-view) .sidebar  {
     padding: 12px 14px;
     gap: 10px;
