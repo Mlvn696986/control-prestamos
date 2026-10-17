@@ -1074,6 +1074,7 @@ async function handleGoogleAuth() {
   }
   setButtonBusy(elements.googleAuthButton, true, "Conectando con Google...");
   try {
+    if (elements.authMode.value === "signup") window.ERMIFAnalytics?.track("sign_up_start");
     const { error } = await saas.client.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -2789,6 +2790,7 @@ async function handleRegister(event) {
       saas.session = data.session;
       await loadCloudState();
     } else {
+      window.ERMIFAnalytics?.track("sign_up_start");
       const { data, error } = await saas.client.auth.signUp({
         email,
         password,
@@ -3000,6 +3002,7 @@ async function handleClientSubmit(event) {
     state.clients.unshift(client);
   }
   state.loans.unshift(loan);
+  syncAcquisitionIdentity();
 
   event.target.reset();
   setDefaultDates();
@@ -3704,6 +3707,7 @@ function setView(view) {
   elements.viewTitle.textContent = title;
   scheduleClientHorizontalScrollbarUpdate();
   if (view === "admin") refreshAdminPanel();
+  if (view === "plans" && isCloudMode()) window.ERMIFAnalytics?.track("view_plans");
 }
 
 function renderDashboard() {
@@ -7218,6 +7222,7 @@ async function handlePlanRequestSubmit(event) {
 
   try {
     const checkoutUrl = await createPlanCheckout(requestedPlan, elements.planRequestMessage.value.trim());
+    window.ERMIFAnalytics?.track("begin_subscription");
     elements.planRequestDialog.close();
     window.location.href = checkoutUrl;
   } catch (error) {

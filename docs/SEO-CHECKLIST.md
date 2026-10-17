@@ -1,6 +1,6 @@
 # ERMIF · Estado y administración SEO
 
-Última revisión: **17 de octubre de 2026**, America/Lima. Etapa actual: **1 — buscadores, bots y línea base**. Este archivo registra resultados comprobados; la [guía de operación](SEO-GUIA-ETAPA-1.md) contiene instrucciones, errores habituales y fuentes oficiales.
+Última revisión: **17 de octubre de 2026**, America/Lima. Etapa actual: **2 — analítica, conversiones y atribución**. Este archivo registra resultados comprobados; la [guía de operación](SEO-GUIA-ETAPA-1.md) contiene instrucciones, errores habituales y fuentes oficiales.
 
 ERMIF es software para administrar préstamos; no otorga préstamos. Una configuración correcta permite el rastreo y la medición, pero no garantiza indexación, posiciones, citas en IA ni ventas.
 
@@ -21,6 +21,21 @@ ERMIF es software para administrar préstamos; no otorga préstamos. Una configu
 - [ ] Disponer de datos suficientes de Core Web Vitals y medir laboratorio antes de optimizar rendimiento.
 
 Conservar ambos registros DNS de verificación. No se sustituyeron registros de correo ni de la web. Sus valores no se copian a esta documentación. No repetir el alta de las propiedades.
+
+## Estado de la etapa 2
+
+- [x] Propiedad GA4 **ERMIF 559377556**, flujo web **16146568206**, etiqueta **G-12SC7RHS97**; Perú/PEN/empresa de 1 a 10 personas comprobados.
+- [x] Medición mejorada y datos granulares desactivados; Signals no activado; personalización de anuncios no permitida en ninguna región; retención de usuarios/eventos de 2 meses sin prolongación por actividad.
+- [x] Cuatro eventos clave creados sin valor monetario predeterminado: registro, primer cliente, primer préstamo y primer pago.
+- [x] Código centralizado para diez eventos, consentimiento adicional para Google inicialmente desmarcado y carga solo después de autorizarlo.
+- [x] ChatGPT, página Seguridad y categorías cerradas de utm_content incorporadas; primera atribución preservada.
+- [x] Respaldo acotado del módulo verificado; migración v2 aplicada; RPC exclusivas del servidor y dos visitas existentes preservadas.
+- [x] Validación completa de código/build y pruebas financieras, de privacidad, atribución y PostgreSQL.
+- [ ] Verificación final del despliegue y recepción de una visita en Tiempo real de Google. No confundir eventos configurados con conversiones recibidas.
+- [ ] Observar registros y pagos reales futuros; no se generaron conversiones ficticias en producción.
+- [ ] Renovaciones: propuesta de módulo de retención separada; no implementadas ni confundidas con primeros pagos.
+
+La [guía de la etapa 2](SEO-GUIA-ETAPA-2.md) explica cada evento, cobertura, UTM, archivos modificados, comprobaciones, errores y límites. El informe de ERMIF es la fuente de los hitos comerciales verificados; Google depende además de su consentimiento específico y del navegador.
 
 ## Resultados observados por página
 
@@ -85,7 +100,7 @@ No falta ninguna acción manual para completar las verificaciones de propiedad. 
 4. **Core Web Vitals:** Google informó falta de datos suficientes tanto en móvil como en ordenador. No se registra una aprobación ni un incumplimiento. La medición de laboratorio y optimización corresponden a la etapa de rendimiento.
 5. HTTPS funciona en las siete URLs comprobadas y en las pruebas en vivo. No se obtuvo un informe agregado independiente de HTTPS en Search Console; no se marca ese informe como aprobado.
 
-## Incidencia encontrada: atribución desde Seguridad
+## Incidencia corregida en la etapa 2: atribución desde Seguridad
 
 **PROBLEMA:** `/seguridad/` es pública e indexable, pero no está admitida como página de entrada por todas las capas de la medición propia.
 
@@ -102,13 +117,13 @@ No falta ninguna acción manual para completar las verificaciones de propiedad. 
 3. Probar migración repetida, conservación de visitas, aceptación de `/seguridad/` y rechazo de rutas privadas; verificar respaldo y esquema antes de aplicarla en producción.
 4. Aplicar SQL, servidor y cliente en ese orden; probar una visita consentida y su revocación sin enviar datos personales a servicios externos.
 
-**CÓMO COMPROBARLO:** prueba integrada de visita consentida con entrada `/seguridad/`, consulta del informe agregado y prueba negativa con ruta privada. **Pendiente: no se ha aplicado esta migración.**
+**CÓMO COMPROBARLO:** prueba integrada de visita consentida con entrada `/seguridad/`, consulta del informe agregado y prueba negativa con ruta privada. **Migración v2 aplicada el 17/10/2026 con respaldo, pruebas PostgreSQL y comprobación de permisos.**
 
 ## Próximas etapas: estado real
 
 | Etapa | Estado y siguiente entrega |
 |---|---|
-| 2 · Analítica y atribución | Medición propia existente de visita consentida → registro confirmado → primer préstamo → primer pago verificado de suscripción. Completar cobertura y validación real. **GA4 y los eventos adicionales solicitados aún no configurados**. ChatGPT no tiene clasificación específica y `utm_content` no está implementado. No confundir pago de suscripción con pagos de los préstamos del cliente. |
+| 2 · Analítica y atribución | Medición propia existente de visita consentida → registro confirmado → primer préstamo → primer pago verificado de suscripción. Completar cobertura y validación real. **GA4 configurado y diez eventos instrumentados con consentimiento adicional**. ChatGPT y `utm_content` implementados; primer cliente añadido. Ver checklist de etapa 2 para distinguir publicación y recepción real de eventos. No confundir pago de suscripción con pagos de los préstamos del cliente. |
 | 3 · Páginas y arquitectura comercial | Existen siete páginas públicas. `/reclamaciones/` independiente y las páginas de cobranzas, ampliaciones, herramientas y guías siguen pendientes; el formulario de reclamaciones actual permanece disponible en la aplicación. Crear contenido útil antes de ampliar el sitemap. |
 | 4 · Captación y contenido | Investigar intención y competencia antes de calculadoras, Excel y guías. Sin volúmenes ni resultados comerciales inventados. |
 | 5 · Rendimiento | Medir campo y laboratorio; corregir solo problemas demostrados. |

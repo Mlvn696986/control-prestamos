@@ -1,7 +1,7 @@
 const { transformSync } = require('esbuild');
 
 // Only first-party public UI assets. The application and vendor scripts stay separate.
-const optimizedFiles = new Set(['landing.js', 'landing.css', 'acquisition.js', 'acquisition.css']);
+const optimizedFiles = new Set(['landing.js', 'landing.css', 'acquisition.js', 'measurement.js', 'acquisition.css']);
 function optimizePublicAsset(name, content) {
   if (!optimizedFiles.has(name)) return content;
   return transformSync(String(content), {

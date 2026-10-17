@@ -1,8 +1,9 @@
 const CONSENT_VERSION = "2026-10-16";
-const PUBLIC_PATHS = new Set(["/", "/precios/", "/como-funciona/", "/contacto/", "/privacidad/", "/terminos/", "/app/"]);
-const SOURCES = new Set(["directo", "google", "bing", "duckduckgo", "facebook", "instagram", "tiktok", "youtube", "linkedin", "whatsapp", "email", "otro"]);
+const PUBLIC_PATHS = new Set(["/", "/precios/", "/como-funciona/", "/contacto/", "/seguridad/", "/privacidad/", "/terminos/", "/app/"]);
+const SOURCES = new Set(["directo", "google", "bing", "duckduckgo", "chatgpt", "facebook", "instagram", "tiktok", "youtube", "linkedin", "whatsapp", "email", "otro"]);
 const MEDIUMS = new Set(["direct", "organic", "paid_search", "paid_social", "social", "email", "referral", "other"]);
 const CAMPAIGNS = new Set(["", "lanzamiento-ermif", "contenido-educativo"]);
+const CONTENTS = new Set(["", "menu", "portada", "precios", "video-demo", "guia", "calculadora", "enlace-perfil"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_BODY_BYTES = 1024;
 
@@ -74,14 +75,14 @@ export async function handleAcquisitionRequest(request, env, services) {
     if (url.search) fail(400, "No se admiten parametros en esta solicitud.");
     if (url.pathname === "/api/acquisition/visit") {
       await limitPublicRequest(request, env);
-      const body = await bodyObject(request, ["visitor_id", "consent", "consent_version", "landing_path", "source", "medium", "campaign_id"]);
+      const body = await bodyObject(request, ["visitor_id", "consent", "consent_version", "landing_path", "source", "medium", "campaign_id", "content_id"]);
       const id = visitorId(body);
       if (body.consent !== true || body.consent_version !== CONSENT_VERSION) fail(400, "Es necesario aceptar la medicion opcional vigente.");
-      if (!PUBLIC_PATHS.has(body.landing_path) || !SOURCES.has(body.source) || !MEDIUMS.has(body.medium) || !CAMPAIGNS.has(body.campaign_id)) fail(400, "Datos de procedencia invalidos.");
-      const result = await services.rpc("acquisition_visit_create", {
+      if (!PUBLIC_PATHS.has(body.landing_path) || !SOURCES.has(body.source) || !MEDIUMS.has(body.medium) || !CAMPAIGNS.has(body.campaign_id) || !CONTENTS.has(body.content_id ?? "")) fail(400, "Datos de procedencia invalidos.");
+      const result = await services.rpc("acquisition_visit_create_v2", {
         p_visitor_id: id,
         p_landing_path: body.landing_path, p_source: body.source, p_medium: body.medium,
-        p_campaign_id: body.campaign_id, p_consent_version: body.consent_version,
+        p_campaign_id: body.campaign_id, p_consent_version: body.consent_version, p_content_id: body.content_id ?? "",
       });
       return reply(result, result?.revoked === true ? 200 : 201);
     }
@@ -90,7 +91,7 @@ export async function handleAcquisitionRequest(request, env, services) {
       const id = visitorId(body);
       const user = await services.user(request);
       if (!UUID.test(String(user.id || ""))) fail(401, "Sesion no valida.");
-      return reply(await services.rpc("acquisition_identify", { p_visitor_id: id, p_user_id: user.id }));
+      return reply(await services.rpc("acquisition_identify_v2", { p_visitor_id: id, p_user_id: user.id }));
     }
     if (url.pathname === "/api/acquisition/revoke") {
       await limitPublicRequest(request, env);
