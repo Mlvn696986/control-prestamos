@@ -2590,6 +2590,11 @@ input.field-success {
   width: min(860px, calc(100vw - 28px));
 }
 
+#privacyRequestDialog > .legal-panel,
+#accountDeletionDialog > .legal-panel {
+  width: 100%;
+}
+
 .legal-copy {
   display: grid;
   gap: 11px;
@@ -2637,10 +2642,12 @@ input.field-success {
   gap: 16px;
 }
 
-.legal-inline-note {
+.claim-book-notice.legal-inline-note {
   display: block;
   margin: 0;
-  line-height: 1.45;
+  line-height: 1.6;
+  text-align: justify;
+  text-align-last: left;
 }
 
 .claim-book-notice {
