@@ -38,6 +38,12 @@ Los datos demo permanecen en el almacenamiento local del navegador.
 Abrir directamente el index.html de la raiz no es el procedimiento de prueba: mantiene la configuracion publica de produccion.
 
 Los archivos fuente de interfaz son `index.html`, `app.js`, `styles.css` y `assets`.
+La portada comercial se genera desde `marketing/site.cjs`, con estilos y recursos en `public/`.
+El build publica esa portada en `/` y la aplicacion original de `index.html` en `/app/`.
+Las rutas publicas son `/precios/`, `/como-funciona/`, `/contacto/`, `/terminos/` y `/privacidad/`.
+Los textos legales se extraen del mismo `index.html` mediante `marketing/legal.cjs`, sin mantener copias independientes.
+`/app/?mode=signup` abre registro y `/app/?mode=login` abre acceso. Los callbacks antiguos a la raiz se conservan.
+La captura `public/dashboard-preview.webp` utiliza datos ficticios y se debe regenerar con una cartera de demostracion, nunca con clientes reales.
 Tras cambiarlos, vuelve a ejecutar `npm run build:local`; si la vigilancia de archivos de Windows se detiene, reinicia `npm run dev`.
 No edites `dist` ni `dist-local`: son resultados generados.
 Para probar autenticacion real o SQL hace falta un proyecto Supabase de pruebas separado, autorizado y con datos ficticios.

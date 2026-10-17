@@ -22,7 +22,7 @@ test("servidor antiguo sirve solo demo y no expone archivos privados", async () 
     for (const file of ["/.git/config", "/.dev.vars", "/backups/test.zip", "/src/worker.js", "/supabase-schema.sql", "/api/billing/checkout"]) {
       assert.equal((await fetch(base + file)).status, 404, file);
     }
-    for (const suffix of ["/", "/?billing=return", "/?code=fixture"]) {
+    for (const suffix of ["/", "/?utm_source=fixture"]) {
       const response = await fetch(base + suffix);
       assert.equal(response.status, 200, suffix);
       assert.match(await response.text(), /<link\b[^>]*rel="canonical"[^>]*href="https:\/\/ermif\.com\/"/);
@@ -40,7 +40,34 @@ test("servidor antiguo sirve solo demo y no expone archivos privados", async () 
     const sitemapText = await sitemap.text();
     assert.match(sitemapText, /<urlset\b[^>]*xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9"/);
     const locations = Array.from(sitemapText.matchAll(/<loc>\s*([^<]+)\s*<\/loc>/g), match => match[1].trim());
-    assert.deepEqual(locations, ["https://ermif.com/"]);
+    assert.deepEqual(locations, ["", "precios/", "como-funciona/", "contacto/", "privacidad/", "terminos/"].map((route) => "https://ermif.com/" + route));
+    for (const location of locations) {
+      const url = new URL(location);
+      const page = await fetch(base + url.pathname);
+      assert.equal(page.status, 200, url.pathname);
+      const html = await page.text();
+      assert.ok(html.includes('rel="canonical" href="' + location + '"'), url.pathname);
+      assert.doesNotMatch(html, /<meta\b[^>]*name="robots"[^>]*content="[^"]*noindex/);
+    }
+    for (const suffix of ["/?code=fixture&state=demo", "/?billing=return", "/index.html?error_code=otp_expired"]) {
+      const redirected = await fetch(base + suffix, { redirect: "manual" });
+      assert.equal(redirected.status, 302, suffix);
+      assert.equal(redirected.headers.get("Location"), "/app/" + new URL(base + suffix).search);
+    }
+    for (const suffix of ["/app/", "/app/?mode=login", "/app/?mode=signup", "/?code=fixture"]) {
+      const response = await fetch(base + suffix);
+      assert.equal(response.status, 200, suffix);
+      assert.equal(response.headers.get("X-Robots-Tag"), "noindex");
+      const html = await response.text();
+      assert.match(html, /<meta\b[^>]*name="robots"[^>]*content="[^"]*noindex/);
+      assert.doesNotMatch(html, /rel="canonical"/);
+      assert.match(html, /id="registerForm"/);
+      assert.match(html, /src="\/app\.js"/);
+      assert.match(html, /href="\/assets\/summary\.css"/);
+      assert.doesNotMatch(html, /(?:src|href)="assets\//);
+    }
+    assert.equal((await fetch(base + "/precios?campaign=fixture", { redirect: "manual" })).headers.get("Location"), "/precios/?campaign=fixture");
+    assert.equal((await fetch(base + "/app?mode=signup", { redirect: "manual" })).headers.get("Location"), "/app/?mode=signup");
     assert.doesNotMatch(sitemapText, /<!doctype html|<html/i);
     const notFoundDocument = await fetch(base + "/404.html");
     assert.equal(notFoundDocument.status, 200);

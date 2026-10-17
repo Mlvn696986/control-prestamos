@@ -3,16 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Control de Prestamos</title>
-    <link rel="canonical" href="https://ermif.com/" />
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="assets/summary.css" />
+    <title>Acceder a mi cuenta | ERMIF</title>
+    <meta name="robots" content="noindex" />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/assets/summary.css" />
   </head>
   <body>
     <div id="authScreen" class="auth-screen">
       <section class="auth-panel" aria-labelledby="authTitle">
         <div class="brand-lockup brand-logo-lockup">
-          <img class="brand-logo brand-logo-auth" src="assets/ermif-logo.png" alt="ERMIF - Gestion inteligente de prestamos" />
+          <img class="brand-logo brand-logo-auth" src="/assets/ermif-logo.png" alt="ERMIF - Gestion inteligente de prestamos" />
           <h1 id="authTitle" class="sr-only">ERMIF - Gestion inteligente de prestamos</h1>
         </div>
 
@@ -74,7 +75,7 @@
             </span>
           </label>
           <button class="primary-button" type="submit">
-            <span id="authSubmitText">Crear mi plataforma</span>
+            <span id="authSubmitText">Crear cuenta gratis</span>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 12h14" />
               <path d="m13 6 6 6-6 6" />
@@ -83,6 +84,8 @@
         </form>
 
         <div class="auth-legal-links" aria-label="Documentos legales">
+          <a class="inline-link" href="/">Volver al inicio de ERMIF</a>
+          <span aria-hidden="true">/</span>
           <button class="inline-link" type="button" data-open-claims>Libro de Reclamaciones</button>
           <span aria-hidden="true">/</span>
           <button class="inline-link" type="button" data-open-privacy>Politica de Privacidad</button>
@@ -95,7 +98,7 @@
     <main id="appShell" class="app-shell is-hidden">
       <aside class="sidebar">
         <div class="brand-lockup compact brand-sidebar-lockup">
-          <img class="brand-logo brand-logo-sidebar" src="assets/ermif-mark.png" alt="" aria-hidden="true" />
+          <img class="brand-logo brand-logo-sidebar" src="/assets/ermif-mark.png" alt="" aria-hidden="true" />
           <button id="profileEditTrigger" class="profile-edit-trigger" type="button" title="Editar mi perfil" aria-label="Editar mi perfil">
             <span class="profile-sidebar-copy">
               <strong id="businessLabel">Control</strong>
@@ -153,7 +156,7 @@
           <button class="sidebar-terms-link" type="button" data-open-privacy>Politica de Privacidad</button>
           <button class="sidebar-terms-link" type="button" data-open-privacy-request>Privacidad y mis datos</button>
           <button class="sidebar-claim-image-button" type="button" data-open-claims aria-label="Abrir Libro de Reclamaciones">
-            <img src="assets/libro-reclamaciones.png" alt="Libro de Reclamaciones" />
+            <img src="/assets/libro-reclamaciones.png" alt="Libro de Reclamaciones" />
           </button>
         </div>
       </aside>
@@ -252,7 +255,7 @@
           <div class="summary-dashboard">
             <section class="summary-hero panel">
               <div>
-                <p class="eyebrow"><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#grid"></use></svg> Panel ejecutivo</p>
+                <p class="eyebrow"><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#grid"></use></svg> Panel ejecutivo</p>
                 <h3>Resumen financiero</h3>
                 <span id="summaryHeroMeta">Lectura general de tu cartera.</span>
               </div>
@@ -261,7 +264,7 @@
 
             <section class="summary-filters panel" aria-label="Filtros generales del resumen">
               <fieldset class="summary-date-group">
-                <legend><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#calendar"></use></svg> Periodo de fechas</legend>
+                <legend><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#calendar"></use></svg> Periodo de fechas</legend>
                 <div class="summary-date-fields">
                   <label>
                     Desde
@@ -285,7 +288,7 @@
                 <input id="summaryCompare" data-dashboard-filter type="hidden" value="none" />
               </div>
               <div class="summary-filter-actions">
-                <button id="summaryExport" class="ghost-button" type="button"><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#download"></use></svg>Exportar resumen</button>
+                <button id="summaryExport" class="ghost-button" type="button"><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#download"></use></svg>Exportar resumen</button>
               </div>
             </section>
 
@@ -304,24 +307,24 @@
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Cobranza rapida</p>
-                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#coin"></use></svg>Cobros y vencimientos</h3>
+                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#coin"></use></svg>Cobros y vencimientos</h3>
                 </div>
               </div>
               <div class="summary-collection-grid">
                 <section>
-                  <h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#calendar"></use></svg>Proximos 10 dias</h4>
+                  <h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#calendar"></use></svg>Proximos 10 dias</h4>
                   <div id="summaryTenDayList" class="summary-mini-list empty-target"></div>
                 </section>
                 <section>
-                  <h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#clock"></use></svg>Proximos 2 dias</h4>
+                  <h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#clock"></use></svg>Proximos 2 dias</h4>
                   <div id="summaryTwoDayList" class="summary-mini-list empty-target"></div>
                 </section>
                 <section>
-                  <h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#coin"></use></svg>Cobrar hoy</h4>
+                  <h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#coin"></use></svg>Cobrar hoy</h4>
                   <div id="summaryTodayList" class="summary-mini-list empty-target"></div>
                 </section>
                 <section>
-                  <h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#shield"></use></svg>Cobros vencidos</h4>
+                  <h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#shield"></use></svg>Cobros vencidos</h4>
                   <div id="summaryOverdueList" class="summary-mini-list empty-target"></div>
                 </section>
               </div>
@@ -341,14 +344,14 @@
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Listas inteligentes</p>
-                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#users"></use></svg>Clientes y movimientos clave</h3>
+                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#users"></use></svg>Clientes y movimientos clave</h3>
                 </div>
               </div>
               <div class="summary-lists-grid">
-                <section><h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#wallet"></use></svg>Clientes con mayor deuda</h4><div id="summaryDebtList" class="summary-mini-list empty-target"></div></section>
-                <section><h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#trend"></use></svg>Clientes mas rentables</h4><div id="summaryProfitList" class="summary-mini-list empty-target"></div></section>
-                <section><h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#layers"></use></svg>Clientes con mas ampliaciones</h4><div id="summaryExtensionList" class="summary-mini-list empty-target"></div></section>
-                <section><h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#check"></use></svg>Clientes puntuales</h4><div id="summaryPunctualList" class="summary-mini-list empty-target"></div></section>
+                <section><h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#wallet"></use></svg>Clientes con mayor deuda</h4><div id="summaryDebtList" class="summary-mini-list empty-target"></div></section>
+                <section><h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#trend"></use></svg>Clientes mas rentables</h4><div id="summaryProfitList" class="summary-mini-list empty-target"></div></section>
+                <section><h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#layers"></use></svg>Clientes con mas ampliaciones</h4><div id="summaryExtensionList" class="summary-mini-list empty-target"></div></section>
+                <section><h4><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#check"></use></svg>Clientes puntuales</h4><div id="summaryPunctualList" class="summary-mini-list empty-target"></div></section>
               </div>
             </section>
 
@@ -364,7 +367,7 @@
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Alertas</p>
-                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#shield"></use></svg>Observaciones de la cartera</h3>
+                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#shield"></use></svg>Observaciones de la cartera</h3>
                 </div>
               </div>
               <div id="summaryAlerts" class="summary-alert-list"></div>
@@ -374,41 +377,41 @@
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Graficos y analisis</p>
-                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#chart"></use></svg>Graficos y analisis</h3>
+                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#chart"></use></svg>Graficos y analisis</h3>
                 </div>
               </div>
               <div class="summary-charts-grid">
                 <section class="summary-chart-panel">
-                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#chart"></use></svg>Cobros reales por mes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en enero cobraste S/1,000 de capital y S/300 de intereses, el grafico muestra ambos montos para comparar cada mes.">i</span></h3>
+                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#chart"></use></svg>Cobros reales por mes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en enero cobraste S/1,000 de capital y S/300 de intereses, el grafico muestra ambos montos para comparar cada mes.">i</span></h3>
                   <div class="summary-chart-legend"><span><i class="summary-swatch-capital"></i>Capital</span><span><i class="summary-swatch-interest"></i>Intereses</span></div>
                   <div id="summaryMonthlyChart" class="summary-bar-chart"></div>
                 </section>
                 <section class="summary-chart-panel">
-                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#wallet"></use></svg>Prestamos otorgados por mes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en marzo prestaste S/1,000 y registraste una ampliacion de S/300, el grafico mostrara S/1,300 otorgados ese mes.">i</span></h3>
+                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#wallet"></use></svg>Prestamos otorgados por mes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en marzo prestaste S/1,000 y registraste una ampliacion de S/300, el grafico mostrara S/1,300 otorgados ese mes.">i</span></h3>
                   <div id="summaryLoansChart" class="summary-bar-chart"></div>
                 </section>
                 <section class="summary-chart-panel">
-                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#layers"></use></svg>Cartera por estado <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si tienes 8 prestamos activos, 3 vencidos y 4 cerrados, el grafico reparte la cartera segun esos estados.">i</span></h3>
+                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#layers"></use></svg>Cartera por estado <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si tienes 8 prestamos activos, 3 vencidos y 4 cerrados, el grafico reparte la cartera segun esos estados.">i</span></h3>
                   <div id="summaryStatusChart" class="summary-donut-layout"></div>
                 </section>
                 <section class="summary-chart-panel">
-                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#compare"></use></svg>Capital vs intereses <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si recibiste S/3,000 de capital y S/700 de intereses, el grafico separa que parte es capital y que parte es ganancia.">i</span></h3>
+                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#compare"></use></svg>Capital vs intereses <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si recibiste S/3,000 de capital y S/700 de intereses, el grafico separa que parte es capital y que parte es ganancia.">i</span></h3>
                   <div id="summaryCapitalChart" class="summary-horizontal-chart"></div>
                 </section>
                 <section class="summary-chart-panel">
-                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#calendar"></use></svg>Modalidad de interes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si tienes 5 prestamos mensuales, 2 quincenales y 1 semanal, el grafico muestra como estan distribuidos.">i</span></h3>
+                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#calendar"></use></svg>Modalidad de interes <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si tienes 5 prestamos mensuales, 2 quincenales y 1 semanal, el grafico muestra como estan distribuidos.">i</span></h3>
                   <div id="summaryModeChart" class="summary-donut-layout"></div>
                 </section>
                 <section class="summary-chart-panel">
-                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#trend"></use></svg>Proyeccion de ganancias <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si tus prestamos actuales proyectan S/1,000 por mes, el grafico estima cuanto podrias ganar en 3, 6 o 12 meses.">i</span></h3>
+                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#trend"></use></svg>Proyeccion de ganancias <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si tus prestamos actuales proyectan S/1,000 por mes, el grafico estima cuanto podrias ganar en 3, 6 o 12 meses.">i</span></h3>
                   <div id="summaryProjectionChart" class="summary-projection-grid"></div>
                 </section>
                 <section class="summary-chart-panel">
-                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#clock"></use></svg>Tendencia de morosidad <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en abril hubo 1 vencido y en mayo hubo 4, el grafico muestra si los atrasos estan subiendo o bajando.">i</span></h3>
+                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#clock"></use></svg>Tendencia de morosidad <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si en abril hubo 1 vencido y en mayo hubo 4, el grafico muestra si los atrasos estan subiendo o bajando.">i</span></h3>
                   <div id="summaryDelinquencyChart" class="summary-bar-chart"></div>
                 </section>
                 <section class="summary-chart-panel">
-                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="assets/summary-icons.svg#compare"></use></svg>Flujo de caja <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si entraron S/5,000 por pagos y salieron S/3,000 en nuevos prestamos, el flujo queda positivo en S/2,000.">i</span></h3>
+                  <h3><svg class="summary-icon" aria-hidden="true" focusable="false"><use href="/assets/summary-icons.svg#compare"></use></svg>Flujo de caja <span class="info-dot" tabindex="0" data-tip="Ejemplo: Si entraron S/5,000 por pagos y salieron S/3,000 en nuevos prestamos, el flujo queda positivo en S/2,000.">i</span></h3>
                   <div id="summaryCashflowChart" class="summary-horizontal-chart"></div>
                 </section>
               </div>
@@ -1597,7 +1600,7 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js"></script>
-    <script src="app.js"></script>
+    <script src="/supabase-config.js"></script>
+    <script src="/app.js"></script>
   </body>
 </html>
