@@ -100,7 +100,7 @@ Los correos ERMIF están activados desde el 08/10/2026; estado, límites, planti
 
 ## Medición de captación y conversiones
 
-El informe está en **Admin → Captación y conversiones**. Es analítica propia de ERMIF, sin Google Analytics ni identificador GA requerido. Cuenta navegadores con consentimiento, altas nuevas confirmadas, cuentas con un primer préstamo guardado y primeros pagos de suscripción confirmados por Mercado Pago. No mide los pagos de los clientes prestatarios ni convierte planes concedidos manualmente en ventas.
+El informe está en **Admin → Captación y conversiones**. Es analítica propia de ERMIF. La opción adicional de Google Analytics y su cobertura se documentan en docs/SEO-GUIA-ETAPA-2.md. El informe propio no depende de Google. Cuenta navegadores con consentimiento, altas nuevas confirmadas, cuentas con un primer préstamo guardado y primeros pagos de suscripción confirmados por Mercado Pago. No mide los pagos de los clientes prestatarios ni convierte planes concedidos manualmente en ventas.
 
 Los filtros 30/90/180 días agrupan por primera visita medida; los hitos posteriores pertenecen a esa misma cohorte. No es una suma de eventos ocurridos durante el período. No atribuye cuentas anteriores al corte de instalación. La confirmación en otro navegador/dispositivo puede perder atribución; rechazos, bloqueadores y almacenamiento borrado afectan la cobertura. No presentar estos resultados como tráfico total o ingresos netos.
 
@@ -112,7 +112,7 @@ Ejemplo de enlace de campaña admitido:
 https://ermif.com/precios/?utm_source=facebook&utm_medium=paid_social&utm_campaign=lanzamiento-ermif
 ```
 
-Orígenes admitidos: `directo`, `google`, `bing`, `duckduckgo`, `facebook`, `instagram`, `tiktok`, `youtube`, `linkedin`, `whatsapp`, `email`, `otro`. Medios: `direct`, `organic`, `paid_search`, `paid_social`, `social`, `email`, `referral`, `other`. Campañas iniciales: `lanzamiento-ermif`, `contenido-educativo`. No se guarda texto UTM arbitrario, `utm_term`, `utm_content`, URLs completas ni referentes completos. Para incorporar campañas, actualizar las listas cerradas del cliente, Worker y SQL en una migración revisada; no usar nombres, correos o documentos en los enlaces.
+Orígenes admitidos: `directo`, `google`, `bing`, `duckduckgo`, `chatgpt`, `facebook`, `instagram`, `tiktok`, `youtube`, `linkedin`, `whatsapp`, `email`, `otro`. Medios: `direct`, `organic`, `paid_search`, `paid_social`, `social`, `email`, `referral`, `other`. Campañas iniciales: `lanzamiento-ermif`, `contenido-educativo`. No se guarda texto UTM arbitrario, `utm_term`, URLs completas ni referentes completos. `utm_content` admite únicamente categorías cerradas descritas en la guía de etapa 2. Para incorporar campañas, actualizar las listas cerradas del cliente, Worker y SQL en una migración revisada; no usar nombres, correos o documentos en los enlaces.
 
 `supabase-acquisition.sql` agrega tablas privadas y RPC exclusivas del backend. No cambia cálculos ni filas financieras existentes. `subscription_first_payments` conserva un comprobante operativo mínimo del primer pago verificado (cuenta, identificador del proveedor, fecha y plan), independiente de consentimiento; permite conciliar el pago si la identificación llega después. Solo cuentas atribuidas con consentimiento aparecen en el informe. El estado de la factura recurrente no sustituye la consulta del pago real. Un fallo de persistencia responde 500 al webhook para permitir reintento, con deduplicación por pago. No se hacen pagos reales durante las pruebas.
 
@@ -122,7 +122,7 @@ Para publicar: verificar respaldo, revisar/aplicar SQL **antes** de desplegar el
 
 ## Recursos publicos ligeros
 
-La web comercial usa exclusivamente `landing.css`, `landing.js` y los dos recursos de consentimiento `acquisition.*`. La aplicacion completa, Supabase y los estilos de resumen se cargan al entrar en `/app/`; esa ruta conserva registro, acceso, recuperacion y formularios existentes.
+La carga inicial comercial usa `landing.css`, `landing.js` y los dos recursos de consentimiento `acquisition.*`. Solo con autorización adicional se carga `measurement.js` y posteriormente la etiqueta de Google. La aplicacion completa, Supabase y los estilos de resumen se cargan al entrar en `/app/`; esa ruta conserva registro, acceso, recuperacion y formularios existentes.
 
 El build compacta solo esos cuatro archivos publicos con esbuild; los fuentes permanecen legibles y la demo usa la misma transformacion. Las pruebas de consentimiento y callbacks ejecutan el JavaScript transformado. No se compactan ni mezclan `app.js`, codigo de terceros ni el modulo de administracion.
 

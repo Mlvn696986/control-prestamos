@@ -11,6 +11,7 @@ const fixture = `
   create table auth.users (
     id uuid primary key, created_at timestamptz not null default now(), email_confirmed_at timestamptz
   );
+  create table public.clients (id uuid primary key default gen_random_uuid(),user_id uuid references auth.users(id),created_at timestamptz default now());
   create table public.loans (
     id uuid primary key default gen_random_uuid(), user_id uuid references auth.users(id) on delete cascade,
     created_at timestamptz default now(), amount numeric, note text
@@ -60,10 +61,28 @@ test("optional acquisition measurement runs securely and idempotently in Postgre
     assert.equal(new Date(await scalar("select cutover_at from public.acquisition_settings")).getTime(), new Date(firstCutover).getTime(), "reapplying migration must not reset measurement start");
     assert.equal(await scalar("select count(*)::int from pg_trigger where tgname='acquisition_activation_after'"), 1);
 
+    await scenario("server milestones distinguish confirmation, first client, activation and verified subscription", async () => {
+      const vid=await visit(); const uid=await user();
+      const state=()=>rpc('acquisition_identify_v2',[vid,uid]);
+      assert.deepEqual(await state(),{linked:true,milestones:{sign_up:true,first_client_created:false,first_loan_created:false,subscription_paid:false}});
+      await db.query("insert into clients(user_id) values($1)",[uid]);
+      assert.equal((await state()).milestones.first_client_created,true);
+      assert.equal((await report()).totals.first_clients,1);
+      await db.query("delete from clients where user_id=$1",[uid]);
+      assert.equal((await state()).milestones.first_client_created,true,'deleting a client does not undo an observed milestone');
+      await loan(uid); assert.equal((await state()).milestones.first_loan_created,true);
+      await rpc('acquisition_record_payment',[uid,'verified-fixture',await paidAt(0),'pro']);
+      const result=await state();assert.equal(result.milestones.subscription_paid,true);
+      assert.ok(!JSON.stringify(result).includes(uid));assert.ok(!JSON.stringify(result).includes('verified-fixture'));
+      assert.deepEqual(await rpc('acquisition_identify_v2',[vid,await user()]),{linked:false});
+    });
+
     await scenario("browser roles cannot read, forge or report measurement; backend RPC privileges are explicit", async () => {
       const signatures = [
         "public.acquisition_visit_create(uuid,text,text,text,text,text)",
         "public.acquisition_identify(uuid,uuid)",
+        "public.acquisition_identify_v2(uuid,uuid)",
+        "public.acquisition_visit_create_v2(uuid,text,text,text,text,text,text)",
         "public.acquisition_record_payment(uuid,text,timestamptz,text)",
         "public.acquisition_revoke(uuid)", "public.acquisition_purge()", "public.acquisition_report(integer)",
       ];
@@ -86,7 +105,7 @@ test("optional acquisition measurement runs securely and idempotently in Postgre
       assert.equal(rels.length, 5);
       assert.ok(rels.every((row) => row.relrowsecurity));
       const functions = await rows("select prosecdef,proconfig from pg_proc where proname like 'acquisition_%'");
-      assert.equal(functions.length, 7);
+      assert.equal(functions.length, 10);
       assert.ok(functions.every((row) => row.prosecdef && row.proconfig.some((item) => /^search_path=(?:"")?$/.test(item))));
       await db.exec("set local role service_role");
       const created = await rpc("acquisition_visit_create", [randomUUID(), "/", "directo", "direct", "", "2026-10-16"]);
@@ -114,7 +133,7 @@ test("optional acquisition measurement runs securely and idempotently in Postgre
       }
       assert.equal((await report()).totals.visitors, 1);
       const columns = await rows("select column_name,data_type from information_schema.columns where table_schema='public' and table_name in ('acquisition_visits','acquisition_accounts')");
-      assert.ok(columns.every((row) => !/email|phone|name|note|amount|loan|client|payload|referrer|ip_address|user_agent/.test(row.column_name)));
+      assert.ok(columns.every((row) => row.column_name === 'first_client_at' || !/email|phone|name|note|amount|loan|client|payload|referrer|ip_address|user_agent/.test(row.column_name)));
       assert.ok(columns.every((row) => !/json/.test(row.data_type)), "no unbounded JSON storage");
     });
 
@@ -245,9 +264,9 @@ test("optional acquisition measurement runs securely and idempotently in Postgre
       await rpc("acquisition_record_payment", [currentUser, "mp-current-cohort", await paidAt(1), "basic"]);
       await visit({ age: 8, path: "/precios/", source: "google", medium: "organic" });
       const last30 = await report(30); const last90 = await report(90);
-      assert.deepEqual(last30.totals, { visitors: 2, registrations: 1, activated: 1, first_payments: 1 });
-      assert.deepEqual(last90.totals, { visitors: 3, registrations: 2, activated: 2, first_payments: 2 });
-      assert.deepEqual(last30.rows, [{ source: "google", medium: "organic", campaign_id: "", landing_path: "/precios/", visitors: 2, registrations: 1, activated: 1, first_payments: 1 }]);
+      assert.deepEqual(last30.totals, { visitors: 2, registrations: 1, activated: 1, first_payments: 1, first_clients: 0 });
+      assert.deepEqual(last90.totals, { visitors: 3, registrations: 2, activated: 2, first_payments: 2, first_clients: 0 });
+      assert.deepEqual(last30.rows, [{ source: "google", medium: "organic", campaign_id: "", content_id: "", landing_path: "/precios/", visitors: 2, registrations: 1, activated: 1, first_payments: 1, first_clients: 0 }]);
       assert.equal(last90.rows.length, 2);
       assert.ok(last90.since && last90.cutover_at);
       assert.ok(!JSON.stringify(last90).includes(currentUser));
@@ -312,7 +331,7 @@ test("optional acquisition measurement runs securely and idempotently in Postgre
       assert.equal(await scalar("select activated_at from acquisition_accounts where user_id=$1", [expUid]), null);
       assert.deepEqual(await identify(expVid, expUid), { linked: false });
       assert.deepEqual(await rpc("acquisition_record_payment", [expUid, "mp-expired", await paidAt(1), "pro"]), { recorded: false });
-      assert.deepEqual((await report()).totals, { visitors: 0, registrations: 0, activated: 0, first_payments: 0 });
+      assert.deepEqual((await report()).totals, { visitors: 0, registrations: 0, activated: 0, first_payments: 0, first_clients: 0 });
       assert.equal(await scalar("select count(*)::int from acquisition_accounts"), 1);
       assert.deepEqual(await rpc("acquisition_purge"), { deleted: 1 });
       assert.equal(await scalar("select count(*)::int from acquisition_accounts"), 0);

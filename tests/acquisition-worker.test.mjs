@@ -24,8 +24,8 @@ test("visita consentida guarda solo categorias permitidas y conserva su ID opaco
   let calls = 0; let rateKey;
   await withFetch(async (input, options) => {
     calls++;
-    assert.equal(new URL(input).pathname, "/rest/v1/rpc/acquisition_visit_create");
-    assert.deepEqual(JSON.parse(options.body), { p_visitor_id: VISITOR, p_landing_path: "/precios/", p_source: "google", p_medium: "organic", p_campaign_id: "", p_consent_version: "2026-10-16" });
+    assert.equal(new URL(input).pathname, "/rest/v1/rpc/acquisition_visit_create_v2");
+    assert.deepEqual(JSON.parse(options.body), { p_visitor_id: VISITOR, p_landing_path: "/precios/", p_source: "google", p_medium: "organic", p_campaign_id: "", p_consent_version: "2026-10-16", p_content_id: "" });
     return json({ visitor_id: VISITOR, expires_at: "2027-04-01T00:00:00Z" });
   }, async () => {
     const env = { ...ENV, ACQUISITION_RATE_LIMITER: { limit: async ({ key }) => { rateKey = key; return { success: true }; } } };
@@ -43,7 +43,7 @@ test("visita consentida guarda solo categorias permitidas y conserva su ID opaco
 test("reintentos preservan ID y una visita revocada no se presenta como creada", async () => {
   let attempts = 0;
   await withFetch(async (input, options) => {
-    assert.equal(new URL(input).pathname, "/rest/v1/rpc/acquisition_visit_create");
+    assert.equal(new URL(input).pathname, "/rest/v1/rpc/acquisition_visit_create_v2");
     assert.equal(JSON.parse(options.body).p_visitor_id, VISITOR);
     attempts++;
     return json(attempts < 3 ? { visitor_id: VISITOR, expires_at: "2027-04-01T00:00:00Z" } : { revoked: true });
@@ -93,7 +93,7 @@ test("identificacion usa identidad autenticada de servidor y nunca user_id del n
   await withFetch(async (input, options) => {
     const path = new URL(input).pathname;
     if (path === "/auth/v1/user") return json({ id: USER, email_confirmed_at: "2026-10-16T12:00:00Z" });
-    assert.equal(path, "/rest/v1/rpc/acquisition_identify"); writes++;
+    assert.equal(path, "/rest/v1/rpc/acquisition_identify_v2"); writes++;
     assert.deepEqual(JSON.parse(options.body), { p_visitor_id: VISITOR, p_user_id: USER });
     return json({ linked: true });
   }, async () => {

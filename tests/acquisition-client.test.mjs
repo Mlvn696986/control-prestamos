@@ -15,7 +15,7 @@ const expiry = () => new Date(Date.now() + 86400000).toISOString();
 const response = (data = {}, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => data });
 const settle = async () => { for (let i = 0; i < 5; i++) await new Promise(resolve => setImmediate(resolve)); };
 
-function harness({ url = 'https://ermif.com/', referrer = '', stored = {}, sharedValues, fetcher, blockedStorage = false, fastTimeout = false, uuid = () => ID, locks } = {}) {
+function harness({ url = 'https://ermif.com/', referrer = '', stored = {}, sharedValues, fetcher, blockedStorage = false, fastTimeout = false, uuid = () => ID, locks, analytics } = {}) {
   const values = sharedValues || new Map(Object.entries(stored));
   const nodes = [];
   const requests = [];
@@ -29,6 +29,7 @@ function harness({ url = 'https://ermif.com/', referrer = '', stored = {}, share
   }
   const document = { body: new Element('body'), readyState: 'complete', referrer, createElement: tag => new Element(tag) };
   const window = {
+    ERMIFAnalytics: analytics,
     addEventListener(name, fn) { windowEvents.set(name, fn); },
     dispatchEvent(event) { windowEvents.get(event.type)?.(event); },
   };
@@ -85,7 +86,7 @@ test('la negativa persiste y deja accesible el cambio de preferencias', async ()
 test('aceptar crea una entrada mínima y el identificador devuelto por servidor', async () => {
   const h = harness();
   await h.choose('accept');
-  assert.deepEqual(h.requests[0].payload, { visitor_id: ID, consent: true, consent_version: '2026-10-16', landing_path: '/', source: 'directo', medium: 'direct', campaign_id: '' });
+  assert.deepEqual(h.requests[0].payload, { visitor_id: ID, consent: true, consent_version: '2026-10-16', landing_path: '/', source: 'directo', medium: 'direct', campaign_id: '', content_id: '' });
   assert.equal(h.requests[0].referrerPolicy, 'no-referrer');
   assert.equal(JSON.parse(h.values.get(VISITOR)).visitor_id, ID);
   assert.equal(await h.window.ERMIFAcquisition.identify('token-in-memory-only'), true);
@@ -267,7 +268,7 @@ test('el ID pendiente se guarda antes del POST y un timeout reintenta exactament
 });
 
 test('una recarga reenvía ID y primera atribución pendientes sin sustituirlos por la nueva página', async () => {
-  const attribution = { landing_path: '/precios/', source: 'facebook', medium: 'paid_social', campaign_id: 'lanzamiento-ermif' };
+  const attribution = { landing_path: '/precios/', source: 'facebook', medium: 'paid_social', campaign_id: 'lanzamiento-ermif', content_id: '' };
   const h = harness({ url: 'https://ermif.com/app/?utm_source=google', uuid: () => { throw Error('Must reuse pending UUID'); }, stored: {
     [CHOICE]: JSON.stringify({ value: 'accepted', version: '2026-10-16' }),
     [VISITOR]: JSON.stringify({ visitor_id: ID, expires_at: expiry(), registered: false, attribution }),
@@ -362,7 +363,7 @@ test('IDs ajenos al formato UUIDv4 nunca se guardan como visitantes reconocidos'
 });
 
 test('un callback puede confirmar atribución pendiente anterior sin capturar sus parámetros', async () => {
-  const attribution = { landing_path: '/precios/', source: 'facebook', medium: 'social', campaign_id: '' };
+  const attribution = { landing_path: '/precios/', source: 'facebook', medium: 'social', campaign_id: '', content_id: '' };
   const h = harness({ url: 'https://ermif.com/app/#access_token=secret-callback-token', uuid: () => { throw Error('No new callback visitor'); }, stored: {
     [CHOICE]: JSON.stringify({ value: 'accepted', version: '2026-10-16' }),
     [VISITOR]: JSON.stringify({ visitor_id: ID, expires_at: expiry(), registered: false, attribution }),
@@ -404,3 +405,23 @@ test('UTM explícita desconocida descarta texto personal y no hereda origen org�
     assert.equal(h.requests[0].payload.campaign_id, '');
   }
 });
+
+ test('ChatGPT y utm_content usan categorías cerradas y conservan la primera entrada', async () => {
+   for(const [referrer,expected] of [['https://chatgpt.com/','chatgpt'],['https://chat.openai.com/','chatgpt'],['https://chatgpt.com.attacker.invalid/','otro']]) {
+     const h=harness({url:'https://ermif.com/seguridad/?utm_campaign=contenido-educativo&utm_content=video-demo',referrer});await h.choose('accept');
+     assert.equal(h.requests[0].payload.source,expected);assert.equal(h.requests[0].payload.medium,'referral');assert.equal(h.requests[0].payload.content_id,'video-demo');
+     const next=harness({url:'https://ermif.com/?utm_source=facebook&utm_content=private@email.invalid',sharedValues:h.values});await settle();
+     assert.equal(next.requests.length,0);assert.equal(JSON.parse(next.values.get(VISITOR)).attribution.content_id,'video-demo');
+   }
+   const h=harness({url:'https://ermif.com/?utm_source=chatgpt&utm_content=private@email.invalid'});await h.choose('accept');assert.equal(h.requests[0].payload.content_id,'');
+ });
+
+ test('la aceptación anterior no autoriza Google y la opción adicional empieza desmarcada', async () => {
+   const calls=[];const analytics={setConsent:(accepted,entry)=>calls.push({accepted,entry})};
+   const h=harness({analytics,stored:{[CHOICE]:JSON.stringify({value:'accepted',version:'2026-10-16'})}});await settle();
+   assert.ok(calls.every(c=>c.accepted===false));
+   h.window.ERMIFAcquisition.preferences();const box=h.chooser().querySelector('[data-google-measurement]');assert.equal(box.checked,false);
+   box.checked=true;h.chooser().querySelector('[data-measurement="accept"]').listeners.get('click')();await settle();
+   assert.equal(calls.at(-1).accepted,true);
+   await h.choose('reject');assert.equal(calls.at(-1).accepted,false);
+ });

@@ -1,9 +1,10 @@
 /* Admin-only acquisition report. The API independently verifies administrator access. */
 (() => {
   'use strict';
-  const sources = { directo: 'Directo', google: 'Google', bing: 'Bing', duckduckgo: 'DuckDuckGo', facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube', linkedin: 'LinkedIn', whatsapp: 'WhatsApp', email: 'Correo', otro: 'Otro' };
+  const sources = { directo: 'Directo', google: 'Google', bing: 'Bing', duckduckgo: 'DuckDuckGo', chatgpt: 'ChatGPT', facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube', linkedin: 'LinkedIn', whatsapp: 'WhatsApp', email: 'Correo', otro: 'Otro' };
   const media = { direct: 'Directo', organic: 'Búsqueda orgánica', paid_search: 'Búsqueda de pago', paid_social: 'Redes de pago', social: 'Redes sociales', email: 'Correo', referral: 'Referencia', other: 'Otro' };
   const campaigns = { 'lanzamiento-ermif': 'Lanzamiento ERMIF', 'contenido-educativo': 'Contenido educativo' };
+  const contents = { menu: 'Menú', portada: 'Portada', precios: 'Precios', 'video-demo': 'Video demo', guia: 'Guía', calculadora: 'Calculadora', 'enlace-perfil': 'Enlace del perfil' };
   const numberFormat = new Intl.NumberFormat('es-PE');
   const percentFormat = new Intl.NumberFormat('es-PE', { maximumFractionDigits: 1, minimumFractionDigits: 0 });
   const dateFormat = new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeZone: 'America/Lima' });
@@ -71,12 +72,13 @@
   }
   function render(ui, report) {
     if (!report || typeof report.totals !== 'object' || !report.totals || !Array.isArray(report.rows)) throw Error('Invalid report');
-    const totals = Object.fromEntries(['visitors', 'registrations', 'activated', 'first_payments'].map(key => [key, count(report.totals[key])]));
+    const totals = Object.fromEntries(['visitors', 'registrations', 'first_clients', 'activated', 'first_payments'].map(key => [key, count(report.totals[key])]));
     const content = document.createDocumentFragment();
     const cards = node('div', undefined, 'acquisition-report-cards');
     cards.append(
       card('Visitantes medidos', numberFormat.format(totals.visitors), 'Con consentimiento', totals.visitors, totals.visitors),
       card('Registros confirmados', numberFormat.format(totals.registrations), 'Cuentas nuevas atribuidas', totals.registrations, totals.visitors),
+      card('Primer cliente', numberFormat.format(totals.first_clients), 'Cliente guardado en ERMIF', totals.first_clients, totals.visitors),
       card('Cuentas activadas', numberFormat.format(totals.activated), 'Primer préstamo guardado', totals.activated, totals.visitors),
       card('Primer pago', numberFormat.format(totals.first_payments), 'Suscripción confirmada', totals.first_payments, totals.visitors),
       card('Registro → primer pago', ratio(totals.first_payments, totals.registrations), totals.registrations ? 'De las cuentas registradas' : 'Aún no hay registros para calcularlo'),
@@ -94,7 +96,7 @@
       const caption = node('caption', 'Origen de las visitas y conversiones posteriores del mismo grupo');
       const head = node('thead');
       const header = node('tr');
-      for (const title of ['Origen / medio / campaña', 'Página de entrada', 'Visitantes', 'Registros', 'Activados', 'Primer pago', 'Registro → pago']) {
+      for (const title of ['Origen / medio / campaña', 'Página de entrada', 'Visitantes', 'Registros', 'Primer cliente', 'Activados', 'Primer pago', 'Registro → pago']) {
         const th = node('th', title); th.scope = 'col'; header.append(th);
       }
       head.append(header);
@@ -105,10 +107,11 @@
         const origin = node('td');
         origin.append(node('strong', lookup(sources, record.source, 'Otro')), node('small', lookup(media, record.medium, 'Otro')));
         if (record.campaign_id) origin.append(node('small', lookup(campaigns, record.campaign_id, 'Campaña no reconocida')));
+        if (record.content_id) origin.append(node('small', 'Enlace: ' + lookup(contents, record.content_id, 'No reconocido')));
         const path = typeof record.landing_path === 'string' ? record.landing_path.slice(0, 120) : 'Sin página';
         const registrations = count(record.registrations);
         const payments = count(record.first_payments);
-        tr.append(origin, node('td', path, 'acquisition-report-path'), node('td', numberFormat.format(count(record.visitors))), node('td', numberFormat.format(registrations)), node('td', numberFormat.format(count(record.activated))), node('td', numberFormat.format(payments)), node('td', ratio(payments, registrations)));
+        tr.append(origin, node('td', path, 'acquisition-report-path'), node('td', numberFormat.format(count(record.visitors))), node('td', numberFormat.format(registrations)), node('td', numberFormat.format(count(record.first_clients))), node('td', numberFormat.format(count(record.activated))), node('td', numberFormat.format(payments)), node('td', ratio(payments, registrations)));
         body.append(tr);
       }
       table.append(caption, head, body);

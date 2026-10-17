@@ -34,7 +34,7 @@ test('el informe representa cifras reales, conversión y período en una petici�
   const paths = [];
   assert.equal(await h.api.load(async path => { paths.push(path); return report(); }), true);
   assert.deepEqual(paths, ['/api/admin/acquisition?days=30']);
-  assert.equal(h.nodes.filter(node => node.className === 'acquisition-report-card').length, 5);
+  assert.equal(h.nodes.filter(node => node.className === 'acquisition-report-card').length, 6);
   assert.match(h.body.textContent, /25%/);
   assert.match(h.body.textContent, /Todavía no hay visitas medidas/);
   assert.match(h.body.textContent, /Lima/);
