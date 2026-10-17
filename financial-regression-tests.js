@@ -675,20 +675,20 @@ const hiddenManagementTitles = [
   "Promedio de prestamo",
   "Promedio de interes cobrado",
   "Distribucion por modalidad",
+  "Flujo de caja",
 ];
 hiddenManagementTitles.forEach((title) => {
   assert(!getDashboardManagementItems(dashboard).some((item) => item.title === title), "Resumen: " + title + " no debe mostrarse como indicador visual.");
   assert(getDashboardManagementReportItems(dashboard).some((item) => item.title === title), "Exportaciones: " + title + " debe seguir disponible en la lista interna de reporte.");
 });
-["Capital agregado", "Capital retirado", "Total prestado acumulado", "Clientes atrasados", "Capital en riesgo", "Flujo de caja"].forEach((title) => {
+["Capital agregado", "Capital retirado", "Total prestado acumulado", "Clientes atrasados", "Capital en riesgo"].forEach((title) => {
   assert(getDashboardManagementItems(dashboard).some((item) => item.title === title), "Resumen: " + title + " debe seguir visible.");
 });
-const hiddenAdvancedTitles = ["Rendimiento proyectado de cartera"];
+const hiddenAdvancedTitles = ["Rendimiento proyectado de cartera", "Cliente mas rentable"];
 hiddenAdvancedTitles.forEach((title) => {
   assert(!getDashboardAdvancedItems(dashboard).some((item) => item.title === title), "Resumen: " + title + " no debe mostrarse como indicador visual.");
   assert(getDashboardAdvancedReportItems(dashboard).some((item) => item.title === title), "Exportaciones: " + title + " debe seguir disponible en la lista interna de reporte.");
 });
-assert(getDashboardAdvancedItems(dashboard).some((item) => item.title === "Cliente mas rentable"), "Resumen: Cliente mas rentable debe seguir visible.");
 saveIndicatorOrder([
   "ganancia-reinvertida",
   "ampliaciones-del-periodo",
