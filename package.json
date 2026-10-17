@@ -17,6 +17,7 @@
     "test:unit": "node --test tests/*.test.mjs",
     "check": "node --check app.js && node --check src/worker.js && node --check scripts/build-cloudflare.js && npm run security:check",
     "security:check": "node scripts/check-secrets.js",
+    "seo:check": "node scripts/check-seo-live.mjs",
     "validate": "npm run check && npm test && npm run test:calendar && npm run deploy:check",
     "deploy:check": "wrangler deploy --dry-run --outdir .wrangler/dry-run",
     "cf:whoami": "wrangler whoami",
