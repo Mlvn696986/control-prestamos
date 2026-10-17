@@ -1341,7 +1341,7 @@
 
 /* Visual indicator board. Every rule is restricted to this one section. */
 #dashboardView #summaryIndicatorsGrid {
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 10px;
   align-items: stretch;
 }
@@ -1425,7 +1425,7 @@
 }
 
 #dashboardView #summaryIndicatorsGrid :is(.indicator-risk-meter, .indicator-recovery-meter) {
-  grid-column: span 3;
+  grid-column: span 5;
   min-height: 144px;
   padding: 15px;
 }
@@ -1591,6 +1591,9 @@
   #dashboardView #summaryIndicatorsGrid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
+  #dashboardView #summaryIndicatorsGrid :is(.indicator-stat, .indicator-risk-meter, .indicator-recovery-meter) {
+    grid-column: span 3;
+  }
   #dashboardView #summaryIndicatorsGrid :is(.indicator-projection, .indicator-client) {
     grid-column: span 2;
   }
@@ -1604,7 +1607,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
-  #dashboardView #summaryIndicatorsGrid .dashboard-indicator-card {
+  #dashboardView #summaryIndicatorsGrid :is(.dashboard-indicator-card, .indicator-stat) {
     grid-column: span 1;
     min-height: 112px;
   }
@@ -1787,7 +1790,7 @@
 
 /* Four financial indicators become one chart with a shared, zero-based scale. */
 #dashboardView #summaryIndicatorsGrid .summary-financial-bars {
-  grid-column: span 8;
+  grid-column: span 7;
   grid-row: span 2;
   gap: 10px;
   padding: 16px 18px;
@@ -1973,7 +1976,7 @@
 
 /* The two remaining headline figures fit alongside the four-row chart. */
 #dashboardView #summaryIndicatorsGrid:has(.summary-financial-bars) :is(.indicator-total, [data-indicator-id="monto-vencido"]) {
-  grid-column: span 4;
+  grid-column: span 3;
 }
 @media (max-width: 1200px) {
   #dashboardView #summaryIndicatorsGrid:has(.summary-financial-bars) :is(.indicator-total, [data-indicator-id="monto-vencido"]) {
@@ -1983,6 +1986,10 @@
 @media (max-width: 680px) {
   #dashboardView #summaryIndicatorsGrid .summary-financial-bars { grid-row: auto; }
   #dashboardView #summaryIndicatorsGrid:has(.summary-financial-bars) :is(.indicator-total, [data-indicator-id="monto-vencido"]) {
-    grid-column: span 1;
+    grid-column: 1 / -1;
+    min-height: 108px;
+  }
+  #dashboardView #summaryIndicatorsGrid :is(.indicator-primary, .indicator-total) > span {
+    min-height: 20px;
   }
 }

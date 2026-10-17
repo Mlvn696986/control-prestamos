@@ -364,10 +364,6 @@ const elements = {
   summaryProfitList: $("#summaryProfitList"),
   summaryExtensionList: $("#summaryExtensionList"),
   summaryPunctualList: $("#summaryPunctualList"),
-  summaryLateList: $("#summaryLateList"),
-  summaryPaymentList: $("#summaryPaymentList"),
-  summaryLoanList: $("#summaryLoanList"),
-  summaryRecentExtensionList: $("#summaryRecentExtensionList"),
   summaryAdvancedGrid: $("#summaryAdvancedGrid"),
   summaryAlerts: $("#summaryAlerts"),
   adminNav: $("#adminNav"),
@@ -4603,7 +4599,7 @@ function getDashboardKpiItems(dashboard) {
   return getDashboardKpiReportItems(dashboard).filter((item) => !HIDDEN_DASHBOARD_KPI_TITLES.has(item.title));
 }
 
-const HIDDEN_DASHBOARD_KPI_TITLES = new Set(["Total por cobrar", "Ampliaciones activas"]);
+const HIDDEN_DASHBOARD_KPI_TITLES = new Set(["Total por cobrar", "Ampliaciones activas", "Cobros de hoy"]);
 
 function getDashboardKpiReportItems(dashboard) {
   const m = dashboard.metrics;
@@ -5425,6 +5421,7 @@ const HIDDEN_DASHBOARD_MANAGEMENT_TITLES = new Set([
   "Promedio de prestamo",
   "Promedio de interes cobrado",
   "Distribucion por modalidad",
+  "Flujo de caja",
 ]);
 
 function getDashboardManagementReportItems(dashboard) {
@@ -5647,10 +5644,6 @@ function renderDashboardLists(dashboard) {
   renderClientMetricList(elements.summaryProfitList, dashboard.lists.profit, "No hay ganancias registradas.", (item) => [money(item.profit), "Interes cobrado"]);
   renderClientMetricList(elements.summaryExtensionList, dashboard.lists.extensions, "No hay ampliaciones registradas.", (item) => [item.extensions, "Ampliaciones"]);
   renderClientMetricList(elements.summaryPunctualList, dashboard.lists.punctual, "No hay pagos puntuales registrados.", (item) => [item.punctual, "Pagos puntuales"]);
-  renderClientMetricList(elements.summaryLateList, dashboard.lists.late, "No hay clientes atrasados.", (item) => [item.overdue, "Prestamos vencidos"]);
-  renderMovementList(elements.summaryPaymentList, dashboard.lists.payments, "No hay pagos registrados.", "payment");
-  renderMovementList(elements.summaryLoanList, dashboard.lists.loans, "No hay prestamos creados.", "loan");
-  renderMovementList(elements.summaryRecentExtensionList, dashboard.lists.recentExtensions, "No hay ampliaciones creadas.", "loan");
 }
 
 function renderClientMetricList(container, items, emptyMessage, getValue) {
@@ -5706,6 +5699,12 @@ const HIDDEN_DASHBOARD_ADVANCED_TITLES = new Set([
   "Proyeccion a 3 meses",
   "Proyeccion a 6 meses",
   "Proyeccion a 12 meses",
+  "Cliente mas rentable",
+  "Cliente con mayor deuda",
+  "Cliente con mas ampliaciones",
+  "Nivel de riesgo del cliente",
+  "Variacion de ganancia vs periodo anterior",
+  "Comparativo capital vs interes",
 ]);
 
 function getDashboardAdvancedReportItems(dashboard) {
