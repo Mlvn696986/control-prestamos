@@ -4347,7 +4347,80 @@ function renderDashboardHeader(dashboard) {
 function renderDashboardIndicators(dashboard) {
   if (!elements.summaryIndicatorsGrid) return;
   const cards = getOrderedDashboardIndicatorItems(dashboard);
-  elements.summaryIndicatorsGrid.innerHTML = cards.map((item) => renderDashboardIndicatorCard(item, dashboard)).join("");
+  let financialChartRendered = false;
+  elements.summaryIndicatorsGrid.innerHTML = cards.map((item) => {
+    if (!DASHBOARD_FINANCIAL_BAR_IDS.includes(item.indicatorId)) return renderDashboardIndicatorCard(item, dashboard);
+    if (financialChartRendered) return "";
+    financialChartRendered = true;
+    return renderDashboardFinancialBars(cards, dashboard);
+  }).join("");
+}
+
+// These four indicators share one comparison scale, while keeping their own metrics and tooltips.
+const DASHBOARD_FINANCIAL_CHART_ID = "capital-y-ganancias";
+const DASHBOARD_FINANCIAL_BAR_IDS = [
+  "capital-disponible", "capital-actualmente-prestado", "ganancia-real", "ganancia-proyectada",
+];
+
+function getFinancialBarScale(values) {
+  const finite = values.map(Number).filter(Number.isFinite);
+  const roundLimit = (value) => {
+    if (!value) return 0;
+    const step = 10 ** Math.floor(Math.log10(value));
+    return Math.ceil(value / step) * step;
+  };
+  const min = -roundLimit(Math.abs(Math.min(0, ...finite)));
+  const max = roundLimit(Math.max(0, ...finite));
+  return { min, max, span: max - min || 1, hasValues: max > min };
+}
+
+function renderDashboardFinancialBars(items, dashboard) {
+  const rows = DASHBOARD_FINANCIAL_BAR_IDS.map((id) => items.find((item) => item.indicatorId === id)).filter(Boolean);
+  const invalid = dashboard.range.invalid;
+  const values = rows.map((item) => {
+    const value = Number(dashboard.metrics[item.metricKey]);
+    return !invalid && Number.isFinite(value) ? value : 0;
+  });
+  const scale = getFinancialBarScale(values);
+  const zero = (0 - scale.min) / scale.span * 100;
+  const crossesZero = scale.min < 0 && scale.max > 0;
+  const middleTick = crossesZero ? 0 : (scale.min + scale.max) / 2;
+  const showMiddleTick = !crossesZero || (zero >= 20 && zero <= 80);
+  const ticks = [{ value: scale.min, position: "start" }, ...(showMiddleTick ? [{ value: middleTick, position: "middle" }] : []), { value: scale.max, position: "end" }];
+  return `
+    <article class="dashboard-indicator-card summary-financial-bars" draggable="true" data-indicator-id="${DASHBOARD_FINANCIAL_CHART_ID}" aria-label="Capital y ganancias: gráfico de barras">
+      <header class="financial-bars-header">
+        <h4>${summaryIcon("chart")} Capital y ganancias</h4>
+        <span class="financial-bars-unit">Soles · S/</span>
+      </header>
+      <div class="financial-bars-legend" aria-label="Colores del gráfico">
+        <span><i class="financial-key-capital"></i>Capital</span>
+        <span><i class="financial-key-profit"></i>Ganancia cobrada</span>
+        <span><i class="financial-key-estimate"></i>Ganancia estimada</span>
+      </div>
+      <div class="financial-bars-plot" style="--financial-zero:${zero}%">
+        ${rows.map((item, index) => {
+          const value = values[index];
+          const width = clamp(Math.abs(value) / scale.span * 100, 0, 100);
+          const left = clamp((Math.min(value, 0) - scale.min) / scale.span * 100, 0, 100);
+          return `
+            <div class="financial-bar-row financial-bar-${item.metricKey}" data-metric-key="${item.metricKey}" data-summary-tone="${getDashboardIndicatorTone(item, dashboard)}">
+              <div class="financial-bar-label">
+                <span>${escapeHTML(item.title)} ${renderInfoDot(item.tip)}</span>
+                <strong>${invalid ? "—" : escapeHTML(item.value)}</strong>
+              </div>
+              <div class="financial-bar-track" aria-hidden="true">
+                <i class="financial-bar-fill" style="left:${left}%;width:${width}%"></i>
+              </div>
+              ${renderComparisonBadge(item, dashboard)}
+            </div>
+          `;
+        }).join("")}
+        ${scale.hasValues ? `<div class="financial-bars-axis" aria-hidden="true">${ticks.map((tick) => `<span class="financial-axis-${tick.position}" style="left:${(tick.value - scale.min) / scale.span * 100}%">${money(tick.value)}</span>`).join("")}</div>` : ""}
+      </div>
+      <p class="financial-bars-note">${invalid ? "Revisa las fechas para mostrar el gráfico." : scale.hasValues ? "Misma escala · Importes independientes, no se suman." : "Sin importes para graficar en este periodo."}</p>
+    </article>
+  `;
 }
 
 function getDashboardIndicatorItems(dashboard) {
@@ -4362,7 +4435,8 @@ function getOrderedDashboardIndicatorItems(dashboard) {
   const items = getDashboardIndicatorItems(dashboard);
   const defaultOrder = new Map(DASHBOARD_VISUAL_INDICATOR_ORDER.map((id, index) => [id, index]));
   items.sort((a, b) => (defaultOrder.get(a.indicatorId) ?? 999) - (defaultOrder.get(b.indicatorId) ?? 999));
-  const savedIds = getSavedIndicatorOrder().map(normalizeIndicatorOrderId);
+  const savedIds = getSavedIndicatorOrder().map(normalizeIndicatorOrderId)
+    .flatMap((id) => id === DASHBOARD_FINANCIAL_CHART_ID ? DASHBOARD_FINANCIAL_BAR_IDS : [id]);
   const seenIds = new Set();
   const order = savedIds.filter((id) => {
     if (seenIds.has(id)) return false;

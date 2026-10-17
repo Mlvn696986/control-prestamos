@@ -1784,3 +1784,205 @@
 #dashboardView .summary-health[data-summary-tone="negative"] :is(strong, small, .status-pill) {
   color: #ffc4cc;
 }
+
+/* Four financial indicators become one chart with a shared, zero-based scale. */
+#dashboardView #summaryIndicatorsGrid .summary-financial-bars {
+  grid-column: span 8;
+  grid-row: span 2;
+  gap: 10px;
+  padding: 16px 18px;
+  border-top: 3px solid var(--summary-petrol);
+  background: #fff;
+}
+
+#dashboardView .financial-bars-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+#dashboardView .financial-bars-header h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: .9rem;
+  font-weight: 800;
+  color: var(--summary-petrol);
+}
+
+#dashboardView .financial-bars-header .summary-icon {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
+
+#dashboardView .financial-bars-unit {
+  padding: 4px 7px;
+  border: 1px solid var(--summary-line);
+  border-radius: 6px;
+  font-size: .65rem;
+  color: var(--summary-muted);
+  white-space: nowrap;
+}
+
+#dashboardView .financial-bars-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  color: var(--summary-muted);
+  font-size: .65rem;
+}
+
+#dashboardView .financial-bars-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#dashboardView .financial-bars-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+#dashboardView .financial-key-capital { background: var(--summary-petrol); }
+#dashboardView .financial-key-profit { background: var(--summary-emerald); }
+#dashboardView .financial-key-estimate {
+  background: repeating-linear-gradient(135deg, #079b75 0 3px, #a1ddca 3px 5px);
+}
+
+#dashboardView .financial-bars-plot {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+#dashboardView .financial-bar-row {
+  --financial-color: var(--summary-petrol);
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+#dashboardView .financial-bar-availableCapital { --financial-color: #357d91; }
+#dashboardView .financial-bar-realProfit,
+#dashboardView .financial-bar-projectedProfit { --financial-color: var(--summary-emerald); }
+#dashboardView .financial-bar-row[data-summary-tone="negative"] { --financial-color: var(--summary-danger); }
+
+#dashboardView .financial-bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px 16px;
+  min-width: 0;
+}
+
+#dashboardView .financial-bar-label > span {
+  color: var(--financial-color);
+  font-size: .72rem;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+#dashboardView .financial-bar-label strong {
+  color: var(--financial-color);
+  font-size: .98rem;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+}
+
+#dashboardView .financial-bar-track {
+  position: relative;
+  height: 15px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: repeating-linear-gradient(to right, transparent 0 calc(25% - 1px), #dce7e7 calc(25% - 1px) 25%), #f0f5f5;
+  pointer-events: none;
+}
+
+#dashboardView .financial-bar-track::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 var(--financial-zero);
+  width: 1px;
+  background: #536d7799;
+}
+
+#dashboardView .financial-bar-fill {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--financial-color);
+}
+
+#dashboardView .financial-bar-projectedProfit .financial-bar-fill {
+  background: repeating-linear-gradient(135deg, transparent 0 5px, #ffffff55 5px 8px), var(--financial-color);
+}
+
+#dashboardView .financial-bars-axis {
+  position: relative;
+  height: 16px;
+  margin-top: -3px;
+  color: var(--summary-muted);
+  font-size: .62rem;
+  font-weight: 700;
+}
+
+#dashboardView .financial-bars-axis > span {
+  position: absolute;
+  white-space: nowrap;
+}
+
+#dashboardView .financial-bars-axis .financial-axis-middle { transform: translateX(-50%); }
+#dashboardView .financial-bars-axis .financial-axis-end { transform: translateX(-100%); }
+
+#dashboardView .financial-bars-note {
+  margin: 0;
+  color: var(--summary-muted);
+  font-size: .64rem;
+  line-height: 1.4;
+}
+
+#dashboardView #summaryIndicatorsGrid .financial-bar-row .comparison-badge {
+  justify-self: start;
+}
+
+@media (max-width: 1200px) {
+  #dashboardView #summaryIndicatorsGrid .summary-financial-bars { grid-column: span 4; }
+}
+
+@media (max-width: 680px) {
+  #dashboardView #summaryIndicatorsGrid .summary-financial-bars {
+    grid-column: span 2;
+    padding: 14px;
+  }
+  #dashboardView .financial-bar-label { flex-wrap: wrap; gap: 2px 10px; }
+  #dashboardView .financial-bars-header h4 { font-size: .85rem; }
+}
+
+@media (max-width: 360px) {
+  #dashboardView #summaryIndicatorsGrid .summary-financial-bars { grid-column: span 1; }
+  #dashboardView .financial-bars-unit { display: none; }
+}
+
+/* The two remaining headline figures fit alongside the four-row chart. */
+#dashboardView #summaryIndicatorsGrid:has(.summary-financial-bars) :is(.indicator-total, [data-indicator-id="monto-vencido"]) {
+  grid-column: span 4;
+}
+@media (max-width: 1200px) {
+  #dashboardView #summaryIndicatorsGrid:has(.summary-financial-bars) :is(.indicator-total, [data-indicator-id="monto-vencido"]) {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 680px) {
+  #dashboardView #summaryIndicatorsGrid .summary-financial-bars { grid-row: auto; }
+  #dashboardView #summaryIndicatorsGrid:has(.summary-financial-bars) :is(.indicator-total, [data-indicator-id="monto-vencido"]) {
+    grid-column: span 1;
+  }
+}
