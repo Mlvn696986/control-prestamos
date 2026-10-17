@@ -149,3 +149,11 @@ El acceso en `/app/` presenta un título visible para registro, inicio de sesió
 Contacto, privacidad, términos y seguridad se consultan sin iniciar sesión. Comparten navegación de enlaces HTML, aparecen en el pie de página y en el sitemap. La portada enlaza los cuatro documentos. `marketing/site.cjs` genera `/seguridad/` con información sobre acceso, separación de cuentas, HTTPS y descarga de copias basada en las funciones existentes; no declara certificaciones ni garantías de disponibilidad. El correo de reportes es `seguridad@ermif.com`.
 
 Los textos legales siguen extrayéndose de los diálogos de `index.html`, sin versiones independientes ni cambios de condiciones. Los enlaces de solicitudes conservan `/app/?dialog=privacy-request` y `/app/?dialog=claims`. La verificación de interfaz abre los formularios sin enviarlos.
+
+## Comprobación SEO manual
+
+`npm run seo:check` revisa las respuestas HTTP públicas de ERMIF bajo demanda. Para guardar evidencia fechada: `node scripts/check-seo-live.mjs --output docs/seo-baseline-YYYY-MM-DD.json`. Con el servidor local iniciado, `node scripts/check-seo-live.mjs --base-url http://localhost:3000` permite comprobar la construcción sin solicitar el dominio público; en ese modo se omite la redirección de www. En PowerShell, usa Node directamente cuando pases argumentos: el wrapper de npm de `scripts/dev-env.ps1` puede consumir el separador `--`. No es una tarea programada ni forma parte de la validación habitual contra producción.
+
+El comando no usa sesiones, cookies, APIs de negocio, datos de clientes ni eventos de analítica. Comprueba páginas, metadatos, favicon, sitemap, exclusión de `/app/`, 404 y consolidación de dominio. Robots debe cumplir el contrato actual: un grupo `*`, `Allow: /`, `Disallow: /api/` y el sitemap canónico; rechaza reglas adicionales para que se revisen expresamente. La estructura del sitemap se comprueba de forma básica, sin validación XML completa. Las peticiones con nombres de bots son simulaciones de User-Agent: no demuestran acceso de bots verificados, indexación, posiciones, citas de IA ni Core Web Vitals.
+
+La [lista de comprobación SEO](docs/SEO-CHECKLIST.md) mantiene el estado y los pendientes. La [guía de la etapa 1](docs/SEO-GUIA-ETAPA-1.md) explica las verificaciones manuales y los accesos necesarios para continuar.
