@@ -270,13 +270,13 @@ summary:focus-visible {
       115deg,
       #fff 30%,
       #f5f9f6 100%);
-  padding: 80px 0 78px;
+  padding: 32px 0 36px;
 }
 .hero-grid {
   display: grid;
   grid-template-columns: .94fr 1.16fr;
   gap: 46px;
-  align-items: center;
+  align-items: start;
 }
 .hero-copy {
   position: relative;
@@ -345,7 +345,7 @@ summary:focus-visible {
 .hero-visual {
   position: relative;
   min-width: 0;
-  padding: 28px 0 36px;
+  padding: 0;
 }
 .visual-orbit {
   position: absolute;
@@ -1240,7 +1240,7 @@ summary:focus-visible {
 }
 @media (min-width: 1500px) {
   .hero {
-    padding-block: 100px;
+    padding-block: 40px;
   }
   .hero-window {
     width: calc(100% + 60px);
@@ -1261,7 +1261,7 @@ summary:focus-visible {
     gap: 15px;
   }
   .hero {
-    padding-block: 65px;
+    padding-block: 28px;
   }
   .hero-grid {
     gap: 32px;
@@ -1373,7 +1373,7 @@ summary:focus-visible {
     gap: 28px;
   }
   .hero {
-    padding: 50px 0;
+    padding: 32px 0;
   }
   .hero-copy {
     max-width: 600px;
@@ -1407,7 +1407,7 @@ summary:focus-visible {
     width: 90%;
     max-width: 650px;
     margin-inline: auto;
-    padding: 15px 0 35px;
+    padding: 0;
   }
   .hero-window {
     width: 100%;
@@ -1557,8 +1557,8 @@ summary:focus-visible {
     width: calc(100% - 36px);
   }
   .hero {
-    padding-top: 42px;
-    padding-bottom: 36px;
+    padding-top: 26px;
+    padding-bottom: 24px;
   }
   .hero h1 {
     font-size: clamp(39px, 10.8vw, 60px);
@@ -1603,7 +1603,6 @@ summary:focus-visible {
   }
   .hero-visual {
     width: 100%;
-    padding-bottom: 28px;
   }
   .product-window {
     border-radius: 10px;
