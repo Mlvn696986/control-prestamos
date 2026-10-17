@@ -49,13 +49,21 @@ No se modifica `app.js`, autenticación, procesamiento de Mercado Pago ni cálcu
 
 El sitemap conserva su dirección ya enviada a Google y Bing. Una publicación o solicitud aceptada no equivale a una página indexada. Las consolas pueden tardar en mostrar las nuevas URLs; registrar la fecha y la evidencia observada antes de marcar indexación completada.
 
-## Cómo saber si ayuda a captar clientes
-
-### Evidencia de implementación
+## Evidencia de implementación
 
 El 17/10/2026 se aprobó la validación completa: 177 pruebas, 175 aprobadas, 0 fallos y 2 omitidas por requisitos de integración; regresiones financieras, cinco escenarios de calendario y build/dry-run correctos. Se revisaron las vistas a 390 y 820 píxeles y en escritorio, sin desbordamiento horizontal observado. El botón de reclamaciones abrió el formulario existente sin iniciar sesión ni enviarlo.
 
 La migración v3 se aplicó tras verificar un respaldo privado del módulo de adquisición. La comprobación de producción confirmó las tres rutas admitidas, RLS activo, ejecución de RPC denegada a `anon` y `authenticated` y permitida al servidor. Se conservaron las dos visitas existentes; no se añadieron registros, préstamos ni pagos de prueba. La publicación web y la recepción por buscadores se registran separadamente en el checklist.
+
+Publicación confirmada mediante [PR 25](https://github.com/Mlvn696986/control-prestamos/pull/25), commit `83257378be1a3b334055d57c8eb664cdf3822f1d`. La validación de GitHub también pasó antes de integrar. Después del despliegue, **20 comprobaciones HTTP aprobaron**: [evidencia de producción](seo-stage3-2026-10-17.json). Las tres URLs nuevas se abrieron en el navegador, sus enlaces funcionaron y el formulario de reclamaciones se mostró sin iniciar sesión ni enviarlo. Google no se cargó con la preferencia de medición rechazada.
+
+Search Console comprobó las tres URLs nuevas como disponibles e indexables, con un elemento válido de rutas de exploración por página. Las tres solicitudes de indexación se confirmaron. Al reenviar una vez el sitemap actualizado, Google mostró **Correcto, 10 páginas descubiertas**. Antes de solicitar el rastreo, las tres páginas figuraban como desconocidas; no se confunde la recepción de solicitudes con indexación efectiva.
+
+Bing también comprobó las tres URLs mediante **Live URL**, informó que podían indexarse y no detectó incidencias SEO/GEO en esas pruebas. Cada solicitud terminó con la confirmación **Indexing requested**. El estado del índice anterior era **Not discovered**; la recepción no acredita todavía su aparición en resultados.
+
+El sitemap modificado se reenvió una vez a Bing desde la fila existente. Al cerrar la revisión figuraba **Processing**, con las siete URLs de la lectura anterior aún en el contador. La nueva versión contiene diez URLs según la comprobación pública; la lectura de esa versión por Bing queda pendiente. No volver a enviarlo sin cambios mientras se procesa.
+
+## Cómo saber si ayuda a captar clientes
 
 En Search Console, filtrar **Rendimiento → Páginas** por cada URL nueva y revisar consultas, impresiones, clics y CTR. En Bing revisar el mismo recorrido en Search Performance. Cuando haya datos, comparar períodos equivalentes y distinguir falta de datos de cero resultados.
 

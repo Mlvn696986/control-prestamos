@@ -48,11 +48,23 @@ La [guía de la etapa 2](SEO-GUIA-ETAPA-2.md) explica cada evento, cobertura, UT
 - [x] Revisión visual de móvil, tablet y escritorio; apertura del formulario actual de reclamaciones sin enviar datos.
 - [x] Validación completa: 177 pruebas, 175 aprobadas, 0 fallos y 2 omitidas; cálculos financieros, calendario y build/dry-run correctos.
 - [x] Migración v3 aplicada tras respaldo privado verificado; rutas nuevas admitidas, RLS activo y ejecución de la RPC limitada al servidor. Dos visitas existentes conservadas.
-- [ ] Publicación y verificación HTTP en el dominio de las diez páginas.
-- [ ] Solicitudes de descubrimiento o indexación de las páginas nuevas, con estado observado en consola.
+- [x] Publicación verificada: **20 comprobaciones HTTP correctas, 0 fallos**, con diez páginas en el sitemap. [Evidencia fechada](seo-stage3-2026-10-17.json). Enlaces y apertura del formulario también revisados en producción.
+- [x] Las tres páginas nuevas superaron las pruebas en vivo de Google y Bing; solicitud de indexación confirmada una vez por URL en ambos buscadores.
+- [x] Sitemap actualizado reenviado una vez a Google: **Correcto, 10 páginas descubiertas**.
+- [x] Sitemap actualizado reenviado una vez a Bing: **Processing** al cerrar la revisión; el contador conserva las siete URLs de la lectura anterior hasta que procese la nueva versión.
 - [ ] Confirmar indexación y medir impresiones, clics, registros y primeros pagos reales cuando haya datos.
 
 La [guía de etapa 3](SEO-GUIA-ETAPA-3.md) documenta intención, recorrido, archivos, publicación, comprobación y resolución de errores. Herramientas y guías se publicarán con recursos útiles completos en la siguiente etapa.
+
+### Pruebas de las nuevas páginas, 17/10/2026
+
+| Página | Google: prueba publicada | Bing: Live URL | Solicitudes |
+|---|---|---|---|
+| `/control-de-cobranzas/` | Disponible e indexable; un elemento válido de rutas de exploración | Puede indexarse; sin incidencias SEO/GEO en esa prueba | Confirmadas en ambos |
+| `/ampliaciones-de-prestamos/` | Disponible e indexable; un elemento válido de rutas de exploración | Puede indexarse; sin incidencias SEO/GEO en esa prueba | Confirmadas en ambos |
+| `/reclamaciones/` | Disponible e indexable; un elemento válido de rutas de exploración | Puede indexarse; sin incidencias SEO/GEO en esa prueba | Confirmadas en ambos |
+
+Antes de las solicitudes, Google y Bing indicaban que no conocían estas tres URLs recién publicadas. La prueba en vivo comprueba acceso e indexabilidad técnica; no acredita su incorporación al índice, calidad exhaustiva ni posicionamiento. Las capturas de las confirmaciones se guardaron en los archivos de esta tarea.
 
 ## Resultados observados por página en la etapa 1
 
@@ -80,10 +92,10 @@ Si todas las solicitudes fallan por restricciones de red del entorno, habilitar 
 | Corrección anterior | Resultado de esta revisión |
 |---|---|
 | Portada comercial | HTML público con contenido, navegación y llamadas a la acción; revisión del generador y pruebas existentes |
-| Robots y sitemap | Texto y XML reales, HTTP 200; siete URLs canónicas, sin rutas privadas |
+| Robots y sitemap | Texto y XML reales, HTTP 200; diez URLs canónicas desde la etapa 3, sin rutas privadas |
 | URL inexistente | HTTP **404** real |
 | Consolidación de dominio | `www` devuelve **301** hacia HTTPS sin www, conservando ruta y parámetros |
-| Navegación comercial | Enlaces HTML con `href` en las siete páginas públicas |
+| Navegación comercial | Enlaces HTML con `href` en las diez páginas públicas |
 | Títulos y descripciones | Presentes y únicos; una canonical propia y un H1 por página |
 | Analítica | Medición propia ampliada a `/seguridad/` y GA4 opcional publicado; recepción de una visita verificada. Las conversiones reales dependen de actividad comercial futura y consentimiento |
 | Recursos públicos | Páginas comerciales sin `app.js`, `styles.css` del sistema, `summary.css` ni SDK Supabase; aplicación separada en `/app/` |
@@ -112,10 +124,10 @@ El diagnóstico HTTP no ejecuta JavaScript ni valida exhaustivamente HTML/XML. L
 No falta ninguna acción manual para completar las verificaciones de propiedad. El siguiente control depende de que los buscadores procesen la información:
 
 1. **Desde el 18/10:** abrir [Search Console de ERMIF](https://search.google.com/search-console?resource_id=sc-domain%3Aermif.com) → **Páginas** y **Rendimiento**. En esta revisión ambos mostraban “Se están procesando los datos; vuelve a comprobar esta sección mañana”. Registrar los valores disponibles, sin convertir ausencia de datos en cero.
-2. **En las siguientes 24–48 horas:** abrir [Bing Webmaster Tools](https://www.bing.com/webmasters/) → seleccionar ERMIF → **Search Performance** para comprobar disponibilidad de informes. En **Sitemaps**, la fila `https://ermif.com/sitemap.xml` ya muestra **Success** y siete URLs; no es necesario volver a enviarla. Si aparece un error posterior, seguir el diagnóstico de la guía.
-3. Inspeccionar `/`, `/precios/` y `/como-funciona/` en ambas consolas. Comparar la fecha del último rastreo con los cambios; distinguir estado del índice y prueba en vivo. No existe un plazo garantizado de indexación.
+2. **En las siguientes 24–48 horas:** abrir [Bing Webmaster Tools](https://www.bing.com/webmasters/) → seleccionar ERMIF → **Search Performance** para comprobar disponibilidad de informes. En **Sitemaps**, comprobar que el reenvío de etapa 3 pase de **Processing** a **Success** y actualice el contador anterior de siete a diez URLs. No reenviarlo de nuevo sin cambios. Si aparece un error posterior, seguir el diagnóstico de la guía.
+3. Inspeccionar `/`, `/precios/`, `/como-funciona/` y las tres páginas nuevas en ambas consolas cuando se actualicen los informes. Comparar la fecha del último rastreo con los cambios; distinguir estado del índice y prueba en vivo. No existe un plazo garantizado de indexación.
 4. **Core Web Vitals:** Google informó falta de datos suficientes tanto en móvil como en ordenador. No se registra una aprobación ni un incumplimiento. La medición de laboratorio y optimización corresponden a la etapa de rendimiento.
-5. HTTPS funciona en las siete URLs comprobadas y en las pruebas en vivo. No se obtuvo un informe agregado independiente de HTTPS en Search Console; no se marca ese informe como aprobado.
+5. HTTPS funciona en las diez URLs públicas comprobadas y en las pruebas en vivo. No se obtuvo un informe agregado independiente de HTTPS en Search Console; no se marca ese informe como aprobado.
 
 ## Incidencia corregida en la etapa 2: atribución desde Seguridad
 
@@ -145,7 +157,7 @@ No falta ninguna acción manual para completar las verificaciones de propiedad. 
 | 4 · Captación y contenido | Investigar intención y competencia antes de calculadoras, Excel y guías. Sin volúmenes ni resultados comerciales inventados. |
 | 5 · Rendimiento | Medir campo y laboratorio; corregir solo problemas demostrados. |
 
-**IndexNow:** evaluado, **no instalado en esta etapa**. Con siete páginas públicas y actualizaciones poco frecuentes, las consolas y sitemaps permiten iniciar el seguimiento. Incorporarlo al publicar nuevas guías/herramientas o automatizar cambios comerciales; avisar solo de URLs públicas realmente cambiadas. No enviar clientes, préstamos, pagos, dashboard ni parámetros personales. La recepción de un aviso no garantiza indexación. [Protocolo oficial](https://www.indexnow.org/documentation).
+**IndexNow:** reevaluado, **no instalado en la etapa 3**. Para las diez páginas públicas actuales se conservan las consolas y sitemaps. Evaluar su incorporación al publicar regularmente nuevas guías/herramientas o automatizar cambios comerciales; avisar solo de URLs públicas realmente cambiadas. No enviar clientes, préstamos, pagos, dashboard ni parámetros personales. La recepción de un aviso no garantiza indexación. [Protocolo oficial](https://www.indexnow.org/documentation).
 
 ## Rutina de administración
 

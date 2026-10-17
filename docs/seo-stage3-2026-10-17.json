@@ -1,0 +1,498 @@
+{
+  "observedAt": "2026-10-17T11:45:08.016Z",
+  "baseUrl": "https://ermif.com",
+  "canonicalOrigin": "https://ermif.com",
+  "limitations": [
+    "This checks public HTTP responses and source HTML only; it does not execute JavaScript or measure Core Web Vitals.",
+    "A successful HTTP response is not evidence of indexing, rankings, real crawler visits or AI citations.",
+    "Googlebot, bingbot and OAI-SearchBot requests use spoofed User-Agent headers. They do not prove access for verified bots or validate Cloudflare firewall rules.",
+    "Metadata and JSON-LD presence do not establish eligibility for rich results or guarantee how search/social services display a page.",
+    "Robots is checked against the current ERMIF contract (one wildcard group, public access and /api/ exclusion), not with a general robots.txt interpreter.",
+    "No credentials, cookies, private customer data, database access or analytics events are used. Nothing is submitted to search engines."
+  ],
+  "checks": [
+    {
+      "name": "robots",
+      "status": "pass",
+      "url": "https://ermif.com/robots.txt",
+      "httpStatus": 200,
+      "contentType": "text/plain",
+      "bytes": 79,
+      "elapsedMs": 390
+    },
+    {
+      "name": "sitemap",
+      "status": "pass",
+      "url": "https://ermif.com/sitemap.xml",
+      "httpStatus": 200,
+      "contentType": "application/xml",
+      "bytes": 662,
+      "elapsedMs": 351,
+      "locations": [
+        "https://ermif.com/",
+        "https://ermif.com/precios/",
+        "https://ermif.com/como-funciona/",
+        "https://ermif.com/contacto/",
+        "https://ermif.com/privacidad/",
+        "https://ermif.com/terminos/",
+        "https://ermif.com/seguridad/",
+        "https://ermif.com/control-de-cobranzas/",
+        "https://ermif.com/ampliaciones-de-prestamos/",
+        "https://ermif.com/reclamaciones/"
+      ]
+    },
+    {
+      "name": "page:/",
+      "status": "pass",
+      "url": "https://ermif.com/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 21682,
+      "elapsedMs": 289,
+      "checks": {
+        "httpHtml": true,
+        "canonical": true,
+        "title": true,
+        "description": true,
+        "h1": true,
+        "crawlableNavigation": true,
+        "openGraph": true,
+        "socialCard": true,
+        "jsonLd": true,
+        "favicon": true,
+        "indexableDirective": true,
+        "isolatedPublicResources": true
+      },
+      "title": "Software para prestamistas y control de préstamos | ERMIF",
+      "description": "Organiza clientes, préstamos, ampliaciones y cobranzas con ERMIF. Consulta tu capital y ganancias. Empieza gratis con hasta 10 clientes.",
+      "canonical": [
+        "https://ermif.com/"
+      ],
+      "h1": [
+        "Controla tus préstamos, clientes y cobranzas."
+      ],
+      "resources": [
+        "/landing.js",
+        "/acquisition.js",
+        "/landing.css",
+        "/acquisition.css"
+      ]
+    },
+    {
+      "name": "page:/precios/",
+      "status": "pass",
+      "url": "https://ermif.com/precios/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 13372,
+      "elapsedMs": 316,
+      "checks": {
+        "httpHtml": true,
+        "canonical": true,
+        "title": true,
+        "description": true,
+        "h1": true,
+        "crawlableNavigation": true,
+        "openGraph": true,
+        "socialCard": true,
+        "jsonLd": true,
+        "favicon": true,
+        "indexableDirective": true,
+        "isolatedPublicResources": true
+      },
+      "title": "Planes y precios | ERMIF",
+      "description": "Compara los planes de ERMIF: Gratis hasta 10 clientes, Básico hasta 50 por S/29 al mes y Pro por S/59 al mes. Empieza sin tarjeta.",
+      "canonical": [
+        "https://ermif.com/precios/"
+      ],
+      "h1": [
+        "Tu cartera crece. Tu plan te acompaña."
+      ],
+      "resources": [
+        "/landing.js",
+        "/acquisition.js",
+        "/landing.css",
+        "/acquisition.css"
+      ]
+    },
+    {
+      "name": "page:/como-funciona/",
+      "status": "pass",
+      "url": "https://ermif.com/como-funciona/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 10922,
+      "elapsedMs": 326,
+      "checks": {
+        "httpHtml": true,
+        "canonical": true,
+        "title": true,
+        "description": true,
+        "h1": true,
+        "crawlableNavigation": true,
+        "openGraph": true,
+        "socialCard": true,
+        "jsonLd": true,
+        "favicon": true,
+        "indexableDirective": true,
+        "isolatedPublicResources": true
+      },
+      "title": "Cómo funciona el control de préstamos | ERMIF",
+      "description": "Conoce cómo ERMIF organiza clientes, préstamos, ampliaciones, pagos y vencimientos. Mira el sistema con datos de ejemplo antes de registrarte.",
+      "canonical": [
+        "https://ermif.com/como-funciona/"
+      ],
+      "h1": [
+        "Menos información dispersa. Más claridad en tu cartera."
+      ],
+      "resources": [
+        "/landing.js",
+        "/acquisition.js",
+        "/landing.css",
+        "/acquisition.css"
+      ]
+    },
+    {
+      "name": "page:/contacto/",
+      "status": "pass",
+      "url": "https://ermif.com/contacto/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 9853,
+      "elapsedMs": 297,
+      "checks": {
+        "httpHtml": true,
+        "canonical": true,
+        "title": true,
+        "description": true,
+        "h1": true,
+        "crawlableNavigation": true,
+        "openGraph": true,
+        "socialCard": true,
+        "jsonLd": true,
+        "favicon": true,
+        "indexableDirective": true,
+        "isolatedPublicResources": true
+      },
+      "title": "Contacto y atención | ERMIF",
+      "description": "Contacta con ERMIF para consultas sobre planes, facturación, privacidad, reclamaciones o seguridad. Encuentra el canal adecuado para tu solicitud.",
+      "canonical": [
+        "https://ermif.com/contacto/"
+      ],
+      "h1": [
+        "Una consulta. El canal correcto."
+      ],
+      "resources": [
+        "/landing.js",
+        "/acquisition.js",
+        "/landing.css",
+        "/acquisition.css"
+      ]
+    },
+    {
+      "name": "page:/seguridad/",
+      "status": "pass",
+      "url": "https://ermif.com/seguridad/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 10576,
+      "elapsedMs": 366,
+      "checks": {
+        "httpHtml": true,
+        "canonical": true,
+        "title": true,
+        "description": true,
+        "h1": true,
+        "crawlableNavigation": true,
+        "openGraph": true,
+        "socialCard": true,
+        "jsonLd": true,
+        "favicon": true,
+        "indexableDirective": true,
+        "isolatedPublicResources": true
+      },
+      "title": "Seguridad de tu cuenta y tus datos | ERMIF",
+      "description": "Conoce las medidas de acceso y protección de datos de ERMIF, cómo descargar una copia y dónde reportar un problema de seguridad.",
+      "canonical": [
+        "https://ermif.com/seguridad/"
+      ],
+      "h1": [
+        "Tu información merece un cuidado claro."
+      ],
+      "resources": [
+        "/landing.js",
+        "/acquisition.js",
+        "/landing.css",
+        "/acquisition.css"
+      ]
+    },
+    {
+      "name": "page:/control-de-cobranzas/",
+      "status": "pass",
+      "url": "https://ermif.com/control-de-cobranzas/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 13401,
+      "elapsedMs": 93,
+      "checks": {
+        "httpHtml": true,
+        "canonical": true,
+        "title": true,
+        "description": true,
+        "h1": true,
+        "crawlableNavigation": true,
+        "openGraph": true,
+        "socialCard": true,
+        "jsonLd": true,
+        "favicon": true,
+        "indexableDirective": true,
+        "isolatedPublicResources": true
+      },
+      "title": "Software de control de cobranzas para prestamistas | ERMIF",
+      "description": "Organiza cobros, vencimientos y abonos de tus préstamos con ERMIF. Separa capital e intereses y consulta el historial. Empieza con hasta 10 clientes gratis.",
+      "canonical": [
+        "https://ermif.com/control-de-cobranzas/"
+      ],
+      "h1": [
+        "Control de cobranzas. Cada saldo, en orden."
+      ],
+      "resources": [
+        "/landing.js",
+        "/acquisition.js",
+        "/landing.css",
+        "/acquisition.css"
+      ]
+    },
+    {
+      "name": "page:/ampliaciones-de-prestamos/",
+      "status": "pass",
+      "url": "https://ermif.com/ampliaciones-de-prestamos/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 12800,
+      "elapsedMs": 290,
+      "checks": {
+        "httpHtml": true,
+        "canonical": true,
+        "title": true,
+        "description": true,
+        "h1": true,
+        "crawlableNavigation": true,
+        "openGraph": true,
+        "socialCard": true,
+        "jsonLd": true,
+        "favicon": true,
+        "indexableDirective": true,
+        "isolatedPublicResources": true
+      },
+      "title": "Gestión de ampliaciones de préstamos | ERMIF",
+      "description": "Registra ampliaciones vinculadas al préstamo original, conserva sus fechas y consulta pagos y capital pendiente por cliente. Conoce cómo funciona ERMIF.",
+      "canonical": [
+        "https://ermif.com/ampliaciones-de-prestamos/"
+      ],
+      "h1": [
+        "Gestiona tus ampliaciones de préstamos."
+      ],
+      "resources": [
+        "/landing.js",
+        "/acquisition.js",
+        "/landing.css",
+        "/acquisition.css"
+      ]
+    },
+    {
+      "name": "page:/reclamaciones/",
+      "status": "pass",
+      "url": "https://ermif.com/reclamaciones/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 10024,
+      "elapsedMs": 298,
+      "checks": {
+        "httpHtml": true,
+        "canonical": true,
+        "title": true,
+        "description": true,
+        "h1": true,
+        "crawlableNavigation": true,
+        "openGraph": true,
+        "socialCard": true,
+        "jsonLd": true,
+        "favicon": true,
+        "indexableDirective": true,
+        "isolatedPublicResources": true
+      },
+      "title": "Libro de Reclamaciones y atención del servicio | ERMIF",
+      "description": "Accede al Libro de Reclamaciones de ERMIF, conoce el canal de atención y conserva el código de seguimiento de tu reclamo o queja sobre el servicio.",
+      "canonical": [
+        "https://ermif.com/reclamaciones/"
+      ],
+      "h1": [
+        "Libro de Reclamaciones"
+      ],
+      "resources": [
+        "/landing.js",
+        "/acquisition.js",
+        "/landing.css",
+        "/acquisition.css"
+      ]
+    },
+    {
+      "name": "page:/privacidad/",
+      "status": "pass",
+      "url": "https://ermif.com/privacidad/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 14799,
+      "elapsedMs": 303,
+      "checks": {
+        "httpHtml": true,
+        "canonical": true,
+        "title": true,
+        "description": true,
+        "h1": true,
+        "crawlableNavigation": true,
+        "openGraph": true,
+        "socialCard": true,
+        "jsonLd": true,
+        "favicon": true,
+        "indexableDirective": true,
+        "isolatedPublicResources": true
+      },
+      "title": "Política de privacidad | ERMIF",
+      "description": "Consulta la política de privacidad de ERMIF y los canales para ejercer tus derechos sobre tus datos personales.",
+      "canonical": [
+        "https://ermif.com/privacidad/"
+      ],
+      "h1": [
+        "Política de privacidad"
+      ],
+      "resources": [
+        "/landing.js",
+        "/acquisition.js",
+        "/landing.css",
+        "/acquisition.css"
+      ]
+    },
+    {
+      "name": "page:/terminos/",
+      "status": "pass",
+      "url": "https://ermif.com/terminos/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 10906,
+      "elapsedMs": 293,
+      "checks": {
+        "httpHtml": true,
+        "canonical": true,
+        "title": true,
+        "description": true,
+        "h1": true,
+        "crawlableNavigation": true,
+        "openGraph": true,
+        "socialCard": true,
+        "jsonLd": true,
+        "favicon": true,
+        "indexableDirective": true,
+        "isolatedPublicResources": true
+      },
+      "title": "Términos y condiciones | ERMIF",
+      "description": "Consulta las condiciones de uso, planes, pagos y atención del servicio de gestión de préstamos ERMIF.",
+      "canonical": [
+        "https://ermif.com/terminos/"
+      ],
+      "h1": [
+        "Términos y condiciones"
+      ],
+      "resources": [
+        "/landing.js",
+        "/acquisition.js",
+        "/landing.css",
+        "/acquisition.css"
+      ]
+    },
+    {
+      "name": "unique-titles-and-descriptions",
+      "status": "pass"
+    },
+    {
+      "name": "favicon-resource",
+      "status": "pass",
+      "url": "https://ermif.com/favicon.png",
+      "httpStatus": 200,
+      "contentType": "image/png",
+      "bytes": 11758,
+      "elapsedMs": 70,
+      "width": 96,
+      "height": 96
+    },
+    {
+      "name": "missing-page",
+      "status": "pass",
+      "url": "https://ermif.com/__ermif_seo_baseline_missing__/",
+      "httpStatus": 404,
+      "contentType": "text/html",
+      "bytes": 1530,
+      "elapsedMs": 209
+    },
+    {
+      "name": "app-noindex",
+      "status": "pass",
+      "url": "https://ermif.com/app/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 91690,
+      "elapsedMs": 78,
+      "metaRobots": "noindex",
+      "robotsHeader": "noindex"
+    },
+    {
+      "name": "www-consolidation",
+      "status": "pass",
+      "url": "https://www.ermif.com/precios/?seo_baseline=1",
+      "httpStatus": 301,
+      "contentType": "",
+      "bytes": 0,
+      "elapsedMs": 206,
+      "location": "https://ermif.com/precios/?seo_baseline=1"
+    },
+    {
+      "name": "spoofed-user-agent:Googlebot",
+      "status": "pass",
+      "url": "https://ermif.com/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 21682,
+      "elapsedMs": 69,
+      "userAgent": "Googlebot",
+      "verifiedBot": false
+    },
+    {
+      "name": "spoofed-user-agent:bingbot",
+      "status": "pass",
+      "url": "https://ermif.com/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 21682,
+      "elapsedMs": 68,
+      "userAgent": "bingbot",
+      "verifiedBot": false
+    },
+    {
+      "name": "spoofed-user-agent:OAI-SearchBot",
+      "status": "pass",
+      "url": "https://ermif.com/",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 21682,
+      "elapsedMs": 77,
+      "userAgent": "OAI-SearchBot",
+      "verifiedBot": false
+    }
+  ],
+  "summary": {
+    "pass": 20,
+    "fail": 0,
+    "skip": 0
+  }
+}
