@@ -240,10 +240,11 @@
     chooser.id = 'ermif-measurement-choice';
     chooser.className = 'ermif-measurement';
     chooser.setAttribute('aria-labelledby', 'ermif-measurement-title');
-    chooser.innerHTML = '<div class="ermif-measurement-heading"><strong id="ermif-measurement-title">Medición opcional</strong><button class="ermif-measurement-close" type="button" aria-label="Cerrar preferencias de medición">×</button></div>' +
-      '<p>Con tu permiso, relacionamos el origen de tu visita con el registro, el primer uso y el primer pago de tu suscripción a ERMIF. No medimos los datos de tus clientes ni de sus préstamos.</p>' +
-      '<p>Puedes usar ERMIF sin aceptar y cambiar tu elección cuando quieras. <a href="/privacidad/">Ver privacidad</a></p>' +
-      '<div class="ermif-measurement-actions"><button type="button" data-measurement="accept">Aceptar medición</button><button type="button" data-measurement="reject">Continuar sin medición</button></div>';
+    chooser.innerHTML = '<div class="ermif-measurement-heading"><strong id="ermif-measurement-title">Ayúdanos a mejorar ERMIF</strong><button class="ermif-measurement-close" type="button" aria-label="Cerrar preferencias de medición">×</button></div>' +
+      '<p>Tu participación nos ayuda a conocer cómo llegan las personas a ERMIF y a mejorar sus primeros pasos.</p>' +
+      '<p>Si aceptas, relacionamos el origen de tu visita con tu registro, tu primer préstamo registrado y tu primer pago de suscripción. No incluimos información de tus clientes ni detalles de sus préstamos.</p>' +
+      '<p>Es opcional. Puedes usar ERMIF sin aceptar y cambiar tu elección cuando quieras. <a href="/privacidad/">Ver privacidad</a></p>' +
+      '<div class="ermif-measurement-actions"><button type="button" data-measurement="accept">Sí, aceptar medición</button><button type="button" data-measurement="reject">Continuar sin medición</button></div>';
     chooser.querySelector('[data-measurement="accept"]').addEventListener('click', () => choose('accepted'));
     chooser.querySelector('[data-measurement="reject"]').addEventListener('click', () => choose('rejected'));
     chooser.querySelector('.ermif-measurement-close').addEventListener('click', () => setChooser(false));
